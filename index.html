@@ -1,0 +1,2888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GestoPro v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#07090e;--sur:#0d1018;--sur2:#131720;--sur3:#191e28;
+  --brd:#1a2030;--brd2:#222a3a;--txt:#e0e4f0;--mut:#3d4560;--mut2:#606880;
+  --acc:#6c63ff;--acc2:#8b84ff;--acc-dim:rgba(108,99,255,.1);
+  --grn:#00d68f;--grn-dim:rgba(0,214,143,.1);
+  --red:#ff4d6d;--red-dim:rgba(255,77,109,.1);
+  --yel:#ffb830;--yel-dim:rgba(255,184,48,.1);
+  --blu:#4d9fff;--blu-dim:rgba(77,159,255,.1);
+  --pur:#c084fc;--pur-dim:rgba(192,132,252,.1);
+  --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:54px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:60;}
+.logo{font-family:"Syne",sans-serif;font-size:19px;font-weight:800;display:flex;align-items:center;gap:8px;}
+.logo-ico{width:30px;height:30px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.mbtn{background:none;border:none;color:var(--txt);font-size:22px;cursor:pointer;padding:6px 8px;}
+.plan-chip{font-family:"DM Mono",monospace;font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--acc);color:var(--acc2);background:var(--acc-dim);cursor:pointer;white-space:nowrap;}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;height:calc(100vh - 54px);}
+
+/* SIDEBAR */
+.sb{width:200px;flex-shrink:0;background:var(--sur);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow-y:auto;}
+.sb-sec{padding:14px 10px 4px;}
+.sb-lbl{font-family:"DM Mono",monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);padding:0 8px;margin-bottom:6px;}
+.sb-i{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--mut2);transition:all .15s;margin-bottom:2px;}
+.sb-i:hover{background:var(--sur2);color:var(--txt);}
+.sb-i.on{background:var(--acc-dim);color:var(--acc2);font-weight:600;}
+.sb-ico{font-size:16px;width:20px;text-align:center;}
+.sb-lock{margin-left:auto;font-size:10px;opacity:.4;}
+.sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sb-foot{margin-top:auto;padding:12px 10px;border-top:1px solid var(--brd);}
+.plan-box{background:var(--acc-dim);border:1px solid var(--acc);border-radius:8px;padding:10px;text-align:center;}
+.plan-box-name{font-family:"Syne",sans-serif;font-size:13px;font-weight:700;color:var(--acc2);margin-bottom:4px;}
+.plan-box-sub{font-size:10px;color:var(--mut2);margin-bottom:8px;}
+.plan-up-btn{display:block;width:100%;background:var(--acc);color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:"DM Sans",sans-serif;}
+
+/* CONTENT */
+.cnt{flex:1;overflow-y:auto;padding:18px 18px 80px;}
+.pg{display:none;}
+.pg.on{display:block;animation:fu .2s ease;}
+@keyframes fu{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.ptitle{font-family:"Syne",sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px;margin-bottom:2px;}
+.psub{font-size:12px;color:var(--mut2);margin-bottom:16px;}
+.psub b{color:var(--acc2);}
+
+/* BIG ACTION BUTTONS — visual first */
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.action-btn{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.action-btn:active{transform:scale(.96);}
+.action-btn.cobrar{border-color:var(--grn);background:var(--grn-dim);}
+.action-btn.ingreso{border-color:var(--blu);background:var(--blu-dim);}
+.action-btn.egreso{border-color:var(--red);background:var(--red-dim);}
+.action-btn.factura{border-color:var(--yel);background:var(--yel-dim);}
+.action-btn.gasto{border-color:var(--pur);background:var(--pur-dim);}
+.action-btn.producto{border-color:var(--acc);background:var(--acc-dim);}
+.action-ico{font-size:32px;line-height:1;}
+.action-lbl{font-family:"Syne",sans-serif;font-size:13px;font-weight:700;}
+.action-sub{font-size:10px;color:var(--mut2);}
+.action-btn.cobrar .action-lbl{color:var(--grn);}
+.action-btn.ingreso .action-lbl{color:var(--blu);}
+.action-btn.egreso .action-lbl{color:var(--red);}
+.action-btn.factura .action-lbl{color:var(--yel);}
+.action-btn.gasto .action-lbl{color:var(--pur);}
+.action-btn.producto .action-lbl{color:var(--acc2);}
+
+/* KPI */
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.kgrid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.kpi{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);padding:14px;position:relative;overflow:hidden;}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}
+.kg::before{background:var(--grn);}.kr::before{background:var(--red);}.ky::before{background:var(--yel);}.kb::before{background:var(--blu);}.kp::before{background:var(--pur);}
+.kl{font-family:"DM Mono",monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut2);margin-bottom:6px;}
+.kn{font-family:"Syne",sans-serif;font-size:26px;font-weight:800;line-height:1;margin-bottom:3px;}
+.kg .kn{color:var(--grn);}.kr .kn{color:var(--red);}.ky .kn{color:var(--yel);}.kb .kn{color:var(--blu);}.kp .kn{color:var(--pur);}
+.kd{font-size:10px;color:var(--mut2);}
+
+/* CARDS */
+.card{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.stitle{font-family:"Syne",sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;}
+
+/* TABLE */
+.tw{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:16px;}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--sur2);}
+th{padding:9px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut2);font-family:"DM Mono",monospace;white-space:nowrap;}
+td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--brd);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.01);}
+.mn{font-family:"DM Mono",monospace;font-size:11px;}
+.md{color:var(--mut2);}
+
+/* BADGE */
+.bdg{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:"DM Mono",monospace;white-space:nowrap;}
+.bdg::before{content:"";width:5px;height:5px;border-radius:50%;}
+.bg{background:var(--grn-dim);color:var(--grn);}.bg::before{background:var(--grn);}
+.br{background:var(--red-dim);color:var(--red);}.br::before{background:var(--red);}
+.by{background:var(--yel-dim);color:var(--yel);}.by::before{background:var(--yel);}
+.bb{background:var(--blu-dim);color:var(--blu);}.bb::before{background:var(--blu);}
+.bp{background:var(--pur-dim);color:var(--pur);}.bp::before{background:var(--pur);}
+.bm{background:rgba(96,104,128,.2);color:var(--mut2);}.bm::before{background:var(--mut2);}
+
+/* FORM */
+.fg{margin-bottom:12px;}
+.fl{font-size:10px;color:var(--mut2);font-family:"DM Mono",monospace;margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.8px;}
+.fi{width:100%;background:var(--sur2);border:1px solid var(--brd2);border-radius:8px;padding:9px 13px;color:var(--txt);font-family:"DM Sans",sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+.fi:focus{border-color:var(--acc);}
+.fi::placeholder{color:var(--mut);}
+select.fi{appearance:none;cursor:pointer;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+/* BUTTONS */
+.btn{padding:10px 18px;border-radius:8px;border:none;font-family:"DM Sans",sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;justify-content:center;}
+.btn:active{transform:scale(.97);}
+.btn-acc{background:var(--acc);color:#fff;}
+.btn-grn{background:var(--grn);color:#000;}
+.btn-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,77,109,.2);}
+.btn-blu{background:var(--blu-dim);color:var(--blu);border:1px solid rgba(77,159,255,.2);}
+.btn-yel{background:var(--yel-dim);color:var(--yel);border:1px solid rgba(255,184,48,.2);}
+.btn-pur{background:var(--pur-dim);color:var(--pur);border:1px solid rgba(192,132,252,.2);}
+.btn-ghost{background:var(--sur2);color:var(--txt);border:1px solid var(--brd2);}
+.btn-ghost:hover{border-color:var(--acc);color:var(--acc2);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-lg{padding:14px 24px;font-size:15px;border-radius:10px;}
+.btn-full{width:100%;}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.ov.on{opacity:1;pointer-events:all;}
+.modal{background:var(--sur);border:1px solid var(--brd2);border-radius:16px 16px 0 0;padding:22px 20px 32px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s ease;}
+.ov.on .modal{transform:translateY(0);}
+.modal-drag{width:40px;height:4px;background:var(--brd2);border-radius:2px;margin:0 auto 16px;}
+.modal-t{font-family:"Syne",sans-serif;font-size:18px;font-weight:800;margin-bottom:3px;}
+.modal-s{font-size:12px;color:var(--mut2);margin-bottom:18px;}
+
+/* COBRAR MODAL */
+.cobrar-total{text-align:center;margin-bottom:20px;}
+.cobrar-total-lbl{font-size:12px;color:var(--mut2);margin-bottom:4px;}
+.cobrar-total-num{font-family:"Syne",sans-serif;font-size:48px;font-weight:800;color:var(--grn);line-height:1;}
+.pay-methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+.pay-method{background:var(--sur2);border:2px solid var(--brd2);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;transition:all .2s;}
+.pay-method:active{transform:scale(.96);}
+.pay-method.on{border-color:var(--grn);background:var(--grn-dim);}
+.pay-ico{font-size:28px;margin-bottom:6px;}
+.pay-lbl{font-family:"Syne",sans-serif;font-size:12px;font-weight:700;}
+.pay-sub{font-size:10px;color:var(--mut2);margin-top:2px;}
+.qr-display{background:var(--sur2);border:1px solid var(--brd2);border-radius:10px;padding:20px;text-align:center;margin-bottom:16px;}
+.qr-box{width:160px;height:160px;margin:0 auto 12px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#333;padding:8px;}
+.alias-box{background:var(--sur3);border:1px solid var(--brd2);border-radius:8px;padding:12px;text-align:center;margin-bottom:12px;}
+.alias-val{font-family:"DM Mono",monospace;font-size:18px;font-weight:700;color:var(--acc2);letter-spacing:1px;}
+.alias-lbl{font-size:10px;color:var(--mut2);margin-top:4px;}
+.efectivo-box{background:var(--sur2);border:1px solid var(--brd2);border-radius:10px;padding:16px;margin-bottom:16px;}
+.efectivo-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);}
+.efectivo-row:last-child{border-bottom:none;}
+.ef-lbl{font-size:13px;}
+.ef-val{font-family:"DM Mono",monospace;font-size:15px;font-weight:600;}
+.vuelto-num{font-family:"Syne",sans-serif;font-size:24px;font-weight:800;color:var(--grn);}
+
+/* MOV ITEM */
+.mov-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);}
+.mov-item:last-child{border-bottom:none;}
+.mov-ico{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.mi-cobro{background:var(--grn-dim);}.mi-ingreso{background:var(--blu-dim);}.mi-egreso{background:var(--red-dim);}.mi-gasto{background:var(--pur-dim);}
+.mov-txt{flex:1;min-width:0;}
+.mov-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mov-meta{font-size:10.5px;color:var(--mut2);font-family:"DM Mono",monospace;margin-top:2px;}
+.mov-right{text-align:right;flex-shrink:0;}
+.mov-monto{font-family:"Syne",sans-serif;font-size:15px;font-weight:800;}
+.mov-tipo-lbl{font-size:9px;color:var(--mut2);font-family:"DM Mono",monospace;}
+.mc-cobro{color:var(--grn);}.mc-ingreso{color:var(--blu);}.mc-egreso{color:var(--red);}.mc-gasto{color:var(--pur);}
+
+/* GASTO FIJO */
+.gf-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--brd);}
+.gf-item:last-child{border-bottom:none;}
+.gf-ico-wrap{width:40px;height:40px;border-radius:10px;background:var(--pur-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.gf-txt{flex:1;}
+.gf-name{font-size:13px;font-weight:500;}
+.gf-meta{font-size:10.5px;color:var(--mut2);font-family:"DM Mono",monospace;margin-top:2px;}
+.gf-right{text-align:right;}
+.gf-monto{font-family:"Syne",sans-serif;font-size:16px;font-weight:800;color:var(--pur);}
+
+/* PERIOD TABS */
+.ptabs{display:flex;background:var(--sur2);border-radius:8px;padding:3px;margin-bottom:14px;gap:2px;}
+.ptab{flex:1;padding:7px 4px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--mut2);border:none;background:none;font-family:"DM Sans",sans-serif;text-align:center;}
+.ptab.on{background:var(--acc);color:#fff;font-weight:600;}
+
+/* FILTERS */
+.fr{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.fb{padding:5px 13px;border-radius:20px;border:1px solid var(--brd2);background:transparent;color:var(--mut2);font-size:11px;cursor:pointer;transition:all .15s;font-family:"DM Sans",sans-serif;}
+.fb:hover{border-color:var(--acc);color:var(--acc2);}
+.fb.on{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;}
+
+/* SEARCH */
+.srch-wrap{position:relative;margin-bottom:14px;}
+.srch-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--mut2);font-size:15px;}
+.srch{width:100%;background:var(--sur2);border:1px solid var(--brd2);border-radius:8px;padding:9px 13px 9px 36px;color:var(--txt);font-size:13px;outline:none;font-family:"DM Sans",sans-serif;}
+.srch:focus{border-color:var(--acc);}
+
+/* PLAN CARDS */
+.plans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.plan-card{border:2px solid var(--brd2);border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;position:relative;}
+.plan-card:hover{border-color:var(--acc);}
+.plan-card.current{border-color:var(--acc);background:var(--acc-dim);}
+.plan-card.rec::before{content:"RECOMENDADO";position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;font-family:"DM Mono",monospace;font-size:8px;padding:2px 8px;border-radius:10px;letter-spacing:1px;white-space:nowrap;}
+.pc-name{font-family:"Syne",sans-serif;font-size:14px;font-weight:800;margin-bottom:2px;}
+.pc-price{font-family:"DM Mono",monospace;font-size:17px;font-weight:700;color:var(--acc2);margin-bottom:8px;}
+.pc-price span{font-size:10px;color:var(--mut2);}
+.pc-feats{font-size:11px;color:var(--mut2);line-height:1.8;}
+.pc-feats li{list-style:none;padding-left:14px;position:relative;}
+.pc-feats li::before{content:"✓";position:absolute;left:0;color:var(--grn);}
+
+/* LOCK */
+.locked{position:relative;}
+.lock-ov{position:absolute;inset:0;background:rgba(7,9,14,.88);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:10;backdrop-filter:blur(4px);}
+.lock-ico{font-size:32px;}
+.lock-t{font-family:"Syne",sans-serif;font-size:15px;font-weight:700;}
+.lock-s{font-size:11px;color:var(--mut2);text-align:center;max-width:220px;line-height:1.5;}
+
+/* UPLOAD */
+.upload-z{border:2px dashed var(--brd2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-z:hover{border-color:var(--acc);background:var(--acc-dim);}
+.upload-z input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 16px;color:var(--mut2);}
+.empty-ico{font-size:36px;margin-bottom:10px;}
+.empty-t{font-family:"Syne",sans-serif;font-size:15px;font-weight:700;color:var(--txt);margin-bottom:4px;}
+.empty-s{font-size:12px;line-height:1.5;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--sur);border:1px solid var(--grn);color:var(--grn);padding:10px 20px;border-radius:30px;font-size:13px;font-family:"DM Mono",monospace;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1;}
+#toast.err{border-color:var(--red);color:var(--red);}
+
+/* SIDEBAR OVERLAY */
+.sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:58;}
+.sb-ov.on{display:block;}
+
+/* FIN ROW */
+.fin-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd);}
+.fin-row:last-child{border-bottom:none;}
+.fin-total{display:flex;justify-content:space-between;align-items:center;padding:14px 0 0;border-top:2px solid var(--brd2);margin-top:6px;}
+.fin-total-lbl{font-family:"Syne",sans-serif;font-size:14px;font-weight:700;}
+.fin-total-val{font-family:"Syne",sans-serif;font-size:22px;font-weight:800;}
+
+/* CHECK */
+.chk-wrap{display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;}
+.chk-wrap input{width:16px;height:16px;accent-color:var(--acc);}
+
+/* MOBILE CARDS */
+.mc-list{display:none;}
+.mci{background:var(--sur);border:1px solid var(--brd);border-radius:9px;padding:12px;margin-bottom:8px;}
+.mci-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.mci-name{font-size:13px;line-height:1.4;flex:1;word-break:break-word;}
+.mci-row{display:flex;gap:10px;flex-wrap:wrap;}
+.mci-col{min-width:0;}
+.mci-lbl{font-size:9px;color:var(--mut2);font-family:"DM Mono",monospace;text-transform:uppercase;margin-bottom:2px;}
+.mci-val{font-family:"DM Mono",monospace;font-size:12px;}
+
+@media(max-width:700px){
+  .mbtn{display:flex;}
+  .layout{height:auto;}
+  .sb{position:fixed;left:-210px;top:54px;bottom:0;z-index:60;transition:left .25s;box-shadow:6px 0 32px rgba(0,0,0,.6);}
+  .sb.on{left:0;}
+  body{overflow-x:hidden;}
+  .cnt{padding:14px 12px 70px;}
+  .kgrid{grid-template-columns:1fr 1fr;gap:8px;}
+  .kgrid3{grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .kpi{padding:12px;}.kn{font-size:22px;}
+  .two{grid-template-columns:1fr;}
+  .frow,.frow3{grid-template-columns:1fr;}
+  .plans-grid{grid-template-columns:1fr;}
+  .tw{display:none !important;}
+  .mc-list{display:block;}
+  .ptitle{font-size:18px;}
+  .action-grid{gap:8px;}
+  .action-ico{font-size:26px;}
+  .action-lbl{font-size:12px;}
+  .cobrar-total-num{font-size:40px;}
+  .pay-methods{gap:8px;}
+  .pay-ico{font-size:22px;}
+  .pay-lbl{font-size:11px;}
+}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- MODAL LOGIN -->
+<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;">
+  <div style="width:100%;max-width:380px;">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="width:64px;height:64px;background:var(--acc);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;">📦</div>
+      <div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;letter-spacing:-.5px;">GestoPro</div>
+      <div style="font-size:13px;color:var(--mut2);margin-top:4px;">Sistema de gestión para tu negocio</div>
+    </div>
+    <!-- Login form -->
+    <div id="login-form">
+      <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;text-align:center;">Iniciar sesión</div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="login-email" type="email" placeholder="tu@email.com" style="font-size:15px;"></div>
+      <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="login-pass" type="password" placeholder="••••••••" style="font-size:15px;" onkeydown="if(event.key==='Enter')loginUser()"></div>
+      <div id="login-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+      <button class="btn btn-acc btn-full" onclick="loginUser()" style="font-size:15px;padding:12px;">Entrar</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span style="font-size:13px;color:var(--mut2);">¿No tenés cuenta? </span>
+        <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarRegistro()">Registrate gratis</span>
+      </div>
+    </div>
+    <!-- Register form -->
+    <div id="register-form" style="display:none;">
+      <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;text-align:center;">Crear cuenta</div>
+      <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="reg-nombre" placeholder="Ej: Almacén Don Juan" style="font-size:15px;"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="reg-email" type="email" placeholder="tu@email.com" style="font-size:15px;"></div>
+      <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" style="font-size:15px;"></div>
+      <div id="reg-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+      <button class="btn btn-acc btn-full" onclick="registerUser()" style="font-size:15px;padding:12px;">Crear cuenta gratis</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span style="font-size:13px;color:var(--mut2);">¿Ya tenés cuenta? </span>
+        <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Iniciá sesión</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:24px;font-size:11px;color:var(--mut);line-height:1.6;">
+      Plan Gratis incluye 50 productos y funciones básicas.<br>
+      Planes desde $35.000/mes.
+    </div>
+  </div>
+</div>
+<div class="sb-ov" id="sbov" onclick="closeSB()"></div>
+
+<!-- MODAL PLAN -->
+<div class="ov" id="modal-plan">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">Elegí tu plan</div>
+  <div class="modal-s">Empezá gratis · Desbloqueá funciones cuando las necesites</div>
+  <div class="plans-grid">
+    <div class="plan-card" onclick="setPlan('gratis',this)">
+      <div class="pc-name">🆓 Gratis</div>
+      <div class="pc-price">$0 <span>/mes</span></div>
+      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li></ul>
+    </div>
+    <div class="plan-card" onclick="setPlan('basico',this)">
+      <div class="pc-name">💛 Básico</div>
+      <div class="pc-price">$60.000 <span>/mes</span></div>
+      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas proveedores</li><li>Gastos fijos</li><li>Resumen financiero</li></ul>
+    </div>
+    <div class="plan-card rec" onclick="setPlan('pro',this)">
+      <div class="pc-name">🟠 Pro</div>
+      <div class="pc-price">$60.000 <span>/mes</span></div>
+      <ul class="pc-feats"><li>Todo lo anterior</li><li>IA para leer facturas</li><li>Punto de venta</li><li>Simulador de márgenes</li><li>Reportes completos</li><li>3 usuarios</li></ul>
+    </div>
+    <div class="plan-card" onclick="setPlan('business',this)">
+      <div class="pc-name">🔵 Business</div>
+      <div class="pc-price">$100.000 <span>/mes</span></div>
+      <ul class="pc-feats"><li>Todo lo anterior</li><li>Órdenes de compra</li><li>Múltiples sucursales</li><li>Usuarios ilimitados</li><li>Análisis IA avanzado</li><li>Soporte prioritario</li></ul>
+    </div>
+  </div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-plan')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL COBRAR -->
+<div class="ov" id="modal-cobrar">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💚 Cobrar</div>
+  <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
+
+  <!-- PRODUCTOS VENDIDOS -->
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;">📦 Qué vendiste</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="abrirScanner('cobro')">📷 Escanear</button>
+        <button class="btn btn-ghost btn-sm" onclick="agregarLineaCobro()">+ Manual</button>
+      </div>
+    </div>
+    <div id="cobro-lineas"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;border-top:1px solid var(--brd);margin-top:6px;">
+      <span style="font-size:12px;color:var(--mut2);">Subtotal productos</span>
+      <span id="cobro-subtotal" style="font-family:DM Mono,monospace;font-size:13px;color:var(--acc2);">$0</span>
+    </div>
+  </div>
+
+  <div class="cobrar-total">
+    <div class="cobrar-total-lbl">MONTO A COBRAR</div>
+    <div class="cobrar-total-num" id="cobrar-num">$0</div>
+  </div>
+  <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
+  <div class="fg"><label class="fl">Descripción (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Venta mostrador, cliente..."></div>
+  <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
+  <div class="pay-methods">
+    <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
+      <div class="pay-ico">💵</div>
+      <div class="pay-lbl">Efectivo</div>
+      <div class="pay-sub">Calculá el vuelto</div>
+    </div>
+    <div class="pay-method" onclick="selPago('qr',this)" id="pm-qr">
+      <div class="pay-ico">📱</div>
+      <div class="pay-lbl">QR / MP</div>
+      <div class="pay-sub">Mercado Pago</div>
+    </div>
+    <div class="pay-method" onclick="selPago('transferencia',this)" id="pm-transf">
+      <div class="pay-ico">🏦</div>
+      <div class="pay-lbl">Transferencia</div>
+      <div class="pay-sub">Alias / CVU</div>
+    </div>
+  </div>
+  <!-- EFECTIVO -->
+  <div id="pago-efectivo">
+    <div class="efectivo-box">
+      <div class="efectivo-row"><span class="ef-lbl">Total a cobrar</span><span class="ef-val" id="ef-total" style="color:var(--yel)">$0</span></div>
+      <div class="fg" style="margin-top:10px;margin-bottom:0;"><label class="fl">Efectivo recibido $</label><input class="fi" id="ef-recibido" type="number" placeholder="0" oninput="calcVuelto()" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;"></div>
+      <div class="efectivo-row" style="margin-top:10px;"><span class="ef-lbl" style="font-weight:600;">Vuelto</span><span class="ef-val vuelto-num" id="ef-vuelto">$0</span></div>
+    </div>
+  </div>
+  <!-- QR -->
+  <div id="pago-qr" style="display:none;">
+    <div class="qr-display">
+      <div class="qr-box">
+        <svg viewBox="0 0 100 100" width="140" height="140">
+          <rect width="100" height="100" fill="white"/>
+          <rect x="10" y="10" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
+          <rect x="15" y="15" width="20" height="20" fill="#6c63ff"/>
+          <rect x="60" y="10" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
+          <rect x="65" y="15" width="20" height="20" fill="#6c63ff"/>
+          <rect x="10" y="60" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
+          <rect x="15" y="65" width="20" height="20" fill="#6c63ff"/>
+          <rect x="45" y="10" width="5" height="5" fill="#6c63ff"/>
+          <rect x="45" y="20" width="5" height="5" fill="#6c63ff"/>
+          <rect x="45" y="30" width="5" height="5" fill="#6c63ff"/>
+          <rect x="10" y="45" width="5" height="5" fill="#6c63ff"/>
+          <rect x="20" y="45" width="5" height="5" fill="#6c63ff"/>
+          <rect x="30" y="45" width="5" height="5" fill="#6c63ff"/>
+          <rect x="55" y="55" width="5" height="5" fill="#6c63ff"/>
+          <rect x="65" y="55" width="5" height="5" fill="#6c63ff"/>
+          <rect x="75" y="55" width="5" height="5" fill="#6c63ff"/>
+          <rect x="55" y="65" width="5" height="5" fill="#6c63ff"/>
+          <rect x="75" y="65" width="5" height="5" fill="#6c63ff"/>
+          <rect x="55" y="75" width="5" height="5" fill="#6c63ff"/>
+          <rect x="65" y="75" width="5" height="5" fill="#6c63ff"/>
+          <rect x="75" y="75" width="5" height="5" fill="#6c63ff"/>
+          <rect x="45" y="55" width="5" height="35" fill="#6c63ff"/>
+        </svg>
+      </div>
+      <div style="font-size:12px;color:var(--mut2);margin-bottom:6px;">Escaneá con Mercado Pago o cualquier billetera</div>
+      <div style="font-family:DM Mono,monospace;font-size:18px;font-weight:700;color:var(--grn)" id="qr-monto-display">$0</div>
+    </div>
+  </div>
+  <!-- TRANSFERENCIA -->
+  <div id="pago-transferencia" style="display:none;">
+    <div class="qr-display">
+      <div style="font-size:13px;color:var(--mut2);margin-bottom:12px;">Compartí tu alias para que te transfieran</div>
+      <div class="alias-box">
+        <div class="alias-val" id="alias-display">mi.negocio.mp</div>
+        <div class="alias-lbl">ALIAS MERCADO PAGO</div>
+      </div>
+      <div class="alias-box" style="margin-top:8px;">
+        <div class="alias-val" style="font-size:13px;" id="cvu-display">0000003100012345678901</div>
+        <div class="alias-lbl">CVU</div>
+      </div>
+      <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);margin-top:12px;" id="transf-monto-display">$0</div>
+    </div>
+  </div>
+  <button class="btn btn-grn btn-full btn-lg" onclick="confirmarCobro()" style="margin-top:12px;">✓ Confirmar cobro</button>
+  <div class="btn-row" style="justify-content:center;margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-cobrar')">Cancelar</button></div>
+</div>
+</div>
+
+<!-- MODAL INGRESO COMPLETO -->
+<div class="ov" id="modal-ingreso">
+<div class="modal" style="max-width:600px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">📦 Ingreso de Mercadería</div>
+  <div class="modal-s">Completá la factura · el stock y la deuda se actualizan solos</div>
+
+  <!-- IA SCAN BUTTON -->
+  <div style="background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(0,214,143,.1));border:1px solid var(--acc);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:32px;">🤖</div>
+      <div style="flex:1;">
+        <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);margin-bottom:2px;">Leer factura con IA</div>
+        <div style="font-size:11px;color:var(--mut2);">Sacá una foto y la IA carga todos los datos automáticamente</div>
+      </div>
+      <label style="cursor:pointer;flex-shrink:0;">
+        <input type="file" id="factura-foto" accept="image/*" capture="environment" style="display:none;" onchange="leerFacturaIA(this)">
+        <div class="btn btn-acc" onclick="verificarYFoto()" style="white-space:nowrap;">📷 Sacar foto</div>
+      </label>
+    </div>
+    <div id="ia-loading" style="display:none;text-align:center;padding:12px 0 4px;">
+      <div style="font-size:13px;color:var(--acc2);">⚙️ La IA está leyendo tu factura...</div>
+    </div>
+  </div>
+
+  <!-- DATOS DE LA FACTURA -->
+  <div style="background:var(--sur2);border-radius:8px;padding:14px;margin-bottom:14px;">
+    <div class="stitle" style="margin-bottom:10px;">🧾 Datos de la factura</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Proveedor</label><input class="fi" id="ing-prov" placeholder="Nombre del proveedor"></div>
+      <div class="fg"><label class="fl">N° Factura</label><input class="fi" id="ing-num" placeholder="0001-00045678"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Fecha</label><input class="fi" id="ing-fecha" type="date"></div>
+      <div class="fg"><label class="fl">Vencimiento pago</label><input class="fi" id="ing-venc" type="date"></div>
+    </div>
+  </div>
+
+  <!-- TABLA DE PRODUCTOS -->
+  <div style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="stitle" style="margin-bottom:0;">📦 Productos de esta factura</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="abrirScanner('ingreso')">📷 Escanear</button>
+        <button class="btn btn-ghost btn-sm" onclick="agregarLineaIngreso()">+ Manual</button>
+      </div>
+    </div>
+    <!-- HEADERS -->
+    <div style="display:grid;grid-template-columns:2fr 80px 100px 80px 28px;gap:6px;padding:6px 8px;background:var(--sur2);border-radius:6px;margin-bottom:6px;">
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Producto</span>
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Cant.</span>
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Precio unit.</span>
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Subtotal</span>
+      <span></span>
+    </div>
+    <div id="ing-lineas"></div>
+    <!-- TOTAL -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-top:2px solid var(--brd2);margin-top:8px;">
+      <span style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;">TOTAL FACTURA</span>
+      <span id="ing-total" style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--yel);">$0</span>
+    </div>
+  </div>
+
+  <!-- % GANANCIA -->
+  <div style="background:var(--grn-dim);border:1px solid var(--grn);border-radius:8px;padding:14px;margin-bottom:14px;">
+    <div class="stitle" style="margin-bottom:10px;color:var(--grn);">💰 % de ganancia por producto</div>
+    <!-- MARGEN GLOBAL -->
+    <div style="display:flex;align-items:center;gap:10px;background:var(--sur2);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+      <span style="font-size:12px;color:var(--mut2);flex:1;">Aplicar el mismo % a todos:</span>
+      <input class="fi" id="ing-margen-global" type="number" placeholder="Ej: 40" oninput="aplicarMargenGlobal()" style="width:80px;font-size:16px;text-align:center;font-family:DM Mono,monospace;padding:6px 8px;">
+      <span style="font-size:13px;color:var(--mut2);">%</span>
+      <button class="btn btn-grn btn-sm" onclick="aplicarMargenGlobal()" style="white-space:nowrap;">Aplicar a todos</button>
+    </div>
+    <!-- MARGENES POR PRODUCTO -->
+    <div id="ing-precios-sugeridos"></div>
+  </div>
+
+  <!-- PAGO DE LA FACTURA -->
+  <div style="background:var(--sur2);border:1px solid var(--brd2);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div class="stitle" style="margin-bottom:12px;">💳 ¿Pagás esta factura ahora?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div class="pay-method" onclick="selPagoFact('pendiente',this)" id="fpago-pendiente" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">⏳</div>
+        <div class="pay-lbl" style="font-size:11px;">Queda pendiente</div>
+      </div>
+      <div class="pay-method" onclick="selPagoFact('efectivo',this)" id="fpago-efectivo" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">💵</div>
+        <div class="pay-lbl" style="font-size:11px;">Efectivo</div>
+      </div>
+      <div class="pay-method" onclick="selPagoFact('transferencia',this)" id="fpago-transferencia" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">🏦</div>
+        <div class="pay-lbl" style="font-size:11px;">Transferencia</div>
+      </div>
+      <div class="pay-method" onclick="selPagoFact('cheque',this)" id="fpago-cheque" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">📄</div>
+        <div class="pay-lbl" style="font-size:11px;">Cheque</div>
+      </div>
+    </div>
+    <!-- Info pago seleccionado -->
+    <div id="fpago-info" style="display:none;background:var(--sur3);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);line-height:1.6;"></div>
+  </div>
+
+  <button class="btn btn-blu btn-full btn-lg" onclick="confirmarIngresoFactura()" style="margin-bottom:8px;" id="btn-confirmar-ingreso">✓ Confirmar ingreso</button>
+  <button class="btn btn-ghost btn-full" onclick="closeModal('modal-ingreso')">Cancelar</button>
+</div>
+</div>
+
+<!-- MODAL EGRESO -->
+<div class="ov" id="modal-egreso">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">📤 Egreso de Mercadería</div>
+  <div class="modal-s">Para merma, vencidos o ajuste de stock — las ventas se registran en <b>Cobrar</b></div>
+  <!-- INFO BOX -->
+  <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--yel);display:flex;gap:8px;align-items:flex-start;">
+    <span>⚠️</span>
+    <span>Usá este egreso solo para mercadería que <b>se tiró, venció o perdió</b>. Si vendiste algo, registralo en <b>💚 Cobrar</b>.</span>
+  </div>
+  <div class="fg"><label class="fl">Producto</label><select class="fi" id="eg-prod" onchange="updEgresoInfo()"></select></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="eg-cant" type="number" placeholder="0" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;"></div>
+    <div class="fg"><label class="fl">Fecha</label><input class="fi" id="eg-fecha" type="date"></div>
+  </div>
+  <div class="fg"><label class="fl">Motivo</label>
+    <select class="fi" id="eg-motivo">
+      <option>Merma / Vencido</option>
+      <option>Uso interno / Consumo</option>
+      <option>Devolución a proveedor</option>
+      <option>Robo / Pérdida</option>
+      <option>Ajuste de inventario</option>
+      <option>Otro</option>
+    </select>
+  </div>
+  <div id="eg-stock-info" style="background:var(--sur2);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--mut2);display:none;"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-egreso')">Cancelar</button>
+    <button class="btn btn-red" onclick="guardarEgreso()">📤 Registrar egreso</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL FACTURA -->
+<div class="ov" id="modal-fact">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🧾 Cargar Factura</div>
+  <div class="modal-s">Factura de proveedor</div>
+  <div class="frow"><div class="fg"><label class="fl">N° Factura</label><input class="fi" id="f-num" placeholder="0001-00045678"></div><div class="fg"><label class="fl">Fecha</label><input class="fi" id="f-fecha" type="date"></div></div>
+  <div class="fg"><label class="fl">Proveedor</label><input class="fi" id="f-prov" placeholder="Nombre del proveedor"></div>
+  <div class="frow"><div class="fg"><label class="fl">Monto total $</label><input class="fi" id="f-monto" type="number" placeholder="0"></div><div class="fg"><label class="fl">Vencimiento de pago</label><input class="fi" id="f-venc" type="date"></div></div>
+  <div class="fg"><label class="fl">Estado</label><select class="fi" id="f-estado"><option value="pendiente">Pendiente de pago</option><option value="pagada">Pagada</option><option value="vencida">Vencida</option></select></div>
+  <div class="fg"><label class="fl">Descripción</label><input class="fi" id="f-obs" placeholder="Qué incluye..."></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-fact')">Cancelar</button><button class="btn btn-yel" onclick="guardarFact()">🧾 Guardar factura</button></div>
+</div>
+</div>
+
+<!-- MODAL GASTO FIJO -->
+<div class="ov" id="modal-gf">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💡 Nuevo Gasto Fijo</div>
+  <div class="modal-s">Gastos que se repiten cada mes</div>
+  <div class="frow"><div class="fg"><label class="fl">Ícono</label><select class="fi" id="gf-ico"><option value="💡">💡 Luz</option><option value="💧">💧 Agua</option><option value="🔥">🔥 Gas</option><option value="🏠">🏠 Alquiler</option><option value="👤">👤 Sueldo</option><option value="📱">📱 Internet/Tel</option><option value="🛡️">🛡️ Seguro</option><option value="📋">📋 Impuesto</option><option value="💰">💰 Otro</option></select></div><div class="fg"><label class="fl">Nombre</label><input class="fi" id="gf-nom" placeholder="Ej: Luz, Alquiler..."></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Monto mensual $</label><input class="fi" id="gf-monto" type="number" placeholder="0" style="font-size:18px;font-family:DM Mono,monospace;"></div><div class="fg"><label class="fl">Día de vencimiento</label><input class="fi" id="gf-dia" type="number" placeholder="Ej: 10" min="1" max="31"></div></div>
+  <div class="fg"><label class="fl">Categoría</label><select class="fi" id="gf-cat"><option>Servicios</option><option>Alquiler</option><option>Sueldos</option><option>Impuestos</option><option>Seguro</option><option>Internet/Telefonía</option><option>Otro</option></select></div>
+  <div class="chk-wrap"><input type="checkbox" id="gf-rep" checked><label for="gf-rep" class="fl" style="margin:0;cursor:pointer;">🔄 Se repite automáticamente cada mes</label></div>
+  <div class="fg"><label class="fl">Estado este mes</label><select class="fi" id="gf-estado"><option value="pendiente">⏳ Pendiente de pago</option><option value="pagado">✅ Ya pagado</option></select></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-gf')">Cancelar</button><button class="btn btn-pur" onclick="guardarGF()">💡 Guardar gasto</button></div>
+</div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="ov" id="modal-prod">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">📦 Nuevo Producto</div>
+  <div class="modal-s">Agregá un producto o insumo al inventario</div>
+  <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><input class="fi" id="p-cod" placeholder="PRD001"></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option></select></div></div>
+  <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
+  <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><input class="fi" id="p-prov" placeholder="Proveedor principal"></div></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-prod')">Cancelar</button><button class="btn btn-acc" onclick="guardarProd()">Guardar</button></div>
+</div>
+</div>
+
+<!-- CONFIG ALIAS MODAL -->
+<div class="ov" id="modal-config">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">⚙️ Configuración</div>
+  <div class="modal-s">Datos del negocio y configuración de la app</div>
+  
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
+  <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
+  <div class="fg"><label class="fl">Alias Mercado Pago / MODO</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
+  <div class="fg"><label class="fl">CVU (opcional)</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
+
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
+    Para usar la IA necesitás tu propia clave de Anthropic.<br>
+    1. Entrá a <b style="color:var(--acc2);">console.anthropic.com</b><br>
+    2. Creá una cuenta gratuita<br>
+    3. Andá a API Keys → Create Key<br>
+    4. Pegá la clave acá abajo (empieza con sk-ant-)
+  </div>
+  <div class="fg"><label class="fl">API Key de Anthropic (Plan Pro)</label><input class="fi" id="cfg-apikey" placeholder="sk-ant-..." type="password"></div>
+  <div id="cfg-apikey-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;"></div>
+  
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">Guardar</button></div>
+</div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button class="mbtn" onclick="toggleSB()">☰</button>
+    <div class="logo"><div class="logo-ico">📦</div>GestoPro</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button class="btn btn-ghost btn-sm" onclick="openModal('modal-config')" style="font-size:11px;">⚙️</button>
+    <div class="plan-chip" onclick="openModal('modal-plan')" id="plan-chip">Plan Gratis</div>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="sb" id="sb">
+  <div class="sb-sec">
+    <div class="sb-lbl">Principal</div>
+    <div class="sb-i on" onclick="go('dash',this)"><span class="sb-ico">◈</span>Dashboard</div>
+    <div class="sb-i" onclick="go('productos',this)"><span class="sb-ico">📦</span>Productos<span class="sb-badge" id="sb-alerta">0</span></div>
+    <div class="sb-i" onclick="go('movimientos',this)"><span class="sb-ico">↕</span>Movimientos</div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Finanzas</div>
+    <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
+    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
+    <div class="sb-i" id="sb-resumen" onclick="goLocked('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
+    <div class="sb-i" id="sb-finanzas" onclick="goLocked('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Avanzado</div>
+    <div class="sb-i" onclick="abrirCarniceria()"><span class="sb-ico">🥩</span>Catálogo Carnicería</div>
+    <div class="sb-i" id="sb-pventa" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
+    <div class="sb-i" id="sb-oc" onclick="goLocked('oc',this,'business')"><span class="sb-ico">📋</span>Órd. de Compra<span class="sb-lock" id="lock-oc">🔒</span></div>
+  </div>
+  <div class="sb-foot">
+    <div class="plan-box">
+      <div class="plan-box-name" id="plan-name-sb">Plan Gratis</div>
+      <div class="plan-box-sub" id="plan-sub-sb">Funciones básicas</div>
+      <button class="plan-up-btn" onclick="openModal('modal-plan')">Mejorar plan ↑</button>
+      <button id="btn-instalar" onclick="instalarApp()" style="display:none;width:100%;background:var(--grn-dim);border:1px solid var(--grn);color:var(--grn);font-size:11px;cursor:pointer;margin-top:6px;padding:6px;font-family:DM Sans,sans-serif;border-radius:6px;font-weight:600;">📲 Instalar app</button>
+      <button onclick="cerrarSesion()" style="display:block;width:100%;background:transparent;border:none;color:var(--mut2);font-size:11px;cursor:pointer;margin-top:6px;padding:4px;font-family:DM Sans,sans-serif;">Cerrar sesión →</button>
+    </div>
+  </div>
+</nav>
+
+<main class="cnt">
+
+<!-- DASHBOARD -->
+<div id="pg-dash" class="pg on">
+  <div class="ptitle">Buenos días 👋</div>
+  <div class="psub" id="dash-fecha">Hoy es <b>hoy</b></div>
+
+  <!-- ACCIONES RÁPIDAS -->
+  <div class="action-grid" style="margin-bottom:18px;">
+    <div class="action-btn cobrar" onclick="abrirCobrar()">
+      <div class="action-ico">💚</div>
+      <div class="action-lbl">Cobrar</div>
+      <div class="action-sub">QR · Alias · Efectivo</div>
+    </div>
+    <div class="action-btn ingreso" onclick="abrirIngreso()">
+      <div class="action-ico">📦</div>
+      <div class="action-lbl">Ingreso</div>
+      <div class="action-sub">Entró mercadería</div>
+    </div>
+    <div class="action-btn egreso" onclick="abrirEgreso()">
+      <div class="action-ico">📤</div>
+      <div class="action-lbl">Egreso</div>
+      <div class="action-sub">Salió mercadería</div>
+    </div>
+    <div class="action-btn factura" onclick="goLocked('facturas',null,'basico');openModal('modal-fact')">
+      <div class="action-ico">🧾</div>
+      <div class="action-lbl">Factura</div>
+      <div class="action-sub">Cargar proveedor</div>
+    </div>
+    <div class="action-btn gasto" onclick="goLocked('gastos',null,'basico');openModal('modal-gf')">
+      <div class="action-ico">💡</div>
+      <div class="action-lbl">Gasto fijo</div>
+      <div class="action-sub">Luz, agua, gas...</div>
+    </div>
+    <div class="action-btn producto" onclick="openModal('modal-prod')">
+      <div class="action-ico">➕</div>
+      <div class="action-lbl">Producto</div>
+      <div class="action-sub">Agregar al stock</div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kgrid">
+    <div class="kpi kg"><div class="kl">COBRADO HOY</div><div class="kn" id="kpi-cobrado">$0</div><div class="kd">en cobros</div></div>
+    <div class="kpi kr"><div class="kl">ALERTAS STOCK</div><div class="kn" id="kpi-alertas">0</div><div class="kd">bajo mínimo</div></div>
+    <div class="kpi ky"><div class="kl">FACTURAS</div><div class="kn" id="kpi-facts">0</div><div class="kd">sin pagar</div></div>
+    <div class="kpi kp"><div class="kl">GASTOS FIJOS</div><div class="kn" id="kpi-gf" style="font-size:18px;">$0</div><div class="kd">pendientes mes</div></div>
+  </div>
+
+  <div class="two">
+    <div class="card"><div class="stitle">⚑ Productos bajo mínimo</div><div id="dash-alertas"></div></div>
+    <div class="card"><div class="stitle">↕ Últimos movimientos</div><div id="dash-movs"></div></div>
+  </div>
+</div>
+
+<!-- PRODUCTOS -->
+<div id="pg-productos" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div><div class="ptitle">Productos</div><div class="psub" style="margin-bottom:0"><b id="prod-cnt">0 productos</b></div></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="toggleImport()">↑ Excel</button>
+      <button class="btn btn-acc btn-sm" onclick="openModal('modal-prod')">+ Nuevo</button>
+    </div>
+  </div>
+  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="prod-srch" placeholder="Buscar producto..." oninput="renderProds()"></div>
+  <div class="fr" id="prod-fr"></div>
+  <div id="import-area" style="display:none;margin-bottom:14px;">
+    <div class="upload-z" id="upload-z"><input type="file" id="file-inp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])"><div style="font-size:32px;margin-bottom:8px;">📁</div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Arrastrá tu Excel o tocá aquí</div><div style="font-size:12px;color:var(--mut2)">.xlsx · .xls · .csv</div></div>
+    <div id="import-prev" style="display:none;"><div class="card"><div class="stitle" id="import-prev-t">Vista previa</div><div id="import-prev-b"></div><div class="btn-row"><button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button><button class="btn btn-acc" onclick="confirmarImport()">Importar</button></div></div></div>
+  </div>
+  <div class="tw"><table><thead><tr><th>Estado</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>UM</th><th>Mín/Máx</th><th>Costo</th><th>Venta</th><th>Margen</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
+  <div class="mc-list" id="mc-prods"></div>
+</div>
+
+<!-- MOVIMIENTOS -->
+<div id="pg-movimientos" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div><div class="ptitle">Movimientos</div><div class="psub" style="margin-bottom:0">Todo lo que entró y salió</div></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-grn btn-sm" onclick="abrirIngreso()">📦 Ingreso</button>
+      <button class="btn btn-red btn-sm" onclick="abrirEgreso()">📤 Egreso</button>
+    </div>
+  </div>
+  <div class="ptabs">
+    <button class="ptab" onclick="setPeriod('hoy',this)">Hoy</button>
+    <button class="ptab" onclick="setPeriod('semana',this)">Semana</button>
+    <button class="ptab on" onclick="setPeriod('mes',this)">Este mes</button>
+    <button class="ptab" onclick="setPeriod('todo',this)">Todo</button>
+  </div>
+  <div class="fr">
+    <button class="fb on" onclick="fMov('TODOS',this)">Todos</button>
+    <button class="fb" onclick="fMov('cobro',this)">💚 Cobros</button>
+    <button class="fb" onclick="fMov('ingreso',this)">📦 Ingresos</button>
+    <button class="fb" onclick="fMov('egreso',this)">📤 Egresos</button>
+  </div>
+  <div class="kgrid3" id="mov-kpis"></div>
+  <div class="card"><div id="movs-list"></div></div>
+</div>
+
+<!-- FACTURAS -->
+<div id="pg-facturas" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div><div class="ptitle">Facturas</div><div class="psub" style="margin-bottom:0"><b id="fact-sub">0 pendientes</b></div></div>
+    <button class="btn btn-yel btn-sm" onclick="openModal('modal-fact')">🧾 Nueva</button>
+  </div>
+  <div class="fr">
+    <button class="fb on" onclick="fFact('TODOS',this)">Todas</button>
+    <button class="fb" onclick="fFact('pendiente',this)">🟡 Pendientes</button>
+    <button class="fb" onclick="fFact('vencida',this)">🔴 Vencidas</button>
+    <button class="fb" onclick="fFact('pagada',this)">✅ Pagadas</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>Estado</th><th>N° Factura</th><th>Proveedor</th><th>Fecha</th><th>Vence</th><th>Monto</th><th>Descripción</th><th></th></tr></thead><tbody id="tbl-facts"></tbody></table></div>
+  <div class="mc-list" id="mc-facts"></div>
+</div>
+
+<!-- GASTOS FIJOS -->
+<div id="pg-gastos" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div><div class="ptitle">Gastos Fijos</div><div class="psub" style="margin-bottom:0">Gastos del mes · <b id="gf-total-sub">$0</b></div></div>
+    <button class="btn btn-pur btn-sm" onclick="openModal('modal-gf')">💡 Agregar</button>
+  </div>
+  <div class="kgrid3" id="gf-kpis"></div>
+  <div class="card"><div class="stitle">💡 Gastos del mes</div><div id="gf-list"></div></div>
+</div>
+
+<!-- RESUMEN FINANCIERO -->
+<div id="pg-resumen" class="pg">
+  <div class="ptitle">Resumen Financiero</div>
+  <div class="psub">Lo que entra y lo que sale · <b id="res-periodo">Este mes</b></div>
+  <div class="ptabs">
+    <button class="ptab on" onclick="setResPeriod('mes',this)">Este mes</button>
+    <button class="ptab" onclick="setResPeriod('anterior',this)">Mes anterior</button>
+    <button class="ptab" onclick="setResPeriod('anio',this)">Este año</button>
+  </div>
+  <div class="two">
+    <div class="card"><div class="stitle">💰 Ingresos (cobros)</div><div id="res-ingresos"></div></div>
+    <div class="card"><div class="stitle">📤 Egresos (gastos)</div><div id="res-egresos"></div></div>
+  </div>
+  <div class="card"><div class="stitle">📊 Balance del período</div><div id="res-balance"></div></div>
+</div>
+
+<!-- PUNTO DE VENTA LOCKED -->
+<div id="pg-pventa" class="pg">
+  <div class="ptitle">Punto de Venta</div>
+  <div class="psub">Escaneá productos para cobrar</div>
+  <div class="locked"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">🛒</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Punto de Venta</div><div style="font-size:12px;">Código de barras · Cobrá · Stock automático</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Pro</div><div class="lock-s">Punto de venta con código de barras, cobro automático y descuento de stock</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
+</div>
+
+<!-- MODAL CAMBIO DE PRECIOS -->
+<div class="ov" id="modal-precios">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">📊 Precios actualizados</div>
+  <div class="modal-s">El costo cambio · Los precios de venta se actualizaron manteniendo tu margen</div>
+  <div id="precios-lista" style="max-height:400px;overflow-y:auto;"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-precios')">Cerrar</button>
+    <button class="btn btn-acc" onclick="closeModal('modal-precios');go('productos',null);">Ver productos</button>
+  </div>
+</div>
+</div>
+
+<!-- FLUJO FINANCIERO -->
+<div id="pg-finanzas" class="pg">
+  <div class="ptitle">Flujo Financiero</div>
+  <div class="psub">Todo el dinero de tu negocio · <b id="fin-periodo-lbl">Este mes</b></div>
+  <div class="ptabs">
+    <button class="ptab on" onclick="setFinPeriod('mes',this)">Este mes</button>
+    <button class="ptab" onclick="setFinPeriod('anterior',this)">Mes anterior</button>
+    <button class="ptab" onclick="setFinPeriod('anio',this)">Este ano</button>
+  </div>
+  <div class="kgrid3" id="fin-kpis" style="margin-bottom:14px;"></div>
+  <div class="card" style="margin-bottom:14px;"><div class="stitle">💰 Resultado del periodo</div><div id="fin-resultado"></div></div>
+  <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(108,99,255,.08),rgba(0,214,143,.06));border-color:var(--acc);">
+    <div class="stitle" style="color:var(--acc2);">🎯 Simulador de margen</div>
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:12px;">Con tu stock actual, cuanto ganarias con distintos margenes</div>
+    <div id="fin-simulador"></div>
+  </div>
+  <div class="card"><div class="stitle">📋 Detalle</div><div id="fin-detalle"></div></div>
+</div>
+
+<!-- OC LOCKED -->
+<div id="pg-oc" class="pg">
+  <div class="ptitle">Órdenes de Compra</div>
+  <div class="locked"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">📋</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Órdenes de Compra</div><div style="font-size:12px;">Creá pedidos · Seguí el estado · Recepcioná mercadería</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Business</div><div class="lock-s">Gestión completa de pedidos a proveedores con seguimiento de estado</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
+</div>
+
+
+<!-- MODAL RESUMEN PRECIOS -->
+<div class="ov" id="modal-precios">
+<div class="modal" style="max-width:500px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💰 Precios actualizados</div>
+  <div class="modal-s">Se mantuvieron tus márgenes de ganancia con los nuevos costos</div>
+  <div id="precios-lista" style="margin-bottom:16px;"></div>
+  <!-- SIMULADOR -->
+  <div style="background:var(--grn-dim);border:1px solid var(--grn);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">📈 ¿Y si subís el margen?</div>
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:10px;">Con tus precios actuales ganás esto. Simulá qué pasaría si subís el margen:</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+      <input class="fi" id="sim-margen" type="number" placeholder="% margen" style="width:100px;font-family:DM Mono,monospace;font-size:16px;text-align:center;" oninput="simularMargen()">
+      <span style="font-size:13px;color:var(--mut2);">% de ganancia</span>
+    </div>
+    <div id="sim-resultado"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-precios')">Cerrar</button>
+    <button class="btn btn-acc" onclick="aplicarMargenSimulado()">Aplicar este margen a todos</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL ESCÁNER -->
+<div class="ov" id="modal-scanner">
+<div class="modal" style="max-width:480px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t" id="scanner-titulo">📷 Escanear producto</div>
+  <div class="modal-s" id="scanner-sub">Apuntá la cámara al código de barras del producto</div>
+
+  <!-- CAMERA VIEW -->
+  <div id="scanner-cam-wrap" style="position:relative;width:100%;background:#000;border-radius:10px;overflow:hidden;margin-bottom:14px;aspect-ratio:4/3;">
+    <video id="scanner-video" style="width:100%;height:100%;object-fit:cover;" playsinline autoplay></video>
+    <canvas id="scanner-canvas" style="display:none;"></canvas>
+    <!-- Viewfinder overlay -->
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+      <div style="width:70%;height:40%;border:2px solid var(--acc);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);"></div>
+    </div>
+    <div style="position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(255,255,255,0.7);">Centrá el código en el recuadro</div>
+  </div>
+
+  <!-- MANUAL FALLBACK -->
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;">¿La cámara no lo lee? Escribilo manualmente</div>
+    <div style="display:flex;gap:8px;">
+      <input class="fi" id="scanner-manual" type="text" placeholder="Código de barras o nombre del producto" style="flex:1;" oninput="buscarProductoScanner()">
+      <button class="btn btn-acc btn-sm" onclick="confirmarScannerManual()">Buscar</button>
+    </div>
+  </div>
+
+  <!-- SEARCH BY NAME -->
+  <div id="scanner-results" style="display:none;">
+    <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;">Resultados</div>
+    <div id="scanner-results-list"></div>
+  </div>
+
+  <!-- PRODUCT FOUND -->
+  <div id="scanner-found" style="display:none;background:var(--grn-dim);border:1px solid var(--grn);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--grn);font-family:DM Mono,monospace;margin-bottom:6px;">✓ PRODUCTO ENCONTRADO</div>
+    <div id="scanner-found-name" style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;margin-bottom:10px;"></div>
+    <div class="frow">
+      <div class="fg" style="margin-bottom:0;">
+        <label class="fl">Cantidad / Peso</label>
+        <input class="fi" id="scanner-cant" type="number" placeholder="0" step="0.001" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;">
+      </div>
+      <div class="fg" style="margin-bottom:0;">
+        <label class="fl">Unidad</label>
+        <select class="fi" id="scanner-um">
+          <option value="UN">UN — Unidades</option>
+          <option value="KG">KG — Kilogramos</option>
+          <option value="LT">LT — Litros</option>
+          <option value="GR">GR — Gramos</option>
+        </select>
+      </div>
+    </div>
+    <div id="scanner-precio-wrap" style="margin-top:10px;display:none;">
+      <label class="fl">Precio unitario / por kg $</label>
+      <input class="fi" id="scanner-precio" type="number" placeholder="0" style="font-family:DM Mono,monospace;">
+    </div>
+  </div>
+
+  <div id="scanner-not-found" style="display:none;background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:12px;margin-bottom:14px;">
+    <div style="font-size:12px;color:var(--yel);margin-bottom:8px;">⚠️ Producto no encontrado — ¿querés crearlo?</div>
+    <input class="fi" id="scanner-new-nom" placeholder="Nombre del producto" style="margin-bottom:8px;">
+    <div class="frow">
+      <select class="fi" id="scanner-new-cat">
+        <option>Alimentos</option><option>Bebidas</option><option>Limpieza</option>
+        <option>Carnicería</option><option>Fiambrería</option><option>Ferretería</option><option>Otro</option>
+      </select>
+      <select class="fi" id="scanner-new-um">
+        <option value="UN">UN</option><option value="KG">KG</option><option value="LT">LT</option><option value="GR">GR</option>
+      </select>
+    </div>
+    <button class="btn btn-yel btn-full btn-sm" onclick="crearProductoDesdeScanner()" style="margin-top:8px;">+ Crear este producto</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="cerrarScanner()">Cancelar</button>
+    <button class="btn btn-acc" id="scanner-confirm-btn" style="display:none;" onclick="confirmarScanner()">✓ Agregar a la lista</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL CARNICERÍA -->
+<div class="ov" id="modal-carniceria">
+<div class="modal" style="max-width:560px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🥩 Catálogo de Carnicería</div>
+  <div class="modal-s">Todos los cortes organizados por animal · Editá precios y agregá los tuyos</div>
+
+  <!-- FILTRO ANIMAL -->
+  <div class="fr" id="carn-filtro" style="margin-bottom:12px;">
+    <button class="fb on" onclick="filtrarCarniceria('TODOS',this)">Todos</button>
+    <button class="fb" onclick="filtrarCarniceria('Vaca',this)">🐄 Vaca</button>
+    <button class="fb" onclick="filtrarCarniceria('Cerdo',this)">🐷 Cerdo</button>
+    <button class="fb" onclick="filtrarCarniceria('Pollo',this)">🐔 Pollo</button>
+    <button class="fb" onclick="filtrarCarniceria('Pescado',this)">🐟 Pescado</button>
+    <button class="fb" onclick="filtrarCarniceria('Varios',this)">🥚 Varios</button>
+  </div>
+
+  <!-- LISTA DE CORTES -->
+  <div id="carn-lista" style="max-height:340px;overflow-y:auto;margin-bottom:14px;"></div>
+
+  <!-- AGREGAR NUEVO -->
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">+ Agregar corte o producto</div>
+    <div class="frow">
+      <div class="fg" style="margin-bottom:8px;">
+        <label class="fl">Animal / Tipo</label>
+        <select class="fi" id="carn-animal">
+          <option value="Vaca">🐄 Vaca</option>
+          <option value="Cerdo">🐷 Cerdo</option>
+          <option value="Pollo">🐔 Pollo</option>
+          <option value="Pescado">🐟 Pescado</option>
+          <option value="Varios">🥚 Varios (huevos, grasa, huesos...)</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:8px;">
+        <label class="fl">Unidad</label>
+        <select class="fi" id="carn-um">
+          <option value="KG">KG — por kilo</option>
+          <option value="UN">UN — por unidad</option>
+          <option value="GR">GR — por gramo</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg" style="margin-bottom:0;">
+        <label class="fl">Nombre del corte</label>
+        <input class="fi" id="carn-nom" placeholder="Ej: Asado, Milanesa, Pechuga...">
+      </div>
+      <div class="fg" style="margin-bottom:0;">
+        <label class="fl">Precio costo $</label>
+        <input class="fi" id="carn-precio" type="number" placeholder="0" style="font-family:DM Mono,monospace;">
+      </div>
+    </div>
+    <button class="btn btn-acc btn-full" onclick="agregarCorte()" style="margin-top:10px;">+ Agregar</button>
+  </div>
+
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-carniceria')">Cerrar</button></div>
+</div>
+</div>
+</main>
+</div>
+
+<script>
+// ═══ SAFE DOM ═══
+function el(id){ return document.getElementById(id); }
+function set(id, prop, val){
+  const e = el(id);
+  if(!e) return;
+  if(prop === 'html') e.innerHTML = val;
+  else if(prop === 'text') e.textContent = val;
+  else if(prop === 'val') e.value = val;
+  else if(prop === 'display') e.style.display = val;
+}
+function get(id){ const e=el(id); return e ? e.value : ''; }
+
+// ═══ STATE ═══
+let productos=[], movimientos=[], facturas=[], gastosFijos=[];
+let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901'};
+let planActual='gratis';
+let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
+let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
+let lineasIngreso=[], lineasCobro=[];
+
+const PLANES={
+  gratis:   {nombre:'Plan Gratis',   sub:'Gratis para siempre', precio:'$0',        maxP:50},
+  basico:   {nombre:'Plan Básico',   sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
+  pro:      {nombre:'Plan Pro',      sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
+  business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
+};
+const PLAN_N={gratis:0,basico:1,pro:2,business:3};
+const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+
+// ═══ DEMO ═══
+function cargarDemo(){
+  const d=new Date(), y=d.getFullYear(),
+        m=String(d.getMonth()+1).padStart(2,'0'),
+        day=String(d.getDate()).padStart(2,'0'),
+        mA=String(d.getMonth()===0?12:d.getMonth()).padStart(2,'0'),
+        yA=d.getMonth()===0?y-1:y;
+  productos=[
+    {id:1,cod:'ALI001',nom:'Harina 000 x 25kg',cat:'Alimentos',stock:48,um:'BL',precio:12500,pventa:16000,min:20,max:100,prov:'Molinos Río de la Plata'},
+    {id:2,cod:'ALI002',nom:'Aceite Girasol 1lt',cat:'Alimentos',stock:6,um:'UN',precio:1850,pventa:2400,min:24,max:120,prov:'Aceitera del Norte'},
+    {id:3,cod:'BEB001',nom:'Agua Mineral 500ml c/24',cat:'Bebidas',stock:3,um:'CJ',precio:4200,pventa:5800,min:10,max:50,prov:'Eco de los Andes'},
+    {id:4,cod:'BEB002',nom:'Gaseosa Cola 2.25lt c/6',cat:'Bebidas',stock:22,um:'CJ',precio:6800,pventa:8900,min:12,max:48,prov:'Coca-Cola FEMSA'},
+    {id:5,cod:'LIM001',nom:'Detergente 5lt',cat:'Limpieza',stock:0,um:'UN',precio:3200,pventa:4100,min:6,max:24,prov:'Unilever Argentina'},
+    {id:6,cod:'LIM002',nom:'Lavandina 1lt c/12',cat:'Limpieza',stock:14,um:'CJ',precio:2100,pventa:2800,min:6,max:30,prov:'Dist. Sur SRL'},
+    {id:7,cod:'FER001',nom:'Pintura látex blanca 4lt',cat:'Ferretería',stock:8,um:'UN',precio:7400,pventa:9800,min:5,max:25,prov:'Alba Pinturas'},
+    {id:8,cod:'INS001',nom:'Cinta embalaje c/6',cat:'Insumos',stock:2,um:'CJ',precio:1800,pventa:2500,min:4,max:20,prov:'Office Pro SRL'},
+  ];
+  movimientos=[
+    {id:1,tipo:'cobro',desc:'Venta mostrador',monto:14600,fecha:y+'-'+m+'-'+day,metodo:'efectivo'},
+    {id:2,tipo:'cobro',desc:'Gaseosa x2 + Agua x4',monto:28400,fecha:y+'-'+m+'-'+day,metodo:'qr'},
+    {id:3,tipo:'ingreso',prodId:1,prodNom:'Harina 000 x 25kg',cant:30,fecha:y+'-'+m+'-10',motivo:'Compra a Molinos'},
+    {id:4,tipo:'egreso',prodId:5,prodNom:'Detergente 5lt',cant:6,fecha:y+'-'+m+'-18',motivo:'Merma / Vencido'},
+    {id:5,tipo:'ingreso',prodId:4,prodNom:'Gaseosa Cola 2.25lt c/6',cant:12,fecha:y+'-'+m+'-15',motivo:'Compra semanal'},
+    {id:6,tipo:'egreso',prodId:8,prodNom:'Cinta embalaje c/6',cant:2,fecha:y+'-'+mA+'-28',motivo:'Uso interno'},
+  ];
+  facturas=[
+    {id:1,num:'0001-00012345',prov:'Molinos Río de la Plata',fecha:y+'-'+m+'-10',venc:y+'-'+m+'-30',monto:375000,estado:'pendiente',obs:'Harina 000 - 30 bolsas'},
+    {id:2,num:'0001-00008762',prov:'Aceitera del Norte',fecha:y+'-'+m+'-12',venc:y+'-'+m+'-20',monto:88800,estado:'vencida',obs:'Aceite girasol'},
+    {id:3,num:'B-00001123',prov:'Eco de los Andes',fecha:y+'-'+m+'-15',venc:y+'-'+String(d.getMonth()+2).padStart(2,'0')+'-15',monto:50400,estado:'pendiente',obs:'Agua mineral'},
+    {id:4,num:'0001-00099341',prov:'Coca-Cola FEMSA',fecha:yA+'-'+mA+'-28',venc:y+'-'+m+'-15',monto:163200,estado:'pagada',obs:'Gaseosas surtidas'},
+  ];
+  gastosFijos=[
+    {id:1,nom:'Luz',cat:'Servicios',ico:'💡',monto:45000,dia:10,repetir:true,estado:'pendiente'},
+    {id:2,nom:'Agua',cat:'Servicios',ico:'💧',monto:12000,dia:15,repetir:true,estado:'pagado'},
+    {id:3,nom:'Gas',cat:'Servicios',ico:'🔥',monto:28000,dia:20,repetir:true,estado:'pendiente'},
+    {id:4,nom:'Alquiler',cat:'Alquiler',ico:'🏠',monto:350000,dia:1,repetir:true,estado:'pagado'},
+    {id:5,nom:'Internet',cat:'Internet/Telefonía',ico:'📱',monto:18000,dia:5,repetir:true,estado:'pagado'},
+    {id:6,nom:'Seguro',cat:'Seguro',ico:'🛡️',monto:22000,dia:1,repetir:true,estado:'pendiente'},
+  ];
+}
+
+// ═══ STORAGE ═══
+function saveState(){
+  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,planActual,config})); }catch(e){}
+  // Also save config to cloud
+  if(supabaseClient&&currentNegocioId){
+    supabaseClient.from('negocios').update({config:JSON.stringify(config),plan:planActual}).eq('id',currentNegocioId).then(function(){});
+  }
+}
+
+// Extended save for individual records
+function saveProducto(p){
+  saveState();
+  if(supabaseClient&&currentNegocioId) guardarEnNube('productos',p.id,p);
+}
+function saveMovimiento(m){
+  saveState();
+  if(supabaseClient&&currentNegocioId) guardarEnNube('movimientos',m.id,m);
+}
+function saveFactura(f){
+  saveState();
+  if(supabaseClient&&currentNegocioId) guardarEnNube('facturas',f.id,f);
+}
+function saveGastoFijo(g){
+  saveState();
+  if(supabaseClient&&currentNegocioId) guardarEnNube('gastos_fijos',g.id,g);
+}
+function loadState(){
+  try{
+    const d=localStorage.getItem('gp4');
+    if(d){
+      const s=JSON.parse(d);
+      productos  = Array.isArray(s.productos)   ? s.productos   : [];
+      movimientos= Array.isArray(s.movimientos) ? s.movimientos : [];
+      facturas   = Array.isArray(s.facturas)    ? s.facturas    : [];
+      gastosFijos= Array.isArray(s.gastosFijos) ? s.gastosFijos : [];
+      planActual = PLANES[s.planActual] ? s.planActual : 'gratis';
+      config     = (s.config && typeof s.config==='object') ? s.config : config;
+      if(!productos.length) cargarDemo();
+    } else { cargarDemo(); }
+  } catch(e){ cargarDemo(); }
+}
+
+// ═══ HELPERS ═══
+function hoy(){ return new Date().toISOString().split('T')[0]; }
+function fmtM(v){ return '$'+(parseFloat(v)||0).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+function fmtF(d){ if(!d)return'—'; const[y,m,day]=d.split('-'); return day+'/'+m+'/'+y; }
+function estadoProd(p){
+  if(p.stock===0) return{cls:'br',lbl:'SIN STOCK'};
+  if(p.min>0 && p.stock<=p.min) return{cls:'br',lbl:'CRÍTICO'};
+  if(p.max>0 && p.stock>=p.max) return{cls:'bb',lbl:'MÁXIMO'};
+  if(p.min>0 && p.stock<=p.min*1.3) return{cls:'by',lbl:'MÍNIMO'};
+  return{cls:'bg',lbl:'OK'};
+}
+function bdg(cls,lbl){ return '<span class="bdg '+cls+'">'+lbl+'</span>'; }
+function eFactBdg(e){
+  const m={pendiente:'by',vencida:'br',pagada:'bg'};
+  const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA'};
+  return bdg(m[e]||'bm', l[e]||e);
+}
+function filtrarPeriodo(items,period){
+  const now=new Date();
+  return items.filter(function(m){
+    const d=new Date(m.fecha+'T00:00:00');
+    if(period==='hoy') return d.toDateString()===now.toDateString();
+    if(period==='semana'){
+      const lun=new Date(now); lun.setDate(now.getDate()-((now.getDay()||7)-1));
+      lun.setHours(0,0,0,0); return d>=lun;
+    }
+    if(period==='mes') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    return true;
+  });
+}
+
+// ═══ TOAST ═══
+function toast(msg,type){
+  const t=el('toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.className=type==='err'?'on err':'on';
+  clearTimeout(t._t);
+  t._t=setTimeout(function(){ t.classList.remove('on'); },3000);
+}
+
+// ═══ NAVIGATION ═══
+function go(id,navEl){
+  document.querySelectorAll('.pg').forEach(function(p){ p.classList.remove('on'); });
+  const pg=el('pg-'+id); if(pg) pg.classList.add('on');
+  document.querySelectorAll('.sb-i').forEach(function(i){ i.classList.remove('on'); });
+  if(navEl) navEl.classList.add('on');
+  closeSB();
+  renderPage(id);
+}
+function goLocked(id,navEl,req){
+  if(PLAN_N[planActual]>=PLAN_N[req]) go(id,navEl);
+  else{ openModal('modal-plan'); toast('Función disponible en Plan '+req.charAt(0).toUpperCase()+req.slice(1),'err'); }
+}
+function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
+function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
+function openModal(id){ const m=el(id); if(m) m.classList.add('on'); }
+function closeModal(id){ const m=el(id); if(m) m.classList.remove('on'); }
+
+// ═══ PLAN ═══
+function setPlan(p,planEl){
+  planActual=p;
+  document.querySelectorAll('.plan-card').forEach(function(c){ c.classList.remove('current'); });
+  if(planEl) planEl.classList.add('current');
+  const pl=PLANES[p];
+  set('plan-chip','text',pl.nombre);
+  set('plan-name-sb','text',pl.nombre);
+  set('plan-sub-sb','text',pl.sub);
+  Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod];
+    const lk=el('lock-'+mod);
+    if(lk) lk.style.display=PLAN_N[p]>=PLAN_N[req]?'none':'';
+  });
+  closeModal('modal-plan'); saveState(); renderDash();
+  toast('Plan: '+pl.nombre);
+}
+
+// ═══ CONFIG ═══
+function guardarConfig(){
+  const n=get('cfg-nombre'), a=get('cfg-alias'), cv=get('cfg-cvu');
+  if(n) config.nombre=n;
+  if(a) config.alias=a;
+  if(cv) config.cvu=cv;
+  set('alias-display','text',config.alias);
+  set('cvu-display','text',config.cvu);
+  closeModal('modal-config'); saveState(); toast('Configuración guardada ✓');
+}
+
+// ═══ COBRAR ═══
+function abrirCobrar(){
+  lineasCobro=[];
+  set('cobrar-monto','val',''); set('cobrar-num','text','$0');
+  set('cobrar-desc','val',''); set('ef-recibido','val','');
+  set('ef-vuelto','text','$0'); set('ef-total','text','$0');
+  set('alias-display','text',config.alias||'mi.negocio.mp');
+  set('cvu-display','text',config.cvu||'');
+  renderLineasCobro();
+  const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
+  openModal('modal-cobrar');
+}
+function agregarLineaCobro(){
+  lineasCobro.push({id:Date.now(),prodId:'',cant:1});
+  renderLineasCobro();
+}
+function renderLineasCobro(){
+  var cont=el('cobro-lineas'); if(!cont) return;
+  if(!lineasCobro.length){
+    cont.innerHTML='<div style="font-size:11px;color:var(--mut2);text-align:center;padding:8px;">Tocá 📷 Escanear o + Manual para agregar productos</div>';
+    set('cobro-subtotal','text','$0'); return;
+  }
+  var html='';
+  lineasCobro.forEach(function(l){
+    var prod=productos.find(function(p){return p.id==l.prodId;});
+    var pventa=prod?(prod.pventa||prod.precio||0):0;
+    var subtotal=pventa*l.cant;
+    var um=prod?prod.um:'UN';
+    // Row: name | cant input | unit | subtotal | delete
+    html+='<div style="display:grid;grid-template-columns:1fr 70px 50px 70px 24px;gap:5px;margin-bottom:8px;align-items:center;">'
+      // Product selector
+      +'<select class="fi" style="font-size:11px;padding:5px 6px;" onchange="selProdCobro('+l.id+',this.value)">'
+      +'<option value="">— Producto —</option>'
+      +productos.map(function(p){
+        return '<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>';
+      }).join('')
+      +'</select>'
+      // Cant input
+      +'<input class="fi" type="number" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:13px;padding:5px;text-align:center;font-family:DM Mono,monospace;" oninput="updCantCobro('+l.id+',this.value)">'
+      // Unit
+      +'<div style="font-size:10px;color:var(--mut2);text-align:center;font-family:DM Mono,monospace;">'+um+'</div>'
+      // Subtotal
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--yel);text-align:right;">'+(subtotal>0?fmtM(subtotal):'—')+'</div>'
+      // Delete
+      +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;width:24px;height:28px;font-size:11px;" onclick="quitarLineaCobro('+l.id+')">✕</button>'
+      +'</div>';
+  });
+  cont.innerHTML=html;
+  actualizarTotalCobro();
+}
+function selProdCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.prodId=val;renderLineasCobro();} }
+function updCantCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.cant=parseFloat(val)||1;actualizarTotalCobro();} }
+function quitarLineaCobro(id){ lineasCobro=lineasCobro.filter(function(l){return l.id!==id;});renderLineasCobro(); }
+function actualizarTotalCobro(){
+  let total=0;
+  lineasCobro.forEach(function(l){
+    const prod=productos.find(function(p){return p.id==l.prodId;});
+    if(prod) total+=(prod.pventa||prod.precio||0)*l.cant;
+  });
+  set('cobro-subtotal','text',fmtM(total));
+  if(total>0){ set('cobrar-monto','val',String(total)); updCobrar(); }
+}
+function updCobrar(){
+  const v=parseFloat(get('cobrar-monto'))||0;
+  set('cobrar-num','text',fmtM(v));
+  set('ef-total','text',fmtM(v));
+  set('qr-monto-display','text',fmtM(v));
+  set('transf-monto-display','text',fmtM(v));
+  calcVuelto();
+}
+function selPago(tipo,selEl){
+  pagoActual=tipo;
+  document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl) selEl.classList.add('on');
+  const needBasico=tipo!=='efectivo' && PLAN_N[planActual]<PLAN_N['basico'];
+  if(needBasico){ toast('QR y transferencia disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
+  set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
+  set('pago-qr','display',tipo==='qr'?'block':'none');
+  set('pago-transferencia','display',tipo==='transferencia'?'block':'none');
+}
+function calcVuelto(){
+  const total=parseFloat(get('cobrar-monto'))||0;
+  const recibido=parseFloat(get('ef-recibido'))||0;
+  const vuelto=Math.max(0,recibido-total);
+  const ev=el('ef-vuelto');
+  if(ev){ ev.textContent=fmtM(vuelto); ev.style.color=vuelto>0?'var(--grn)':'var(--mut2)'; }
+}
+function confirmarCobro(){
+  const monto=parseFloat(get('cobrar-monto'))||0;
+  if(!monto){toast('Ingresá el monto a cobrar','err');return;}
+  const desc=get('cobrar-desc')||'Venta';
+  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+  var prods=[];
+  lineasCobro.forEach(function(l){
+    var prod=productos.find(function(p){return p.id==l.prodId;});
+    if(prod&&l.cant>0){
+      prod.stock=Math.max(0,prod.stock-l.cant);
+      var um=prod.um||'UN';
+      prods.push(l.cant+' '+um+' '+prod.nom);
+    }
+  });
+  var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
+  movimientos.unshift({id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods});
+  lineasCobro=[];
+  closeModal('modal-cobrar'); saveState(); renderDash();
+  toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
+}
+
+// ═══ INGRESO ═══
+function abrirIngreso(){
+  lineasIngreso=[]; pagoFactura='pendiente';
+  set('ing-prov','val',''); set('ing-num','val','');
+  set('ing-fecha','val',hoy()); set('ing-venc','val','');
+  set('ing-margen-global','val','');
+  set('ing-precios-sugeridos','html','');
+  set('fpago-info','display','none');
+  set('btn-confirmar-ingreso','text','✓ Confirmar ingreso');
+  const fpd=el('fpago-pendiente'); if(fpd) fpd.classList.add('on');
+  ['fpago-efectivo','fpago-transferencia','fpago-cheque'].forEach(function(id){ const e=el(id);if(e)e.classList.remove('on'); });
+  agregarLineaIngreso();
+  openModal('modal-ingreso');
+}
+function agregarLineaIngreso(){
+  lineasIngreso.push({id:Date.now(),prodId:'',prodNom:'',cant:0,precio:0,margen:0});
+  renderLineas();
+}
+function renderLineas(){
+  const cont=el('ing-lineas'); if(!cont) return;
+  cont.innerHTML=lineasIngreso.map(function(l){
+    var opts='<option value="">— Elegir producto —</option>';
+    productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>'; });
+    opts+='<option value="__nuevo__">+ Producto nuevo...</option>';
+    var sub=l.cant&&l.precio?fmtM(l.cant*l.precio):'—';
+    return '<div style="display:grid;grid-template-columns:2fr 80px 100px 80px 28px;gap:6px;margin-bottom:6px;align-items:center;" data-lid="'+l.id+'">'
+      +'<select class="fi" style="font-size:12px;padding:7px 8px;" onchange="selLinProd('+l.id+',this.value)">'+opts+'</select>'
+      +'<input class="fi" type="number" placeholder="0" value="'+(l.cant||'')+'" style="font-size:13px;padding:7px 8px;text-align:center;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="cant" oninput="updLineaEvt(this)">'
+      +'<div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--mut2);font-size:12px;">$</span>'
+      +'<input class="fi" type="number" placeholder="0" value="'+(l.precio||'')+'" style="font-size:13px;padding:7px 8px 7px 20px;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="precio" oninput="updLineaEvt(this)"></div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--yel);text-align:right;padding-right:4px;">'+sub+'</div>'
+      +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;padding:6px;font-size:13px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;" onclick="quitarLinea('+l.id+')">✕</button>'
+      +'</div>';
+  }).join('');
+  calcTotal(); calcPreciosVenta();
+}
+function updLineaEvt(inp){
+  var lid=parseInt(inp.dataset.lid);
+  var field=inp.dataset.field;
+  updLinea(lid,field,inp.value);
+}
+function selLinProd(id,val){
+  const l=lineasIngreso.find(function(l){return l.id===id;});
+  if(!l)return;
+  if(val==='__nuevo__'){ openModal('modal-prod'); return; }
+  const prod=productos.find(function(p){return p.id==val;});
+  if(prod){ l.prodId=prod.id; l.prodNom=prod.nom; if(prod.precio)l.precio=prod.precio; }
+  else{ l.prodId=''; l.prodNom=''; }
+  renderLineas();
+}
+function updLinea(id,field,val){
+  const l=lineasIngreso.find(function(l){return l.id===id;});
+  if(l){ l[field]=parseFloat(val)||0; renderLineas(); }
+}
+function quitarLinea(id){
+  lineasIngreso=lineasIngreso.filter(function(l){return l.id!==id;});
+  if(!lineasIngreso.length) agregarLineaIngreso(); else renderLineas();
+}
+function calcTotal(){
+  const total=lineasIngreso.reduce(function(s,l){return s+(l.cant*l.precio);},0);
+  set('ing-total','text',fmtM(total)); return total;
+}
+function aplicarMargenGlobal(){
+  const global=parseFloat(get('ing-margen-global'))||0;
+  if(!global)return;
+  lineasIngreso.forEach(function(l){if(l.prodId)l.margen=global;});
+  calcPreciosVenta();
+}
+function calcPreciosVenta(){
+  const cont=el('ing-precios-sugeridos'); if(!cont)return;
+  const lineasConProd=lineasIngreso.filter(function(l){return l.prodId&&l.precio>0;});
+  if(!lineasConProd.length){cont.innerHTML='';return;}
+  cont.innerHTML='<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ajustá el % por producto:</div>'
+    +lineasConProd.map(function(l){
+      const prod=productos.find(function(p){return p.id==l.prodId;});
+      const pventa=l.margen>0?Math.ceil(l.precio*(1+l.margen/100)):0;
+      return '<div style="display:grid;grid-template-columns:1fr 70px 28px 90px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);">'
+        +'<div><div style="font-size:12.5px;font-weight:500;">'+(prod?prod.nom:'')+'</div>'
+        +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Costo: '+fmtM(l.precio)+'/un</div></div>'
+        +'<div style="display:flex;align-items:center;gap:4px;"><input class="fi" type="number" value="'+(l.margen||'')+'" placeholder="0" style="width:100%;font-size:14px;text-align:center;font-family:DM Mono,monospace;padding:5px 4px;" oninput="updMargenLinea('+l.id+',this.value)"><span style="font-size:12px;color:var(--mut2);">%</span></div>'
+        +'<span style="font-size:13px;color:var(--mut2);">→</span>'
+        +'<div style="text-align:right;">'+(pventa>0?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;color:var(--grn);">'+fmtM(pventa)+'</div><div style="font-size:9px;color:var(--mut2);">precio de venta</div>':'<div style="font-size:11px;color:var(--mut2);">sin margen</div>')+'</div>'
+        +'</div>';
+    }).join('');
+}
+function updMargenLinea(id,val){
+  const l=lineasIngreso.find(function(l){return l.id===id;});
+  if(l){l.margen=parseFloat(val)||0;calcPreciosVenta();}
+}
+function selPagoFact(tipo,selEl){
+  pagoFactura=tipo;
+  document.querySelectorAll('#modal-ingreso .pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl)selEl.classList.add('on');
+  const msgs={
+    pendiente:'',
+    efectivo:'💵 Pagás en efectivo. La factura queda como <b style="color:var(--grn)">PAGADA</b>.',
+    transferencia:'🏦 Transferís al proveedor. La factura queda como <b style="color:var(--grn)">PAGADA</b>.<br>Tu alias: <b style="color:var(--acc2)">'+config.alias+'</b>',
+    cheque:'📄 Pagás con cheque. La factura queda como <b style="color:var(--grn)">PAGADA</b>.',
+  };
+  const info=el('fpago-info');
+  if(tipo==='pendiente'){
+    if(info)info.style.display='none';
+    set('btn-confirmar-ingreso','text','✓ Confirmar ingreso — factura pendiente');
+  } else {
+    if(info){info.style.display='block';info.innerHTML=msgs[tipo]||'';}
+    set('btn-confirmar-ingreso','text','✓ Confirmar ingreso — factura pagada');
+  }
+}
+function confirmarIngresoFactura(){
+  const prov=get('ing-prov').trim();
+  const lineasValidas=lineasIngreso.filter(function(l){return l.prodId&&l.cant>0;});
+  if(!prov){toast('Ingresá el proveedor','err');return;}
+  if(!lineasValidas.length){toast('Agregá al menos un producto con cantidad','err');return;}
+  const total=calcTotal();
+  const fecha=get('ing-fecha')||hoy();
+  const estadoFact=pagoFactura==='pendiente'?'pendiente':'pagada';
+  const metodoLbl={pendiente:'',efectivo:' · Pagada en efectivo',transferencia:' · Pagada por transferencia',cheque:' · Pagada con cheque'};
+  var cambiosPrecio = [];
+  lineasValidas.forEach(function(l){
+    var prod=productos.find(function(p){return p.id==l.prodId;});
+    if(!prod)return;
+    var precioAnterior = prod.precio||0;
+    var pventaAnterior = prod.pventa||0;
+    // Update stock
+    prod.stock+=l.cant;
+    // Update cost price
+    if(l.precio>0) prod.precio=l.precio;
+    // Recalculate sale price keeping same margin %
+    if(l.precio>0){
+      var margenActual = l.margen>0 ? l.margen : (precioAnterior>0&&pventaAnterior>0 ? Math.round((pventaAnterior-precioAnterior)/precioAnterior*100) : 30);
+      var nuevoPventa = Math.ceil(l.precio*(1+margenActual/100));
+      if(pventaAnterior>0 && nuevoPventa!==pventaAnterior){
+        cambiosPrecio.push({nom:prod.nom,anterior:pventaAnterior,nuevo:nuevoPventa,margen:margenActual,costo:l.precio});
+      }
+      prod.pventa = nuevoPventa;
+    } else if(l.margen>0){
+      prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100));
+    }
+    movimientos.unshift({id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:fecha,motivo:'Compra a '+prov,costo:l.precio});
+  });
+  // Show price update summary
+  if(cambiosPrecio.length>0){
+    setTimeout(function(){
+      mostrarResumenPrecios(cambiosPrecio);
+    },500);
+  }
+  if(total>0){
+    facturas.unshift({id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]});
+  }
+  pagoFactura='pendiente';
+  closeModal('modal-ingreso'); saveState(); renderDash();
+  if(cambiosPrecio.length>0){
+    setTimeout(function(){mostrarResumenPrecios(cambiosPrecio);},400);
+  } else {
+    toast('✓ '+lineasValidas.length+' producto(s) ingresados'+(total>0?' · Factura '+estadoFact:''));
+  }
+}
+
+// ═══ EGRESO ═══
+function abrirEgreso(){
+  const s=el('eg-prod');
+  if(!s){return;}
+  s.innerHTML=productos.map(function(p){return '<option value="'+p.id+'">'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
+  if(!productos.length){toast('Primero agregá productos','err');return;}
+  set('eg-fecha','val',hoy()); set('eg-cant','val','');
+  updEgresoInfo();
+  openModal('modal-egreso');
+}
+function updEgresoInfo(){
+  const s=el('eg-prod'); if(!s)return;
+  const prod=productos.find(function(p){return p.id==s.value;});
+  const info=el('eg-stock-info'); if(!info)return;
+  if(prod){info.style.display='block';info.innerHTML='📦 Stock disponible: <b style="color:var(--txt)">'+prod.stock+' '+prod.um+'</b> · Mínimo: '+prod.min;}
+}
+function guardarEgreso(){
+  const s=el('eg-prod'); if(!s)return;
+  const cant=parseFloat(get('eg-cant'));
+  if(!cant||cant<=0){toast('Ingresá una cantidad válida','err');return;}
+  const prod=productos.find(function(p){return p.id==s.value;});
+  if(!prod)return;
+  if(cant>prod.stock){toast('Stock insuficiente. Disponible: '+prod.stock+' '+prod.um,'err');return;}
+  prod.stock-=cant;
+  const mot=el('eg-motivo'); const motivo=mot?mot.value:'Egreso';
+  movimientos.unshift({id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo});
+  set('eg-cant','val','');
+  closeModal('modal-egreso'); saveState(); renderDash();
+  toast('📤 Registrado: '+cant+' '+prod.um+' de '+prod.nom);
+}
+
+// ═══ FACTURA ═══
+function guardarFact(){
+  const prov=get('f-prov').trim(); const monto=parseFloat(get('f-monto'));
+  if(!prov||!monto){toast('Completá proveedor y monto','err');return;}
+  const fest=el('f-estado'); const estado=fest?fest.value:'pendiente';
+  facturas.unshift({id:Date.now(),num:get('f-num').trim()||('FACT-'+Date.now()),prov:prov,fecha:get('f-fecha')||hoy(),venc:get('f-venc'),monto:monto,estado:estado,obs:get('f-obs').trim()});
+  ['f-num','f-prov','f-monto','f-venc','f-obs'].forEach(function(id){set(id,'val','');});
+  closeModal('modal-fact'); saveState(); renderDash();
+  toast('🧾 Factura guardada ✓');
+}
+function marcarPagada(id){
+  const f=facturas.find(function(f){return f.id===id;});
+  if(f){f.estado='pagada';saveState();renderFacts();renderDash();toast('✅ Factura pagada ✓');}
+}
+function eliminarFact(id){
+  if(!confirm('¿Eliminar?'))return;
+  facturas=facturas.filter(function(f){return f.id!==id;});
+  saveState();renderFacts();renderDash();toast('Eliminada');
+}
+function fFact(f,btn){
+  factFilter=f;
+  document.querySelectorAll('#pg-facturas .fb').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  renderFacts();
+}
+
+// ═══ GASTO FIJO ═══
+function guardarGF(){
+  const nom=get('gf-nom').trim(); const monto=parseFloat(get('gf-monto'));
+  if(!nom||!monto){toast('Completá nombre y monto','err');return;}
+  const ico=el('gf-ico'); const cat=el('gf-cat'); const rep=el('gf-rep'); const gest=el('gf-estado');
+  gastosFijos.push({id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'});
+  ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
+  closeModal('modal-gf'); saveState(); renderDash(); renderGastos();
+  toast('💡 Gasto fijo guardado ✓');
+}
+function toggleGFPago(id){
+  const gf=gastosFijos.find(function(gf){return gf.id===id;});
+  if(gf){gf.estado=gf.estado==='pagado'?'pendiente':'pagado';saveState();renderGastos();renderDash();toast(gf.estado==='pagado'?'✅ Pagado':'↩ Marcado pendiente');}
+}
+function eliminarGF(id){
+  if(!confirm('¿Eliminar?'))return;
+  gastosFijos=gastosFijos.filter(function(gf){return gf.id!==id;});
+  saveState();renderGastos();renderDash();toast('Eliminado');
+}
+
+// ═══ PRODUCTO ═══
+function guardarProd(){
+  const nom=get('p-nom').trim();
+  if(!nom){toast('Ingresá el nombre del producto','err');return;}
+  if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
+  const pcat=el('p-cat'); const pum=el('p-um');
+  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim()});
+  ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
+  closeModal('modal-prod'); saveState(); renderDash(); renderProds();
+  toast('📦 Producto guardado ✓');
+}
+function eliminarProd(id){
+  if(!confirm('¿Eliminar?'))return;
+  productos=productos.filter(function(p){return p.id!==id;});
+  saveState();renderProds();renderDash();toast('Eliminado');
+}
+
+// ═══ IMPORT EXCEL ═══
+function toggleImport(){
+  const ia=el('import-area');
+  if(ia)ia.style.display=ia.style.display==='none'?'block':'none';
+}
+function handleFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      pendingImport=rows.map(function(r,i){
+        const keys=Object.keys(r);
+        const find=function(){
+          const terms=[].slice.call(arguments);
+          return keys.find(function(k){return terms.some(function(t){return k.toLowerCase().includes(t.toLowerCase());});});
+        };
+        const fN=find('nombre','descripcion','producto','articulo');
+        const nom=String(r[fN]||'').trim();
+        if(!nom||nom.length<2)return null;
+        return{id:Date.now()+i,cod:String(r[find('codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:parseFloat(r[find('stock','cantidad','qty')])||0,um:String(r[find('unidad','um')]||'UN').trim(),precio:parseFloat(r[find('precio costo','costo','precio unit')])||0,pventa:parseFloat(r[find('precio venta','venta')])||0,min:parseFloat(r[find('minimo','min stock')])||0,max:parseFloat(r[find('maximo','max stock')])||0,prov:String(r[find('proveedor')]||'').trim()};
+      }).filter(Boolean);
+      const ipt=el('import-prev-t'); if(ipt)ipt.textContent='Vista previa · '+pendingImport.length+' productos';
+      const ipb=el('import-prev-b');
+      if(ipb)ipb.innerHTML='<div style="overflow-x:auto;max-height:160px;overflow-y:auto;"><table><thead><tr><th>Nombre</th><th>Cat.</th><th>Stock</th></tr></thead><tbody>'+pendingImport.slice(0,6).map(function(p){return'<tr><td style="font-size:12px;">'+p.nom.substring(0,40)+'</td><td class="mn md">'+p.cat+'</td><td class="mn">'+p.stock+'</td></tr>';}).join('')+(pendingImport.length>6?'<tr><td colspan="3" style="text-align:center;color:var(--mut2);font-size:11px;padding:8px;">... y '+(pendingImport.length-6)+' más</td></tr>':'')+'</tbody></table></div>';
+      const ipp=el('import-prev'); if(ipp)ipp.style.display='block';
+    }catch(e){toast('Error al leer el archivo','err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+function confirmarImport(){
+  if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
+  productos=productos.concat(pendingImport); pendingImport=[];
+  set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
+  saveState(); renderDash(); renderProds();
+  toast(productos.length+' productos cargados ✓');
+}
+function cancelImport(){
+  pendingImport=[];
+  set('import-prev','display','none'); set('file-inp','val','');
+}
+
+// ═══ RENDER DASHBOARD ═══
+function renderDash(){
+  const now=new Date();
+  const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
+  const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
+  const gfPend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
+  const cobrosHoy=movimientos.filter(function(m){
+    if(m.tipo!=='cobro')return false;
+    const d=new Date(m.fecha+'T00:00:00');
+    return d.toDateString()===now.toDateString();
+  });
+  const totalHoy=cobrosHoy.reduce(function(s,m){return s+(m.monto||0);},0);
+  set('kpi-cobrado','text',fmtM(totalHoy));
+  set('kpi-alertas','text',String(alertas.length));
+  set('kpi-facts','text',String(factsPend.length));
+  set('kpi-gf','text',fmtM(gfPend.reduce(function(s,gf){return s+gf.monto;},0)));
+  set('sb-alerta','text',String(alertas.length));
+  const dEl=el('dash-fecha');
+  if(dEl)dEl.innerHTML=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  // Alertas
+  const da=el('dash-alertas');
+  if(da)da.innerHTML=alertas.length?alertas.slice(0,5).map(function(p){const e=estadoProd(p);return'<div class="mov-item"><div class="mov-ico mi-egreso">⚑</div><div class="mov-txt"><div class="mov-name">'+p.nom+'</div><div class="mov-meta">'+p.cat+' · Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+'</div></div>'+bdg(e.cls,e.lbl)+'</div>';}).join(''):'<div class="empty"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div></div>';
+  // Movimientos recientes
+  const dm=el('dash-movs');
+  if(dm)dm.innerHTML=movimientos.length?movimientos.slice(0,5).map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos</div></div>';
+}
+
+function renderMovItem(m){
+  const icoM={efectivo:'💵',qr:'📱',transferencia:'🏦'};
+  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+  if(m.tipo==='cobro'){
+    var icoM2={efectivo:'💵',qr:'📱',transferencia:'🏦'};
+    var metLbl2={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+    return '<div class="mov-item"><div class="mov-ico mi-cobro">'+(icoM2[m.metodo]||'💚')+'</div>'
+      +'<div class="mov-txt">'
+      +'<div class="mov-name">'+(m.desc||'Cobro')+'</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl2[m.metodo]||m.metodo||'')+'</div>'
+      +'</div>'
+      +'<div class="mov-right"><div class="mov-monto mc-cobro">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">COBRO</div></div>'
+      +'</div>';
+  }
+  if(m.tipo==='ingreso'){
+    const prod=productos.find(function(p){return p.id===m.prodId;});
+    const importe=prod&&prod.precio?m.cant*prod.precio:null;
+    return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
+  }
+  if(m.tipo==='egreso'){
+    const prod=productos.find(function(p){return p.id===m.prodId;});
+    const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
+    return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
+  }
+  return'';
+}
+
+// ═══ RENDER PRODUCTOS ═══
+function buildCatFilters(activeCat){
+  var fr=el('prod-fr'); if(!fr) return;
+  var cats=[]; 
+  productos.forEach(function(p){ if(cats.indexOf(p.cat)===-1) cats.push(p.cat); });
+  cats.sort();
+  while(fr.firstChild) fr.removeChild(fr.firstChild);
+  var b0=document.createElement('button');
+  b0.className='fb'+(activeCat==='TODOS'?' on':'');
+  b0.textContent='Todos ('+productos.length+')';
+  b0.onclick=function(){ setCatFilter('TODOS', this); };
+  fr.appendChild(b0);
+  cats.forEach(function(cat){
+    var btn=document.createElement('button');
+    btn.className='fb'+(activeCat===cat?' on':'');
+    btn.textContent=cat+' ('+productos.filter(function(p){ return p.cat===cat; }).length+')';
+    btn.onclick=function(){ setCatFilter(cat, this); };
+    fr.appendChild(btn);
+  });
+}
+
+function renderProds(){
+  var srch=(get('prod-srch')||'').toLowerCase();
+  var fr=el('prod-fr');
+  var activeCat=fr?(fr.dataset.cat||'TODOS'):'TODOS';
+  buildCatFilters(activeCat);
+  var rows=productos.filter(function(p){ return activeCat==='TODOS'||p.cat===activeCat; });
+  if(srch) rows=rows.filter(function(p){ return p.nom.toLowerCase().indexOf(srch)!==-1||p.cod.toLowerCase().indexOf(srch)!==-1; });
+  set('prod-cnt','text',rows.length+' productos');
+  var tb=el('tbl-prods');
+  if(tb){
+    if(!rows.length){
+      tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div></td></tr>';
+    } else {
+      tb.innerHTML=rows.map(function(p){
+        var e=estadoProd(p);
+        var mg=p.pventa&&p.precio?Math.round((p.pventa-p.precio)/p.precio*100):null;
+        var mgColor=mg!==null?(mg>30?'var(--grn)':mg>0?'var(--yel)':'var(--red)'):'var(--mut2)';
+        return '<tr><td>'+bdg(e.cls,e.lbl)+'</td>'
+          +'<td style="max-width:180px;line-height:1.4;">'+p.nom+'<br><span class="mn md">'+p.cod+'</span></td>'
+          +'<td class="mn md">'+p.cat+'</td>'
+          +'<td class="mn">'+p.stock+'</td>'
+          +'<td class="mn md">'+p.um+'</td>'
+          +'<td class="mn md">'+p.min+'/'+p.max+'</td>'
+          +'<td class="mn">'+(p.precio?fmtM(p.precio):'—')+'</td>'
+          +'<td class="mn">'+(p.pventa?fmtM(p.pventa):'—')+'</td>'
+          +'<td class="mn" style="color:'+mgColor+';">'+(mg!==null?mg+'%':'—')+'</td>'
+          +'<td><div style="display:flex;gap:4px;">'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
+          +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
+          +'</div></td></tr>';
+      }).join('');
+    }
+  }
+  var mc=el('mc-prods');
+  if(mc){
+    if(!rows.length){
+      mc.innerHTML='<div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div>';
+    } else {
+      mc.innerHTML=rows.map(function(p){
+        var e=estadoProd(p);
+        var mg=p.pventa&&p.precio?Math.round((p.pventa-p.precio)/p.precio*100):null;
+        var mgColor=mg!==null?(mg>30?'var(--grn)':mg>0?'var(--yel)':'var(--red)'):'var(--mut2)';
+        return '<div class="mci">'
+          +'<div class="mci-top"><div class="mci-name">'+p.nom+'</div>'+bdg(e.cls,e.lbl)+'</div>'
+          +'<div class="mci-row">'
+          +'<div class="mci-col"><div class="mci-lbl">Stock</div><div class="mci-val">'+p.stock+' '+p.um+'</div></div>'
+          +'<div class="mci-col"><div class="mci-lbl">Mín/Máx</div><div class="mci-val">'+p.min+'/'+p.max+'</div></div>'
+          +'<div class="mci-col"><div class="mci-lbl">Costo</div><div class="mci-val">'+(p.precio?fmtM(p.precio):'—')+'</div></div>'
+          +(mg!==null?'<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:'+mgColor+';">'+mg+'%</div></div>':'')
+          +'</div>'
+          +'<div style="display:flex;gap:6px;margin-top:8px;">'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
+          +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
+          +'</div></div>';
+      }).join('');
+    }
+  }
+}
+
+function setCatFilter(cat,btn){ const fr=el('prod-fr');if(fr)fr.dataset.cat=cat;document.querySelectorAll('#prod-fr .fb').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderProds(); }
+function abrirEgresoProd(prodId){
+  const s=el('eg-prod');
+  if(!s)return;
+  s.innerHTML=productos.map(function(p){return'<option value="'+p.id+'"'+(p.id===prodId?' selected':'')+'>'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
+  set('eg-fecha','val',hoy()); set('eg-cant','val','');
+  updEgresoInfo(); openModal('modal-egreso');
+}
+
+// ═══ RENDER MOVIMIENTOS ═══
+function renderMovs(){
+  const filtrados=filtrarPeriodo(movimientos,movPeriod);
+  const rows=movFilter==='TODOS'?filtrados:filtrados.filter(function(m){return m.tipo===movFilter;});
+  const cobros=filtrados.filter(function(m){return m.tipo==='cobro';});
+  const ingresos=filtrados.filter(function(m){return m.tipo==='ingreso';});
+  const egresos=filtrados.filter(function(m){return m.tipo==='egreso';});
+  const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+  const mk=el('mov-kpis');
+  if(mk)mk.innerHTML='<div class="kpi kg"><div class="kl">COBRADO</div><div class="kn" style="font-size:18px;">'+fmtM(totalCobrado)+'</div><div class="kd">'+cobros.length+' cobros</div></div><div class="kpi kb"><div class="kl">ENTRADAS STOCK</div><div class="kn">'+ingresos.length+'</div><div class="kd">movimientos</div></div><div class="kpi kr"><div class="kl">SALIDAS STOCK</div><div class="kn">'+egresos.length+'</div><div class="kd">movimientos</div></div>';
+  const ml=el('movs-list');
+  if(ml)ml.innerHTML=rows.length?rows.map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos en este período</div></div>';
+}
+function setPeriod(p,btn){movPeriod=p;document.querySelectorAll('#pg-movimientos .ptabs .ptab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderMovs();}
+function fMov(f,btn){movFilter=f;document.querySelectorAll('#pg-movimientos .fr .fb').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderMovs();}
+
+// ═══ RENDER FACTURAS ═══
+function renderFacts(){
+  const rows=factFilter==='TODOS'?facturas:facturas.filter(function(f){return f.estado===factFilter;});
+  const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
+  set('fact-sub','text',pend.length+' pendientes · '+fmtM(pend.reduce(function(s,f){return s+f.monto;},0)));
+  const tf=el('tbl-facts');
+  if(tf)tf.innerHTML=rows.length?rows.map(function(f){return'<tr><td>'+eFactBdg(f.estado)+'</td><td class="mn">'+f.num+'</td><td style="max-width:130px;">'+f.prov+'</td><td class="mn md">'+fmtF(f.fecha)+'</td><td class="mn" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</td><td class="mn" style="color:var(--yel);">'+fmtM(f.monto)+'</td><td style="font-size:11px;color:var(--mut2);max-width:130px;">'+(f.obs||'—')+'</td><td><div style="display:flex;gap:4px;">'+(f.estado!=='pagada'?'<button class="btn btn-ghost btn-sm" onclick="marcarPagada('+f.id+')">✓</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></td></tr>';}).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div></td></tr>';
+  const mf=el('mc-facts');
+  if(mf)mf.innerHTML=rows.length?rows.map(function(f){return'<div class="mci"><div class="mci-top"><div class="mci-name">'+f.prov+'<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--mut2)">'+f.num+'</span></div>'+eFactBdg(f.estado)+'</div><div class="mci-row"><div class="mci-col"><div class="mci-lbl">Monto</div><div class="mci-val" style="color:var(--yel);">'+fmtM(f.monto)+'</div></div><div class="mci-col"><div class="mci-lbl">Vence</div><div class="mci-val" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</div></div></div>'+(f.obs?'<div style="font-size:11px;color:var(--mut2);margin-top:6px;">'+f.obs+'</div>':'')+'<div style="display:flex;gap:6px;margin-top:8px;">'+(f.estado!=='pagada'?'<button class="btn btn-grn btn-sm" onclick="marcarPagada('+f.id+')">✓ Pagar</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></div>';}).join(''):'<div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div>';
+}
+
+// ═══ RENDER GASTOS ═══
+function renderGastos(){
+  const totalMes=gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
+  const pend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
+  const pag=gastosFijos.filter(function(gf){return gf.estado==='pagado';});
+  set('gf-total-sub','text',fmtM(totalMes)+' /mes');
+  const gk=el('gf-kpis');
+  if(gk)gk.innerHTML='<div class="kpi kp"><div class="kl">TOTAL MES</div><div class="kn" style="font-size:18px;">'+fmtM(totalMes)+'</div><div class="kd">'+gastosFijos.length+' gastos</div></div><div class="kpi kr"><div class="kl">POR PAGAR</div><div class="kn" style="font-size:18px;">'+fmtM(pend.reduce(function(s,gf){return s+gf.monto;},0))+'</div><div class="kd">'+pend.length+' pendientes</div></div><div class="kpi kg"><div class="kl">YA PAGADO</div><div class="kn" style="font-size:18px;">'+fmtM(pag.reduce(function(s,gf){return s+gf.monto;},0))+'</div><div class="kd">'+pag.length+' pagados</div></div>';
+  const gl=el('gf-list');
+  if(gl)gl.innerHTML=gastosFijos.length?gastosFijos.slice().sort(function(a,b){return a.dia-b.dia;}).map(function(gf){return'<div class="gf-item"><div class="gf-ico-wrap">'+gf.ico+'</div><div class="gf-txt"><div class="gf-name">'+gf.nom+'</div><div class="gf-meta">'+gf.cat+' · Día '+gf.dia+(gf.repetir?' · 🔄 Mensual':'')+'</div></div><div class="gf-right"><div class="gf-monto">'+fmtM(gf.monto)+'</div><div style="margin-top:6px;display:flex;gap:4px;justify-content:flex-end;"><button class="btn '+(gf.estado==='pagado'?'btn-ghost':'btn-grn')+' btn-sm" onclick="toggleGFPago('+gf.id+')">'+(gf.estado==='pagado'?'↩':'✓ Pagar')+'</button><button class="btn btn-red btn-sm" onclick="eliminarGF('+gf.id+')">✕</button></div></div></div>';}).join(''):'<div class="empty"><div class="empty-ico">💡</div><div class="empty-t">Sin gastos fijos</div><div class="empty-s">Agregá luz, agua, gas, alquiler...</div></div>';
+}
+
+// ═══ RENDER RESUMEN ═══
+function renderResumen(){
+  const now=new Date();
+  let label,movsF,factsF,gfMult=1;
+  if(resPeriod==='mes'){
+    label=now.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    movsF=movimientos.filter(function(m){const d=new Date(m.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){const d=new Date(f.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  } else if(resPeriod==='anterior'){
+    const ant=new Date(now.getFullYear(),now.getMonth()-1,1);
+    label=ant.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    movsF=movimientos.filter(function(m){const d=new Date(m.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+    factsF=facturas.filter(function(f){const d=new Date(f.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+  } else {
+    label='Año '+now.getFullYear(); gfMult=12;
+    movsF=movimientos.filter(function(m){return new Date(m.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){return new Date(f.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+  }
+  set('res-periodo','text',label);
+  const cobros=movsF.filter(function(m){return m.tipo==='cobro';});
+  const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+  const ef=cobros.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+m.monto;},0);
+  const qr=cobros.filter(function(m){return m.metodo==='qr';}).reduce(function(s,m){return s+m.monto;},0);
+  const tr=cobros.filter(function(m){return m.metodo==='transferencia';}).reduce(function(s,m){return s+m.monto;},0);
+  const ri=el('res-ingresos');
+  if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div><div class="fin-row"><span>📱 QR / Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div><div class="fin-row"><span>🏦 Transferencia</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>';
+  const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
+  const factsPag=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+  const totalEg=totalGF+factsPag;
+  const re=el('res-egresos');
+  if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div><div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
+  const balance=totalCobrado-totalEg;
+  const balColor=balance>=0?'var(--grn)':'var(--red)';
+  const rb=el('res-balance');
+  if(rb)rb.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;padding:16px 0;"><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">COBRADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);">'+fmtM(totalCobrado)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">GASTADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--red);">'+fmtM(totalEg)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div><div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;"><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
+}
+function setResPeriod(p,btn){resPeriod=p;document.querySelectorAll('#pg-resumen .ptabs .ptab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderResumen();}
+
+// ═══ RENDER PAGE ═══
+function renderPage(id){
+  if(id==='dash') renderDash();
+  else if(id==='productos') renderProds();
+  else if(id==='movimientos') renderMovs();
+  else if(id==='facturas') renderFacts();
+  else if(id==='gastos') renderGastos();
+  else if(id==='resumen') renderResumen();
+  else if(id==='finanzas') renderFinanzas();
+}
+
+
+// ═══ ESCÁNER ═══
+var scannerStream = null;
+var scannerCallback = null; // 'ingreso' or 'cobro'
+var scannerFoundProd = null;
+var scannerInterval = null;
+
+function abrirScanner(callback){
+  scannerCallback = callback;
+  scannerFoundProd = null;
+  set('scanner-manual','val','');
+  set('scanner-cant','val','');
+  set('scanner-found','display','none');
+  set('scanner-not-found','display','none');
+  set('scanner-results','display','none');
+  set('scanner-confirm-btn','display','none');
+  var titulo = callback==='cobro' ? '📷 Escanear — Venta' : '📷 Escanear — Ingreso';
+  set('scanner-titulo','text',titulo);
+  openModal('modal-scanner');
+  iniciarCamara();
+}
+
+function iniciarCamara(){
+  var video = el('scanner-video');
+  if(!video) return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    set('scanner-cam-wrap','display','none');
+    toast('Cámara no disponible — usá la entrada manual','err');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
+    .then(function(stream){
+      scannerStream = stream;
+      video.srcObject = stream;
+      video.play();
+      scannerInterval = setInterval(escanearFrame, 400);
+    })
+    .catch(function(err){
+      set('scanner-cam-wrap','display','none');
+      toast('Sin acceso a cámara — usá la entrada manual','err');
+    });
+}
+
+function escanearFrame(){
+  var video = el('scanner-video');
+  var canvas = el('scanner-canvas');
+  if(!video||!canvas||video.readyState!==4) return;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+  // Basic barcode detection using BarcodeDetector API (Chrome Android)
+  if(window.BarcodeDetector){
+    var detector = new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e']});
+    detector.detect(canvas).then(function(codes){
+      if(codes.length>0){
+        var code = codes[0].rawValue;
+        detenerCamara();
+        procesarCodigo(code);
+      }
+    }).catch(function(){});
+  }
+}
+
+function detenerCamara(){
+  if(scannerInterval){ clearInterval(scannerInterval); scannerInterval=null; }
+  if(scannerStream){ scannerStream.getTracks().forEach(function(t){t.stop();}); scannerStream=null; }
+}
+
+function cerrarScanner(){
+  detenerCamara();
+  closeModal('modal-scanner');
+}
+
+function procesarCodigo(codigo){
+  set('scanner-manual','val',codigo);
+  buscarProductoScanner();
+}
+
+function buscarProductoScanner(){
+  var query = (get('scanner-manual')||'').trim().toLowerCase();
+  if(query.length<2){ set('scanner-results','display','none'); return; }
+
+  // Search by cod (barcode) first
+  var byCode = productos.filter(function(p){ return p.cod.toLowerCase()===query; });
+  if(byCode.length===1){ mostrarProductoEncontrado(byCode[0]); return; }
+
+  // Search by name
+  var byName = productos.filter(function(p){ return p.nom.toLowerCase().indexOf(query)!==-1; });
+  if(byName.length===0){
+    set('scanner-found','display','none');
+    set('scanner-results','display','none');
+    set('scanner-not-found','display','block');
+    var newNom = el('scanner-new-nom'); if(newNom) newNom.value=get('scanner-manual');
+    set('scanner-confirm-btn','display','none');
+    return;
+  }
+  if(byName.length===1){ mostrarProductoEncontrado(byName[0]); return; }
+  
+  // Multiple results
+  set('scanner-not-found','display','none');
+  set('scanner-found','display','none');
+  set('scanner-confirm-btn','display','none');
+  set('scanner-results','display','block');
+  var list = el('scanner-results-list');
+  if(list){
+    list.innerHTML = byName.slice(0,6).map(function(p){
+      return '<div style="padding:10px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="mostrarProductoEncontrado(productos.find(function(pr){return pr.id==='+p.id+'}))">'
+        +'<div><div style="font-size:13px;">'+p.nom+'</div><div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.cat+' · '+p.um+'</div></div>'
+        +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">'+(p.pventa?fmtM(p.pventa):fmtM(p.precio))+'</div>'
+        +'</div>';
+    }).join('');
+  }
+}
+
+function confirmarScannerManual(){
+  buscarProductoScanner();
+}
+
+function mostrarProductoEncontrado(prod){
+  if(!prod) return;
+  scannerFoundProd = prod;
+  set('scanner-results','display','none');
+  set('scanner-not-found','display','none');
+  set('scanner-found','display','block');
+  set('scanner-confirm-btn','display','block');
+  set('scanner-found-name','text',prod.nom);
+  // Set UM
+  var umSel = el('scanner-um');
+  if(umSel) umSel.value = prod.um||'UN';
+  // Show price field for ingreso
+  var showPrice = scannerCallback==='ingreso';
+  set('scanner-precio-wrap','display',showPrice?'block':'none');
+  if(showPrice && prod.precio){ set('scanner-precio','val',String(prod.precio)); }
+  set('scanner-cant','val','');
+  // Focus cant
+  setTimeout(function(){ var c=el('scanner-cant');if(c)c.focus(); },100);
+}
+
+function crearProductoDesdeScanner(){
+  var nom = get('scanner-new-nom').trim();
+  if(!nom){toast('Ingresá el nombre','err');return;}
+  var catEl=el('scanner-new-cat'), umEl=el('scanner-new-um');
+  var nuevoProd = {
+    id:Date.now(), cod:get('scanner-manual').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),
+    nom:nom, cat:catEl?catEl.value:'Otro', stock:0,
+    um:umEl?umEl.value:'UN', precio:0, pventa:0, min:0, max:0, prov:''
+  };
+  productos.push(nuevoProd);
+  saveState();
+  mostrarProductoEncontrado(nuevoProd);
+  toast('Producto creado ✓');
+}
+
+function confirmarScanner(){
+  if(!scannerFoundProd){toast('Seleccioná un producto','err');return;}
+  var cant = parseFloat(get('scanner-cant'));
+  if(!cant||cant<=0){toast('Ingresá la cantidad','err');return;}
+  var umEl=el('scanner-um');
+  var um = umEl?umEl.value:(scannerFoundProd.um||'UN');
+  
+  if(scannerCallback==='ingreso'){
+    var precio = parseFloat(get('scanner-precio'))||scannerFoundProd.precio||0;
+    // Update product price if changed
+    if(precio>0) scannerFoundProd.precio=precio;
+    // Add to lineasIngreso
+    var existing = lineasIngreso.find(function(l){return l.prodId==scannerFoundProd.id;});
+    if(existing){ existing.cant+=cant; existing.precio=precio; }
+    else { lineasIngreso.push({id:Date.now(),prodId:scannerFoundProd.id,prodNom:scannerFoundProd.nom,cant:cant,precio:precio,margen:0}); }
+    cerrarScanner();
+    renderLineas();
+    toast('✓ '+cant+' '+um+' de '+scannerFoundProd.nom+' agregado');
+  } else if(scannerCallback==='cobro'){
+    var existing2 = lineasCobro.find(function(l){return l.prodId==scannerFoundProd.id;});
+    if(existing2){ existing2.cant+=cant; }
+    else { lineasCobro.push({id:Date.now(),prodId:scannerFoundProd.id,cant:cant}); }
+    cerrarScanner();
+    renderLineasCobro();
+    toast('✓ '+cant+' '+um+' de '+scannerFoundProd.nom+' agregado');
+  }
+}
+
+// ═══ CARNICERÍA ═══
+var carnFilterActual = 'TODOS';
+
+// Catálogo precargado
+var CATALOGO_CARNICERIA = [
+  // VACA
+  {animal:'Vaca',nom:'Asado',um:'KG'},
+  {animal:'Vaca',nom:'Vacío',um:'KG'},
+  {animal:'Vaca',nom:'Tapa de asado',um:'KG'},
+  {animal:'Vaca',nom:'Matambre',um:'KG'},
+  {animal:'Vaca',nom:'Peceto',um:'KG'},
+  {animal:'Vaca',nom:'Paleta',um:'KG'},
+  {animal:'Vaca',nom:'Cuadril',um:'KG'},
+  {animal:'Vaca',nom:'Lomo',um:'KG'},
+  {animal:'Vaca',nom:'Bife de chorizo',um:'KG'},
+  {animal:'Vaca',nom:'Carne picada común',um:'KG'},
+  {animal:'Vaca',nom:'Carne picada especial',um:'KG'},
+  {animal:'Vaca',nom:'Milanesa de vaca',um:'KG'},
+  {animal:'Vaca',nom:'Osobuco',um:'KG'},
+  {animal:'Vaca',nom:'Roast beef',um:'KG'},
+  {animal:'Vaca',nom:'Falda',um:'KG'},
+  {animal:'Vaca',nom:'Puchero de vaca',um:'KG'},
+  {animal:'Vaca',nom:'Lengua',um:'KG'},
+  {animal:'Vaca',nom:'Riñón',um:'KG'},
+  {animal:'Vaca',nom:'Mondongo',um:'KG'},
+  {animal:'Vaca',nom:'Grasa de vaca',um:'KG'},
+  {animal:'Vaca',nom:'Huesos de vaca',um:'KG'},
+  // CERDO
+  {animal:'Cerdo',nom:'Bondiola de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Costilla de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Paleta de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Lomo de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Carne picada de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Milanesa de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Patitas de cerdo',um:'UN'},
+  {animal:'Cerdo',nom:'Chinchulín de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Panceta fresca',um:'KG'},
+  {animal:'Cerdo',nom:'Cabeza de cerdo',um:'UN'},
+  {animal:'Cerdo',nom:'Grasa de cerdo',um:'KG'},
+  {animal:'Cerdo',nom:'Cuero de cerdo',um:'KG'},
+  // POLLO
+  {animal:'Pollo',nom:'Pollo entero',um:'KG'},
+  {animal:'Pollo',nom:'Pechuga de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Muslo de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Ala de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Pata muslo',um:'KG'},
+  {animal:'Pollo',nom:'Milanesa de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Carne picada de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Menudencias de pollo',um:'KG'},
+  {animal:'Pollo',nom:'Hígado de pollo',um:'KG'},
+  // PESCADO
+  {animal:'Pescado',nom:'Merluza filet',um:'KG'},
+  {animal:'Pescado',nom:'Merluza entera',um:'KG'},
+  {animal:'Pescado',nom:'Salmón rosado',um:'KG'},
+  {animal:'Pescado',nom:'Atún fresco',um:'KG'},
+  {animal:'Pescado',nom:'Lenguado',um:'KG'},
+  {animal:'Pescado',nom:'Calamares',um:'KG'},
+  {animal:'Pescado',nom:'Mejillones',um:'KG'},
+  // VARIOS
+  {animal:'Varios',nom:'Huevos de gallina',um:'UN'},
+  {animal:'Varios',nom:'Huevos de codorniz',um:'UN'},
+  {animal:'Varios',nom:'Grasa de pella',um:'KG'},
+  {animal:'Varios',nom:'Huesos para caldo',um:'KG'},
+  {animal:'Varios',nom:'Chinchulín',um:'KG'},
+  {animal:'Varios',nom:'Morcilla',um:'UN'},
+  {animal:'Varios',nom:'Chorizo criollo',um:'UN'},
+  {animal:'Varios',nom:'Chorizo parrillero',um:'UN'},
+];
+
+var ANIMAL_ICONS = {Vaca:'🐄',Cerdo:'🐷',Pollo:'🐔',Pescado:'🐟',Varios:'🥚'};
+
+function abrirCarniceria(){
+  carnFilterActual='TODOS';
+  // First time: offer to load catalog
+  var carnLoaded = productos.filter(function(p){return p.subcat&&p.subcat==='carniceria';}).length;
+  renderCortesLista();
+  openModal('modal-carniceria');
+}
+
+function cargarCatalogoPrecargado(){
+  if(!confirm('Esto agrega '+CATALOGO_CARNICERIA.length+' cortes al inventario. ¿Continuás?')) return;
+  var ya = productos.filter(function(p){return p.subcat==='carniceria';}).map(function(p){return p.nom.toLowerCase();});
+  var agregados = 0;
+  CATALOGO_CARNICERIA.forEach(function(corte){
+    if(ya.indexOf(corte.nom.toLowerCase())===-1){
+      productos.push({
+        id:Date.now()+Math.random(), 
+        cod:'CARN'+String(Math.floor(Math.random()*9999)).padStart(4,'0'),
+        nom:corte.nom, cat:'Carnicería', subcat:'carniceria',
+        animal:corte.animal, stock:0, um:corte.um,
+        precio:0, pventa:0, min:0, max:0, prov:''
+      });
+      agregados++;
+    }
+  });
+  saveState(); renderCortesLista(); renderProds();
+  toast(agregados+' cortes cargados ✓');
+}
+
+function filtrarCarniceria(animal, btn){
+  carnFilterActual = animal;
+  document.querySelectorAll('#carn-filtro .fb').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  renderCortesLista();
+}
+
+function agregarCorte(){
+  var nom = get('carn-nom').trim();
+  if(!nom){toast('Ingresá el nombre del corte','err');return;}
+  var animalEl=el('carn-animal'), umEl=el('carn-um');
+  var animal = animalEl?animalEl.value:'Vaca';
+  var um = umEl?umEl.value:'KG';
+  var precio = parseFloat(get('carn-precio'))||0;
+  productos.push({
+    id:Date.now(), 
+    cod:'CARN'+String(Date.now()).slice(-4),
+    nom:nom, cat:'Carnicería', subcat:'carniceria',
+    animal:animal, stock:0, um:um,
+    precio:precio, pventa:0, min:0, max:0, prov:''
+  });
+  set('carn-nom','val',''); set('carn-precio','val','');
+  saveState(); renderCortesLista(); renderProds();
+  toast('✓ '+nom+' agregado');
+}
+
+function renderCortesLista(){
+  var lista = el('carn-lista');
+  if(!lista) return;
+  var todos = productos.filter(function(p){return p.cat==='Carnicería';});
+  var cortes = carnFilterActual==='TODOS'?todos:todos.filter(function(p){return p.animal===carnFilterActual;});
+  
+  if(!todos.length){
+    lista.innerHTML='<div class="empty">'
+      +'<div class="empty-ico">🥩</div>'
+      +'<div class="empty-t">Sin cortes cargados</div>'
+      +'<div class="empty-s">Cargá el catálogo completo de una vez o agregá los tuyos</div>'
+      +'<button class="btn btn-acc" onclick="cargarCatalogoPrecargado()" style="margin-top:14px;">📋 Cargar catálogo completo ('+CATALOGO_CARNICERIA.length+' cortes)</button>'
+      +'</div>';
+    return;
+  }
+
+  // Group by animal
+  var animales = [];
+  cortes.forEach(function(p){ if(animales.indexOf(p.animal||'Varios')===-1) animales.push(p.animal||'Varios'); });
+  
+  var html = '';
+  if(todos.length && carnFilterActual==='TODOS'){
+    html += '<div style="margin-bottom:12px;"><button class="btn btn-acc btn-sm btn-full" onclick="cargarCatalogoPrecargado()">📋 Agregar más del catálogo</button></div>';
+  }
+  
+  animales.forEach(function(animal){
+    var grupo = cortes.filter(function(p){return (p.animal||'Varios')===animal;});
+    html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px;border-top:1px solid var(--brd);">'+(ANIMAL_ICONS[animal]||'🥩')+' '+animal+'</div>';
+    html += grupo.map(function(p){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);">'
+        +'<div style="flex:1;">'
+        +'<div style="font-size:13px;">'+p.nom+'</div>'
+        +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Stock: '+p.stock+' '+p.um+(p.precio?' · $'+p.precio.toLocaleString('es-AR')+'/'+p.um:'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:6px;">'
+        +'<input type="number" placeholder="$/'+p.um+'" value="'+(p.pventa||'')+'" style="width:90px;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
+        +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+');renderCortesLista();">✕</button>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+  });
+  
+  lista.innerHTML = html;
+}
+
+function updPrecioCorne(prodId, val){
+  var p = productos.find(function(p){return p.id===prodId;});
+  if(p){ p.pventa=parseFloat(val)||0; saveState(); }
+}
+
+// === FLUJO FINANCIERO ===
+var finPeriod='mes';
+
+function setFinPeriod(p,btn){
+  finPeriod=p;
+  document.querySelectorAll('#pg-finanzas .ptabs .ptab').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  renderFinanzas();
+}
+
+function renderFinanzas(){
+  var now=new Date();
+  var label,movsF,factsF,gfMult=1;
+  if(finPeriod==='mes'){
+    label=now.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    movsF=movimientos.filter(function(m){var d=new Date(m.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){var d=new Date(f.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  } else if(finPeriod==='anterior'){
+    var ant=new Date(now.getFullYear(),now.getMonth()-1,1);
+    label=ant.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    movsF=movimientos.filter(function(m){var d=new Date(m.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+    factsF=facturas.filter(function(f){var d=new Date(f.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+  } else {
+    label='Ano '+now.getFullYear(); gfMult=12;
+    movsF=movimientos.filter(function(m){return new Date(m.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){return new Date(f.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+  }
+  var fpEl=el('fin-periodo-lbl');if(fpEl)fpEl.textContent=label;
+
+  // Cobros (ventas)
+  var cobros=movsF.filter(function(m){return m.tipo==='cobro';});
+  var totalVentas=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+
+  // Costo de mercaderia comprada
+  var ingresos=movsF.filter(function(m){return m.tipo==='ingreso';});
+  var totalCompras=ingresos.reduce(function(s,m){return s+(m.totalLinea||0);},0);
+  if(!totalCompras){
+    // fallback: facturas pagadas del periodo
+    totalCompras=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+  }
+
+  // Gastos fijos
+  var totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
+
+  // Facturas pendientes
+  var factPend=factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
+  var totalPend=factPend.reduce(function(s,f){return s+f.monto;},0);
+
+  // Ganancia real
+  var ganancia=totalVentas-totalCompras-totalGF;
+
+  // KPIs
+  var kEl=el('fin-kpis');
+  if(kEl)kEl.innerHTML='<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'
+    +'<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF)+'</div><div class="kd">total egresos</div></div>'
+    +'<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
+
+  // Resultado
+  var rEl=el('fin-resultado');
+  if(rEl)rEl.innerHTML='<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'
+    +'<div class="fin-row"><span>📦 Costo mercaderia comprada</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'
+    +'<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'
+    +(totalPend>0?'<div class="fin-row"><span>⏳ Facturas pendientes de pago</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(totalPend)+'</span></div>':'')
+    +'<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Perdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>';
+
+  // Simulador de margen
+  renderSimulador();
+
+  // Detalle
+  var dEl=el('fin-detalle');
+  if(dEl){
+    var items=[
+      {tipo:'cobro',ico:'💚',color:'var(--grn)',lbl:'Ventas',items:cobros},
+      {tipo:'ingreso',ico:'📦',color:'var(--blu)',lbl:'Compras de mercaderia',items:ingresos},
+    ];
+    var html='';
+    items.forEach(function(gr){
+      if(!gr.items.length) return;
+      html+='<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;padding:10px 0 6px;border-top:1px solid var(--brd);">'+gr.ico+' '+gr.lbl+'</div>';
+      html+=gr.items.slice(0,8).map(function(m){
+        var monto=m.tipo==='cobro'?(m.monto||0):(m.totalLinea||0);
+        return '<div class="fin-row"><span style="font-size:12px;">'+m.prodNom+(m.desc?' · '+m.desc:'')+'<br><span style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.cant?' · '+m.cant+' un':'')+'</span></span><span style="font-family:DM Mono,monospace;font-size:13px;color:'+gr.color+';">'+fmtM(monto)+'</span></div>';
+      }).join('');
+    });
+    dEl.innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin movimientos en este periodo</div></div>';
+  }
+}
+
+function renderSimulador(){
+  var sEl=el('fin-simulador');
+  if(!sEl) return;
+  
+  // Calculate current stock value and potential revenue at different margins
+  var prodsConPrecio=productos.filter(function(p){return p.stock>0&&p.precio>0;});
+  if(!prodsConPrecio.length){
+    sEl.innerHTML='<div style="font-size:12px;color:var(--mut2);text-align:center;padding:16px;">Carga productos con precio de costo para ver la simulacion</div>';
+    return;
+  }
+
+  var costoTotal=prodsConPrecio.reduce(function(s,p){return s+p.stock*p.precio;},0);
+  var ventaActual=prodsConPrecio.reduce(function(s,p){return s+p.stock*(p.pventa||p.precio);},0);
+  var margenActual=costoTotal>0?Math.round((ventaActual-costoTotal)/costoTotal*100):0;
+  var gfMes=gastosFijos.reduce(function(s,g){return s+g.monto;},0);
+
+  var margenes=[margenActual, margenActual+10, margenActual+20, margenActual+30];
+  var html='<div style="background:var(--sur2);border-radius:8px;padding:10px;margin-bottom:12px;">'
+    +'<div style="font-size:11px;color:var(--mut2);margin-bottom:4px;">Stock actual valuado a costo</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--acc2);">'+fmtM(costoTotal)+'</div>'
+    +'<div style="font-size:11px;color:var(--mut2);margin-top:4px;">Tu margen promedio actual: <b style="color:var(--txt);">'+margenActual+'%</b></div>'
+    +'</div>';
+
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  margenes.forEach(function(m,i){
+    var ventaSim=costoTotal*(1+m/100);
+    var ganSim=ventaSim-costoTotal-gfMes;
+    var esActual=i===0;
+    html+='<div style="background:'+(esActual?'var(--sur2)':'var(--acc-dim)')+';border:1px solid '+(esActual?'var(--brd2)':'var(--acc)')+';border-radius:8px;padding:10px;text-align:center;">'
+      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:4px;">'+(esActual?'ACTUAL':'+'+(m-margenActual)+'% MAS')+' · '+m+'% margen</div>'
+      +'<div style="font-size:11px;color:var(--mut2);">Ventas: '+fmtM(ventaSim)+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+(ganSim>=0?'var(--grn)':'var(--red)')+';">'+fmtM(Math.abs(ganSim))+'</div>'
+      +'<div style="font-size:10px;color:var(--mut2);">'+(ganSim>=0?'ganancia':'perdida')+'/mes</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  html+='<div style="margin-top:10px;font-size:11px;color:var(--mut2);text-align:center;">* Simulacion basada en vender todo el stock actual</div>';
+  sEl.innerHTML=html;
+}
+
+// === PRECIO ACTUALIZADO AL INGRESAR ===
+function mostrarResumenPrecios(cambios){
+  var modalEl=el('modal-precios');
+  if(!modalEl) return;
+  var html='';
+  cambios.forEach(function(ch){
+    var difPct=ch.costoAntes>0?Math.round((ch.costoNuevo-ch.costoAntes)/ch.costoAntes*100):0;
+    var subio=ch.costoNuevo>ch.costoAntes;
+    html+='<div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:10px;">'
+      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:8px;">'+ch.nom+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      +'<div style="background:var(--sur3);border-radius:6px;padding:8px;text-align:center;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:4px;">PRECIO ANTERIOR</div>'
+      +'<div style="font-size:10px;color:var(--mut2);">Costo: '+fmtM(ch.costoAntes)+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--mut2);">'+fmtM(ch.ventaAntes)+'</div>'
+      +'</div>'
+      +'<div style="background:'+(subio?'var(--red-dim)':'var(--grn-dim)')+';border:1px solid '+(subio?'var(--red)':'var(--grn)')+';border-radius:6px;padding:8px;text-align:center;">'
+      +'<div style="font-size:9px;font-family:DM Mono,monospace;margin-bottom:4px;color:'+(subio?'var(--red)':'var(--grn)')+';">NUEVO '+(subio?'↑ +'+difPct+'%':'↓ '+Math.abs(difPct)+'%')+'</div>'
+      +'<div style="font-size:10px;color:var(--mut2);">Costo: '+fmtM(ch.costoNuevo)+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+(subio?'var(--red)':'var(--grn)')+';">'+fmtM(ch.ventaNuevo)+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="margin-top:8px;font-size:11px;color:var(--mut2);text-align:center;">Margen mantenido: <b style="color:var(--acc2);">'+Math.round(ch.margen)+'%</b></div>'
+      +'</div>';
+  });
+  var listEl=el('precios-lista');
+  if(listEl) listEl.innerHTML=html;
+  modalEl.classList.add('on');
+}
+
+
+// ═══ PRECIOS Y MÁRGENES ═══
+var cambiosPrecioActuales = [];
+
+function mostrarResumenPrecios(cambios){
+  cambiosPrecioActuales = cambios;
+  var lista = el('precios-lista');
+  if(!lista) return;
+  lista.innerHTML = cambios.map(function(cc){
+    var diff = cc.nuevo - cc.anterior;
+    var pct = cc.anterior>0?Math.round(diff/cc.anterior*100):0;
+    return '<div style="padding:10px;background:var(--sur2);border-radius:8px;margin-bottom:8px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+      +'<span style="font-size:13px;font-weight:500;">'+cc.nom+'</span>'
+      +'<span class="bdg '+(diff>0?'br':'bg')+'">'+(diff>0?'+':'')+pct+'% costo</span>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">'
+      +'<div style="background:var(--sur);border-radius:6px;padding:8px;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:3px;">COSTO</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:13px;">'+fmtM(cc.costo)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--sur);border-radius:6px;padding:8px;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:3px;">ANTES</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--mut2);">'+fmtM(cc.anterior)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--grn-dim);border:1px solid var(--grn);border-radius:6px;padding:8px;">'
+      +'<div style="font-size:9px;color:var(--grn);font-family:DM Mono,monospace;margin-bottom:3px;">NUEVO</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--grn);">'+fmtM(cc.nuevo)+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--mut2);margin-top:6px;font-family:DM Mono,monospace;">Margen mantenido: '+cc.margen+'%</div>'
+      +'</div>';
+  }).join('');
+  // Init simulator
+  var margenProm = Math.round(cambios.reduce(function(s,cc){return s+cc.margen;},0)/cambios.length);
+  var simEl = el('sim-margen');
+  if(simEl) simEl.value = margenProm;
+  simularMargen();
+  openModal('modal-precios');
+}
+
+var margenSimuladoAplicar = 0;
+
+function simularMargen(){
+  var margen = parseFloat((el('sim-margen')||{}).value)||0;
+  margenSimuladoAplicar = margen;
+  var res = el('sim-resultado');
+  if(!res||!margen) return;
+  var html = '<div style="border-top:1px solid var(--brd);padding-top:10px;">';
+  var totalGananciaActual=0, totalGananciaNueva=0;
+  cambiosPrecioActuales.forEach(function(cc){
+    var pvNuevo = Math.ceil(cc.costo*(1+margen/100));
+    var ganActual = cc.nuevo - cc.costo;
+    var ganNuevo = pvNuevo - cc.costo;
+    var prod = productos.find(function(p){return p.nom===cc.nom;});
+    var stock = prod?prod.stock:0;
+    totalGananciaActual += ganActual*stock;
+    totalGananciaNueva += ganNuevo*stock;
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd);">'
+      +'<div><div style="font-size:12px;">'+cc.nom+'</div>'
+      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtM(cc.nuevo)+' → '+fmtM(pvNuevo)+' · Stock: '+stock+'</div></div>'
+      +'<div style="text-align:right;">'
+      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--grn);">'+fmtM(pvNuevo)+'</div>'
+      +'<div style="font-size:10px;color:var(--grn);">+'+fmtM(ganNuevo)+'/un</div>'
+      +'</div></div>';
+  });
+  var diff = totalGananciaNueva - totalGananciaActual;
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">'
+    +'<div style="background:var(--sur);border-radius:8px;padding:10px;text-align:center;">'
+    +'<div style="font-size:10px;color:var(--mut2);margin-bottom:4px;">GANANCIA ACTUAL (stock)</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--yel);">'+fmtM(totalGananciaActual)+'</div>'
+    +'</div>'
+    +'<div style="background:var(--grn-dim);border:1px solid var(--grn);border-radius:8px;padding:10px;text-align:center;">'
+    +'<div style="font-size:10px;color:var(--grn);margin-bottom:4px;">CON '+margen+'% MARGEN</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--grn);">'+fmtM(totalGananciaNueva)+'</div>'
+    +'</div>'
+    +'</div>';
+  if(diff>0){
+    html += '<div style="background:var(--acc-dim);border:1px solid var(--acc);border-radius:8px;padding:10px;text-align:center;margin-top:8px;">'
+      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">🚀 Ganarías '+fmtM(diff)+' más sobre tu stock actual</div>'
+      +'</div>';
+  }
+  html += '</div>';
+  res.innerHTML = html;
+}
+
+function aplicarMargenSimulado(){
+  if(!margenSimuladoAplicar) return;
+  cambiosPrecioActuales.forEach(function(cc){
+    var prod = productos.find(function(p){return p.nom===cc.nom;});
+    if(prod){ prod.pventa = Math.ceil(prod.precio*(1+margenSimuladoAplicar/100)); }
+  });
+  saveState(); renderDash(); closeModal('modal-precios');
+  toast('Margen del '+margenSimuladoAplicar+'% aplicado a '+cambiosPrecioActuales.length+' productos');
+}
+
+// ═══ RESUMEN FINANCIERO COMPLETO ═══
+function calcFinanciero(period){
+  var now = new Date();
+  var movsF, factsF, gfMult=1;
+  if(period==='mes'){
+    movsF=movimientos.filter(function(m){var d=new Date(m.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){var d=new Date(f.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  } else if(period==='anterior'){
+    var ant=new Date(now.getFullYear(),now.getMonth()-1,1);
+    movsF=movimientos.filter(function(m){var d=new Date(m.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+    factsF=facturas.filter(function(f){var d=new Date(f.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+  } else {
+    gfMult=12;
+    movsF=movimientos.filter(function(m){return new Date(m.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+    factsF=facturas.filter(function(f){return new Date(f.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+  }
+  
+  // Ventas (cobros)
+  var cobros=movsF.filter(function(m){return m.tipo==='cobro';});
+  var totalVentas=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+  
+  // Costo de mercaderia vendida (egresos con precio)
+  var egresos=movsF.filter(function(m){return m.tipo==='egreso';});
+  var costoMerc=egresos.reduce(function(s,m){
+    var prod=productos.find(function(p){return p.id===m.prodId;});
+    return s+(prod?prod.precio*m.cant:0);
+  },0);
+  
+  // Facturas pagadas
+  var factsPag=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+  
+  // Gastos fijos
+  var totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
+  
+  // Valor del stock actual
+  var valorStock=productos.reduce(function(s,p){return s+(p.stock||0)*(p.precio||0);},0);
+  var gananciaStock=productos.reduce(function(s,p){return s+(p.stock||0)*((p.pventa||0)-(p.precio||0));},0);
+  
+  // Margen promedio
+  var prodsConPrecio=productos.filter(function(p){return p.precio>0&&p.pventa>0;});
+  var margenProm=prodsConPrecio.length?Math.round(prodsConPrecio.reduce(function(s,p){return s+(p.pventa-p.precio)/p.precio*100;},0)/prodsConPrecio.length):0;
+  
+  return {
+    totalVentas:totalVentas, costoMerc:costoMerc,
+    gananciaVentas:totalVentas-costoMerc,
+    factsPag:factsPag, totalGF:totalGF,
+    totalEgresos:factsPag+totalGF,
+    gananciaReal:totalVentas-costoMerc-totalGF,
+    valorStock:valorStock, gananciaStock:gananciaStock,
+    margenProm:margenProm, cobros:cobros.length
+  };
+}
+
+// ═══ IA — LEER FACTURA CON FOTO ═══
+function leerFacturaIA(input){
+  var file = input.files[0];
+  if(!file) return;
+  set('ia-loading','display','block');
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var base64 = ev.target.result.split(',')[1];
+    var mediaType = file.type||'image/jpeg';
+    var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
+    var apiKey = config.apikey||'';
+    if(!apiKey||!apiKey.startsWith('sk-ant-')){
+      set('ia-loading','display','none');
+      toast('Necesitás configurar tu API Key en ⚙️ Configuración','err');
+      closeModal('modal-ingreso');
+      openModal('modal-config');
+      return;
+    }
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:prompt}
+          ]
+        }]
+      })
+    })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      set('ia-loading','display','none');
+      try{
+        var texto=data.content[0].text;
+        texto=texto.replace(/```json/g,'').replace(/```/g,'').trim();
+        var factura=JSON.parse(texto);
+        cargarDatosFacturaIA(factura);
+      }catch(e){
+        toast('No pude leer la factura. Completa los datos a mano.','err');
+      }
+    })
+    .catch(function(){
+      set('ia-loading','display','none');
+      toast('Error al procesar la imagen. Intentalo de nuevo.','err');
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function cargarDatosFacturaIA(f){
+  if(f.proveedor) set('ing-prov','val',f.proveedor);
+  if(f.numero) set('ing-num','val',f.numero);
+  if(f.fecha) set('ing-fecha','val',f.fecha);
+  if(f.productos&&f.productos.length>0){
+    lineasIngreso=[];
+    f.productos.forEach(function(p){
+      if(!p.nombre) return;
+      var prod=productos.find(function(pr){
+        return pr.nom.toLowerCase().indexOf(p.nombre.toLowerCase())!==-1||
+               p.nombre.toLowerCase().indexOf(pr.nom.toLowerCase())!==-1;
+      });
+      lineasIngreso.push({
+        id:Date.now()+Math.random(),
+        prodId:prod?prod.id:'',
+        prodNom:prod?prod.nom:p.nombre,
+        cant:parseFloat(p.cantidad)||1,
+        precio:parseFloat(p.precio_unitario)||0,
+        margen:0
+      });
+    });
+    renderLineas();
+  }
+  var msg='IA detecto: '+(f.proveedor||'')+(f.productos?' · '+f.productos.length+' productos':'')+(f.total?' · Total: '+fmtM(f.total):'');
+  toast(msg);
+}
+
+function verificarYFoto(){
+  if(!config.apikey||!config.apikey.startsWith('sk-ant-')){
+    toast('Primero configurá tu API Key en ⚙️ arriba a la derecha','err');
+    closeModal('modal-ingreso');
+    setTimeout(function(){ openModal('modal-config'); },300);
+    return;
+  }
+  var fi=el('factura-foto');
+  if(fi) fi.click();
+}
+
+// ═══ PWA INSTALL ═══
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  var btn = el('btn-instalar');
+  if(btn) btn.style.display='block';
+});
+function instalarApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(result){
+    if(result.outcome==='accepted') toast('App instalada exitosamente');
+    deferredPrompt=null;
+    var btn=el('btn-instalar');if(btn)btn.style.display='none';
+  });
+}
+window.addEventListener('appinstalled', function(){
+  toast('GestoPro instalado como app');
+  var btn=el('btn-instalar');if(btn)btn.style.display='none';
+});
+// ═══ SUPABASE CONFIG ═══
+const SUPA_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
+const SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
+var supabaseClient = null;
+var currentUser = null;
+var currentNegocioId = null;
+
+function initSupabase(){
+  try{
+    if(typeof supabase !== 'undefined'){
+      supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+    }
+  }catch(e){ console.log('Supabase init error:', e); }
+}
+
+// ═══ AUTH ═══
+function mostrarLogin(){
+  var lf=el('login-form'), rf=el('register-form');
+  if(lf)lf.style.display='block'; if(rf)rf.style.display='none';
+}
+function mostrarRegistro(){
+  var lf=el('login-form'), rf=el('register-form');
+  if(lf)lf.style.display='none'; if(rf)rf.style.display='block';
+}
+function cerrarSesion(){
+  if(!confirm('Cerrar sesion?')) return;
+  if(supabaseClient) supabaseClient.auth.signOut();
+  currentUser=null; currentNegocioId=null;
+  productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
+  var ls=el('login-screen'); if(ls)ls.style.display='flex';
+  toast('Sesion cerrada');
+}
+
+function loginUser(){
+  var email=(get('login-email')||'').trim();
+  var pass=get('login-pass')||'';
+  var errEl=el('login-error');
+  if(!email||!pass){ if(errEl){errEl.textContent='Completa email y contrasena';errEl.style.display='block';} return; }
+  if(!supabaseClient){ entrarSinNube(); return; }
+  supabaseClient.auth.signInWithPassword({email:email,password:pass}).then(function(result){
+    if(result.error){ if(errEl){errEl.textContent='Email o contrasena incorrectos';errEl.style.display='block';} return; }
+    currentUser=result.data.user;
+    cargarNegocio().then(function(){ ocultarLogin(); });
+  }).catch(function(){ entrarSinNube(); });
+}
+
+function registerUser(){
+  var nombre=(get('reg-nombre')||'').trim();
+  var email=(get('reg-email')||'').trim();
+  var pass=get('reg-pass')||'';
+  var errEl=el('reg-error');
+  if(!nombre||!email||!pass){ if(errEl){errEl.textContent='Completa todos los campos';errEl.style.display='block';} return; }
+  if(pass.length<6){ if(errEl){errEl.textContent='Contrasena minimo 6 caracteres';errEl.style.display='block';} return; }
+  if(!supabaseClient){ entrarSinNube(); return; }
+  supabaseClient.auth.signUp({email:email,password:pass}).then(function(result){
+    if(result.error){ if(errEl){errEl.textContent=result.error.message;errEl.style.display='block';} return; }
+    currentUser=result.data.user;
+    config.nombre=nombre;
+    crearNegocio(nombre,email).then(function(){ ocultarLogin(); toast('Bienvenido! Cuenta creada'); });
+  }).catch(function(){ entrarSinNube(); });
+}
+
+function entrarSinNube(){
+  var ls=el('login-screen'); if(ls)ls.style.display='none';
+  loadState(); initAppData();
+}
+
+function ocultarLogin(){
+  var ls=el('login-screen'); if(ls)ls.style.display='none';
+  // New accounts start empty - no demo data
+  initAppData();
+}
+
+function crearNegocio(nombre, email){
+  if(!supabaseClient||!currentUser) return Promise.resolve();
+  return supabaseClient.from('negocios').insert({
+    user_id:currentUser.id, nombre:nombre, email:email,
+    plan:'gratis', config:JSON.stringify(config)
+  }).select().single().then(function(result){
+    if(result.data) currentNegocioId=result.data.id;
+  }).catch(function(e){ console.log('Error creating negocio:',e); });
+}
+
+function cargarNegocio(){
+  if(!supabaseClient||!currentUser) return Promise.resolve();
+  return supabaseClient.from('negocios').select('*').eq('user_id',currentUser.id).single()
+    .then(function(result){
+      if(result.data){
+        currentNegocioId=result.data.id;
+        if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
+        planActual=result.data.plan||'gratis';
+      } else {
+        return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
+      }
+      return sincronizarDatos();
+    }).catch(function(e){ console.log('Error loading negocio:',e); });
+}
+
+function sincronizarDatos(){
+  if(!supabaseClient||!currentNegocioId) return Promise.resolve();
+  var promises = [
+    supabaseClient.from('productos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) productos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}). filter(Boolean); }),
+    supabaseClient.from('movimientos').select('*').eq('negocio_id',currentNegocioId).order('created_at',{ascending:false}).limit(200).then(function(r){ if(r.data&&r.data.length) movimientos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
+    supabaseClient.from('facturas').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) facturas=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
+    supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); })
+  ];
+  return Promise.all(promises).then(function(){ console.log('Datos sincronizados'); }).catch(function(e){ console.log('Sync error:',e); });
+}
+
+function guardarEnNube(tabla, id, data){
+  if(!supabaseClient||!currentNegocioId) return;
+  supabaseClient.from(tabla).upsert({id:String(id),negocio_id:currentNegocioId,data:JSON.stringify(data),updated_at:new Date().toISOString()}).then(function(){}).catch(function(e){console.log('Save error:',e);});
+}
+
+function eliminarDeNube(tabla, id){
+  if(!supabaseClient||!currentNegocioId) return;
+  supabaseClient.from(tabla).delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){}).catch(function(){});
+}
+
+function saveProducto(p){ saveState(); guardarEnNube('productos',p.id,p); }
+function saveMovimiento(m){ saveState(); guardarEnNube('movimientos',m.id,m); }
+function saveFactura(f){ saveState(); guardarEnNube('facturas',f.id,f); }
+function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
+
+// ═══ INIT DATA ═══
+function initAppData(){
+  var pl=PLANES[planActual]||PLANES.gratis;
+  set('plan-chip','text',pl.nombre);
+  set('plan-name-sb','text',pl.nombre);
+  set('plan-sub-sb','text',pl.sub);
+  set('alias-display','text',config.alias||'mi.negocio.mp');
+  set('cvu-display','text',config.cvu||'');
+  set('cfg-nombre','val',config.nombre||'');
+  set('cfg-alias','val',config.alias||'');
+  set('cfg-cvu','val',config.cvu||'');
+  if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
+  Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
+  var uz=el('upload-z');
+  if(uz){ uz.addEventListener('dragover',function(e){e.preventDefault();uz.style.borderColor='var(--acc)';}); uz.addEventListener('dragleave',function(){uz.style.borderColor='';}); uz.addEventListener('drop',function(e){e.preventDefault();uz.style.borderColor='';handleFile(e.dataTransfer.files[0]);}); }
+  var ep=el('eg-prod'); if(ep) ep.addEventListener('change',updEgresoInfo);
+  try{ if(window.BarcodeDetector){ BarcodeDetector.getSupportedFormats().then(function(f){ barcodeDetector=new BarcodeDetector({formats:f}); }).catch(function(){ barcodeDetector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code']}); }); } }catch(e){ barcodeDetector=null; }
+  renderDash();
+}
+
+// ═══ INIT ═══
+function initApp(){
+  window.onerror=function(msg,src,line){ console.log('Error linea '+line+': '+msg); return true; };
+  // Register service worker for PWA
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      console.log('SW registered');
+    }).catch(function(e){ console.log('SW error:',e); });
+  }
+  initSupabase();
+  if(supabaseClient){
+    supabaseClient.auth.getSession().then(function(result){
+      if(result.data&&result.data.session&&result.data.session.user){
+        currentUser=result.data.session.user;
+        cargarNegocio().then(function(){ ocultarLogin(); });
+      }
+    }).catch(function(){ loadState(); initAppData(); });
+  } else {
+    loadState(); initAppData();
+  }
+}
+
+// Run when DOM is ready
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+</script>
+</body>
+</html>
