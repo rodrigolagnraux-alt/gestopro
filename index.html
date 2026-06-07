@@ -723,8 +723,8 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Finanzas</div>
-    <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
-    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
+    <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'gratis')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
+    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'gratis')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goLocked('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goLocked('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
   </div>
@@ -769,12 +769,12 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="action-lbl">Egreso</div>
       <div class="action-sub">Salió mercadería</div>
     </div>
-    <div class="action-btn factura" onclick="goLocked('facturas',null,'basico');openModal('modal-fact')">
+    <div class="action-btn factura" onclick="goLocked('facturas',null,'gratis');openModal('modal-fact')">
       <div class="action-ico">🧾</div>
       <div class="action-lbl">Factura</div>
       <div class="action-sub">Cargar proveedor</div>
     </div>
-    <div class="action-btn gasto" onclick="goLocked('gastos',null,'basico');openModal('modal-gf')">
+    <div class="action-btn gasto" onclick="goLocked('gastos',null,'gratis');openModal('modal-gf')">
       <div class="action-ico">💡</div>
       <div class="action-lbl">Gasto fijo</div>
       <div class="action-sub">Luz, agua, gas...</div>
@@ -1127,7 +1127,7 @@ const PLANES={
   business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+const LOCKS={facturas:'gratis',gastos:'gratis',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
