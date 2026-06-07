@@ -1401,9 +1401,9 @@ function confirmarCobro(){
     }
   });
   var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
-  movimientos.unshift({id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods});
+  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods}; movimientos.unshift(_mc);
   lineasCobro=[];
-  closeModal('modal-cobrar'); saveState(); renderDash();
+  closeModal('modal-cobrar'); saveMovimiento(_mc); renderDash();
   toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
 }
 
@@ -1545,7 +1545,7 @@ function confirmarIngresoFactura(){
     } else if(l.margen>0){
       prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100));
     }
-    movimientos.unshift({id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:fecha,motivo:'Compra a '+prov,costo:l.precio});
+    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:fecha,motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
   if(cambiosPrecio.length>0){
@@ -1554,10 +1554,10 @@ function confirmarIngresoFactura(){
     },500);
   }
   if(total>0){
-    facturas.unshift({id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]});
+    const _fi={id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]}; facturas.unshift(_fi); saveFactura(_fi);
   }
   pagoFactura='pendiente';
-  closeModal('modal-ingreso'); saveState(); renderDash();
+  closeModal('modal-ingreso'); saveState(); renderDash(); // ingreso guardado
   if(cambiosPrecio.length>0){
     setTimeout(function(){mostrarResumenPrecios(cambiosPrecio);},400);
   } else {
@@ -1590,9 +1590,9 @@ function guardarEgreso(){
   if(cant>prod.stock){toast('Stock insuficiente. Disponible: '+prod.stock+' '+prod.um,'err');return;}
   prod.stock-=cant;
   const mot=el('eg-motivo'); const motivo=mot?mot.value:'Egreso';
-  movimientos.unshift({id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo});
+  const _me={id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo}; movimientos.unshift(_me);
   set('eg-cant','val','');
-  closeModal('modal-egreso'); saveState(); renderDash();
+  closeModal('modal-egreso'); saveMovimiento(_me); renderDash();
   toast('📤 Registrado: '+cant+' '+prod.um+' de '+prod.nom);
 }
 
@@ -1601,19 +1601,19 @@ function guardarFact(){
   const prov=get('f-prov').trim(); const monto=parseFloat(get('f-monto'));
   if(!prov||!monto){toast('Completá proveedor y monto','err');return;}
   const fest=el('f-estado'); const estado=fest?fest.value:'pendiente';
-  facturas.unshift({id:Date.now(),num:get('f-num').trim()||('FACT-'+Date.now()),prov:prov,fecha:get('f-fecha')||hoy(),venc:get('f-venc'),monto:monto,estado:estado,obs:get('f-obs').trim()});
+  const _f={id:Date.now(),num:get('f-num').trim()||('FACT-'+Date.now()),prov:prov,fecha:get('f-fecha')||hoy(),venc:get('f-venc'),monto:monto,estado:estado,obs:get('f-obs').trim()}; facturas.unshift(_f);
   ['f-num','f-prov','f-monto','f-venc','f-obs'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-fact'); saveState(); renderDash();
+  closeModal('modal-fact'); saveFactura(_f); renderDash();
   toast('🧾 Factura guardada ✓');
 }
 function marcarPagada(id){
   const f=facturas.find(function(f){return f.id===id;});
-  if(f){f.estado='pagada';saveState();renderFacts();renderDash();toast('✅ Factura pagada ✓');}
+  if(f){f.estado='pagada';saveFactura(f);renderFacts();renderDash();toast('✅ Factura pagada ✓');}
 }
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
-  facturas=facturas.filter(function(f){return f.id!==id;});
-  saveState();renderFacts();renderDash();toast('Eliminada');
+  const _df=facturas.find(function(f){return f.id===id;}); facturas=facturas.filter(function(f){return f.id!==id;});
+  if(_df){saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('facturas').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});} renderFacts();renderDash();toast('Eliminada');
 }
 function fFact(f,btn){
   factFilter=f;
@@ -1629,17 +1629,17 @@ function guardarGF(){
   const ico=el('gf-ico'); const cat=el('gf-cat'); const rep=el('gf-rep'); const gest=el('gf-estado');
   gastosFijos.push({id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'});
   ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-gf'); saveState(); renderDash(); renderGastos();
+  closeModal('modal-gf'); saveGastoFijo(_gf); renderDash(); renderGastos();
   toast('💡 Gasto fijo guardado ✓');
 }
 function toggleGFPago(id){
   const gf=gastosFijos.find(function(gf){return gf.id===id;});
-  if(gf){gf.estado=gf.estado==='pagado'?'pendiente':'pagado';saveState();renderGastos();renderDash();toast(gf.estado==='pagado'?'✅ Pagado':'↩ Marcado pendiente');}
+  if(gf){gf.estado=gf.estado==='pagado'?'pendiente':'pagado';saveGastoFijo(gf);renderGastos();renderDash();toast(gf.estado==='pagado'?'✅ Pagado':'↩ Marcado pendiente');}
 }
 function eliminarGF(id){
   if(!confirm('¿Eliminar?'))return;
   gastosFijos=gastosFijos.filter(function(gf){return gf.id!==id;});
-  saveState();renderGastos();renderDash();toast('Eliminado');
+  saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('gastos_fijos').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){}); renderGastos();renderDash();toast('Eliminado');
 }
 
 // ═══ PRODUCTO ═══
