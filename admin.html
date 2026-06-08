@@ -3,287 +3,842 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GestoPro — Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<title>GestoPro Admin</title>
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --border: #1e1e2e;
-    --accent: #6ee7b7;
-    --accent2: #818cf8;
-    --danger: #f87171;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --card: #0f0f18;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; }
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 
-  #login-screen {
+  :root {
+    --verde: #1D9E75;
+    --verde-claro: #E1F5EE;
+    --verde-oscuro: #0F6E56;
+    --amarillo-claro: #FFF8E1;
+    --amarillo: #F9A825;
+    --rojo-claro: #FFEBEE;
+    --rojo: #E53935;
+    --azul-claro: #E3F2FD;
+    --azul: #1976D2;
+    --gris-fondo: #F4F3EF;
+    --gris-borde: #D3D1C7;
+    --gris-suave: #888780;
+    --texto: #2C2C2A;
+    --texto-suave: #5F5E5A;
+    --blanco: #ffffff;
+    --sidebar: #1C1B19;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--gris-fondo);
+    color: var(--texto);
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(ellipse at 60% 40%, #0d2a1f 0%, var(--bg) 60%);
   }
-  .login-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 48px 40px;
-    width: 380px;
-    position: relative;
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px;
+    background: var(--sidebar);
+    min-height: 100vh;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .logo-admin {
+    font-family: 'Sora', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    padding: 0.5rem 0.5rem 1.5rem;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-admin span { color: var(--verde); }
+  .logo-admin small {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: #888780;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #888780;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
+  .nav-item.activo { background: var(--verde); color: white; }
+
+  .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+  .sidebar-sep {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 0.75rem 0.5rem;
+  }
+
+  /* MAIN */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
-  .login-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-  }
-  .login-logo { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--accent); letter-spacing: -1px; margin-bottom: 6px; }
-  .login-sub { color: var(--muted); font-size: 12px; margin-bottom: 36px; letter-spacing: 2px; text-transform: uppercase; }
-  .login-box label { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-  .login-box input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px 16px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px;
-    outline: none; transition: border-color .2s; margin-bottom: 24px;
-  }
-  .login-box input:focus { border-color: var(--accent); }
-  .btn-login {
-    width: 100%; background: var(--accent); color: #0a0a0f; border: none; border-radius: 8px;
-    padding: 13px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
-    letter-spacing: 1px; cursor: pointer; transition: opacity .2s, transform .1s;
-  }
-  .btn-login:hover { opacity: .9; transform: translateY(-1px); }
-  .login-error { color: var(--danger); font-size: 12px; margin-top: 12px; text-align: center; display: none; }
 
-  #dashboard { display: none; }
-  header {
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 0 32px; height: 60px; display: flex; align-items: center;
-    justify-content: space-between; position: sticky; top: 0; z-index: 10;
+  .topbar {
+    background: var(--blanco);
+    border-bottom: 1px solid var(--gris-borde);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
-  .header-logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--accent); }
-  .header-badge { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-left: 10px; }
-  .btn-logout {
-    background: transparent; border: 1px solid var(--border); color: var(--muted);
-    border-radius: 6px; padding: 6px 14px; font-family: 'DM Mono', monospace;
-    font-size: 11px; cursor: pointer; letter-spacing: 1px; transition: all .2s;
+
+  .topbar h1 {
+    font-family: 'Sora', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
   }
-  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
 
-  main { padding: 40px 32px; max-width: 1200px; margin: 0 auto; }
-  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
-  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-  .stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-  .stat-value { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
 
-  .section-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-  .section-title span { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 400; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
-
-  .search-bar {
-    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 16px; color: var(--text); font-family: 'DM Mono', monospace;
-    font-size: 13px; outline: none; width: 280px; margin-bottom: 20px; transition: border-color .2s;
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--gris-borde);
+    background: transparent;
+    color: var(--texto);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
-  .search-bar:focus { border-color: var(--accent2); }
-  .search-bar::placeholder { color: var(--muted); }
 
-  .refresh-btn {
-    background: transparent; border: 1px solid var(--border); color: var(--accent);
-    border-radius: 6px; padding: 8px 16px; font-family: 'DM Mono', monospace;
-    font-size: 11px; cursor: pointer; letter-spacing: 1px; transition: all .2s;
-    margin-bottom: 20px; margin-left: 12px;
+  .btn:hover { background: var(--gris-fondo); }
+
+  .btn.primario {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: white;
   }
-  .refresh-btn:hover { background: rgba(110,231,183,.05); }
 
-  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; }
-  thead { background: var(--surface); border-bottom: 1px solid var(--border); }
-  th { padding: 14px 20px; text-align: left; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 500; }
-  td { padding: 16px 20px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(110,231,183,.03); }
+  .btn.primario:hover { background: var(--verde-oscuro); }
+  .btn svg { width: 15px; height: 15px; }
 
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 500; }
-  .badge-gratis { background: rgba(129,140,248,.1); color: var(--accent2); }
-  .badge-pro { background: rgba(110,231,183,.1); color: var(--accent); }
-
-  .avatar {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: var(--bg);
-    margin-right: 10px; vertical-align: middle; flex-shrink: 0;
+  /* CONTENT */
+  .content {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    flex: 1;
   }
-  .name-cell { display: flex; align-items: center; }
-  .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 13px; letter-spacing: 1px; }
-  .empty { text-align: center; padding: 60px; color: var(--muted); }
-  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 8px; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+  /* STATS */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--blanco);
+    border: 1px solid var(--gris-borde);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .stat-num {
+    font-family: 'Sora', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--texto);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: 4px;
+  }
+
+  .stat-card.alerta { border-left: 3px solid var(--amarillo); }
+  .stat-card.danger { border-left: 3px solid var(--rojo); }
+  .stat-card.ok { border-left: 3px solid var(--verde); }
+
+  /* TABLA */
+  .tabla-wrap {
+    background: var(--blanco);
+    border: 1px solid var(--gris-borde);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .tabla-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--gris-borde);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .tabla-header h2 {
+    font-family: 'Sora', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .buscar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gris-fondo);
+    border: 1px solid var(--gris-borde);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13.5px;
+  }
+
+  .buscar input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    color: var(--texto);
+    width: 180px;
+  }
+
+  .buscar svg { width: 15px; height: 15px; color: var(--gris-suave); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 10px 1.25rem;
+    font-size: 11.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--texto-suave);
+    border-bottom: 1px solid var(--gris-borde);
+    background: #FAFAF8;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--gris-borde);
+    transition: background 0.1s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--gris-fondo); }
+
+  td { padding: 11px 1.25rem; vertical-align: middle; }
+
+  .negocio-nombre {
+    font-weight: 500;
+    color: var(--texto);
+    display: block;
+  }
+
+  .negocio-email {
+    font-size: 12px;
+    color: var(--gris-suave);
+    display: block;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .badge-trial { background: var(--amarillo-claro); color: #7B5800; }
+  .badge-vencido { background: var(--rojo-claro); color: var(--rojo); }
+  .badge-basico { background: var(--azul-claro); color: var(--azul); }
+  .badge-pro { background: var(--verde-claro); color: var(--verde-oscuro); }
+  .badge-premium { background: #F3E5F5; color: #6A1B9A; }
+
+  .dias-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .dias-ok { color: var(--verde-oscuro); background: var(--verde-claro); }
+  .dias-alerta { color: #7B5800; background: var(--amarillo-claro); }
+  .dias-vencido { color: var(--rojo); background: var(--rojo-claro); }
+
+  .acciones {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .btn-accion {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid var(--gris-borde);
+    background: transparent;
+    color: var(--texto);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn-accion:hover { background: var(--gris-fondo); }
+  .btn-accion.verde { border-color: var(--verde); color: var(--verde-oscuro); }
+  .btn-accion.verde:hover { background: var(--verde-claro); }
+  .btn-accion.rojo { border-color: #FFCDD2; color: var(--rojo); }
+  .btn-accion.rojo:hover { background: var(--rojo-claro); }
+  .btn-accion svg { width: 13px; height: 13px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .modal-overlay.activo { display: flex; }
+
+  .modal {
+    background: var(--blanco);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 420px;
+    animation: aparecer 0.2s ease;
+  }
+
+  @keyframes aparecer {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .modal h3 {
+    font-family: 'Sora', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .modal-field {
+    margin-bottom: 1rem;
+  }
+
+  .modal-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .modal-field select, .modal-field input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--gris-borde);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--texto);
+    background: var(--blanco);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .modal-field select:focus,
+  .modal-field input:focus {
+    border-color: var(--verde);
+  }
+
+  .modal-negocio-info {
+    background: var(--gris-fondo);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 1rem;
+    font-size: 13px;
+  }
+
+  .modal-negocio-info strong { display: block; font-weight: 500; margin-bottom: 3px; }
+  .modal-negocio-info span { color: var(--gris-suave); }
+
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--sidebar);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 200;
+  }
+
+  .toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast svg { width: 16px; height: 16px; color: var(--verde); }
+
+  .filtros {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filtro-btn {
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 12.5px;
+    cursor: pointer;
+    border: 1px solid var(--gris-borde);
+    background: transparent;
+    color: var(--texto-suave);
+    transition: all 0.12s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .filtro-btn:hover, .filtro-btn.activo { background: var(--texto); color: white; border-color: var(--texto); }
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">GestoPro</div>
-    <div class="login-sub">Panel de Administración</div>
-    <label>Contraseña</label>
-    <input type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-    <button class="btn-login" onclick="login()">INGRESAR</button>
-    <div class="login-error" id="login-error">Contraseña incorrecta</div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo-admin">Gesto<span>Pro</span><small>Admin Panel</small></div>
+  
+  <a class="nav-item activo" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Panel principal
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Usuarios
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Facturación
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Actividad
+  </a>
+
+  <div class="sidebar-sep"></div>
+
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    Configuración
+  </a>
+  <a class="nav-item" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Salir al app
+  </a>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <h1>Panel de administración</h1>
+    <div class="topbar-actions">
+      <button class="btn" onclick="mostrarModalNuevo()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo negocio
+      </button>
+    </div>
   </div>
-</div>
 
-<div id="dashboard">
-  <header>
-    <div>
-      <span class="header-logo">GestoPro</span>
-      <span class="header-badge">// admin</span>
-    </div>
-    <button class="btn-logout" onclick="logout()">SALIR</button>
-  </header>
-  <main>
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">Total clientes</div>
-        <div class="stat-value" id="stat-total">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Este mes</div>
-        <div class="stat-value" id="stat-mes">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Último registro</div>
-        <div class="stat-value" style="font-size:18px;padding-top:6px" id="stat-ultimo">—</div>
-      </div>
-    </div>
+  <div class="content">
 
-    <div class="section-title">Clientes registrados <span>negocios</span></div>
-    <div style="display:flex;align-items:center">
-      <input class="search-bar" type="text" id="search" placeholder="Buscar por nombre o email..." oninput="filterTable()">
-      <button class="refresh-btn" onclick="loadClients()">↻ ACTUALIZAR</button>
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat-card ok">
+        <div class="stat-label">Total negocios</div>
+        <div class="stat-num" id="stat-total">—</div>
+        <div class="stat-sub">registrados</div>
+      </div>
+      <div class="stat-card ok">
+        <div class="stat-label">Activos (pago)</div>
+        <div class="stat-num" id="stat-activos">—</div>
+        <div class="stat-sub">con plan activo</div>
+      </div>
+      <div class="stat-card alerta">
+        <div class="stat-label">En trial</div>
+        <div class="stat-num" id="stat-trial">—</div>
+        <div class="stat-sub">período de prueba</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Trial vencido</div>
+        <div class="stat-num" id="stat-vencido">—</div>
+        <div class="stat-sub">sin plan activo</div>
+      </div>
     </div>
 
-    <div class="table-wrap">
+    <!-- TABLA -->
+    <div class="tabla-wrap">
+      <div class="tabla-header">
+        <div>
+          <h2>Negocios registrados</h2>
+          <div class="filtros" style="margin-top:8px;">
+            <button class="filtro-btn activo" onclick="filtrar('todos', this)">Todos</button>
+            <button class="filtro-btn" onclick="filtrar('trial', this)">Trial activo</button>
+            <button class="filtro-btn" onclick="filtrar('vencido', this)">Trial vencido</button>
+            <button class="filtro-btn" onclick="filtrar('pago', this)">Con plan</button>
+          </div>
+        </div>
+        <div class="buscar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Buscar negocio..." oninput="buscar(this.value)" />
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
             <th>Negocio</th>
-            <th>Email</th>
             <th>Plan</th>
-            <th>Alias</th>
+            <th>Días trial</th>
             <th>Registro</th>
+            <th>Acciones</th>
           </tr>
         </thead>
-        <tbody id="table-body">
-          <tr><td colspan="5" class="loading"><span class="dot"></span>Cargando clientes...</td></tr>
+        <tbody id="tabla-body">
+          <!-- Filas dinámicas -->
         </tbody>
       </table>
     </div>
-  </main>
+
+  </div>
+</div>
+
+<!-- MODAL ACTIVAR PLAN -->
+<div class="modal-overlay" id="modal-plan">
+  <div class="modal">
+    <h3>Activar plan</h3>
+    <div class="modal-negocio-info" id="modal-info"></div>
+    <div class="modal-field">
+      <label>Plan a activar</label>
+      <select id="select-plan">
+        <option value="basico">Básico — $60.000/mes</option>
+        <option value="pro">Pro — $75.000/mes</option>
+        <option value="premium">Premium — $120.000/mes</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Vencimiento del plan</label>
+      <input type="date" id="fecha-venc" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn primario" onclick="activarPlan()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Activar plan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO NEGOCIO -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal">
+    <h3>Registrar negocio manualmente</h3>
+    <div class="modal-field">
+      <label>Nombre del negocio</label>
+      <input type="text" id="nuevo-nombre" placeholder="Ej: Almacén Don Pepe" />
+    </div>
+    <div class="modal-field">
+      <label>Email del dueño</label>
+      <input type="email" id="nuevo-email" placeholder="correo@ejemplo.com" />
+    </div>
+    <div class="modal-field">
+      <label>Plan inicial</label>
+      <select id="nuevo-plan">
+        <option value="trial">Gratis (35 días trial)</option>
+        <option value="basico">Básico — $60.000/mes</option>
+        <option value="pro">Pro — $75.000/mes</option>
+        <option value="premium">Premium — $120.000/mes</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="cerrarModalNuevo()">Cancelar</button>
+      <button class="btn primario" onclick="agregarNegocio()">Agregar negocio</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg">Operación exitosa</span>
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
-  const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWV3am52eGx2eXduaWh4a2d2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDY3MjQzNSwiZXhwIjoyMDk2MjQ4NDM1fQ.guo2lB9up3LZIHadQIzRzgdwFWtafO0NvM7AHYjN9_A';
-  const ADMIN_PASSWORD = 'rovi2025';
+// Datos demo (en producción vienen de Supabase)
+var negocios = [
+  { id: 1, nombre: 'La 17 - Almacén', email: 'rodrigogestopro@gmail.com', plan: 'trial', registro: '2026-05-04', venc_plan: null },
+  { id: 2, nombre: 'Carnicería El Gaucho', email: 'elgaucho@gmail.com', plan: 'pro', registro: '2026-04-10', venc_plan: '2026-07-10' },
+  { id: 3, nombre: 'Despensa Familiar', email: 'despensaf@gmail.com', plan: 'trial', registro: '2026-05-20', venc_plan: null },
+  { id: 4, nombre: 'Kiosco Sol', email: 'kiosco.sol@hotmail.com', plan: 'vencido', registro: '2026-04-01', venc_plan: null },
+  { id: 5, nombre: 'Fiambrería Barrio Norte', email: 'fiamb.norte@gmail.com', plan: 'basico', registro: '2026-03-15', venc_plan: '2026-07-01' },
+  { id: 6, nombre: 'Verdulería Rivas', email: 'rivas.verduleria@gmail.com', plan: 'trial', registro: '2026-06-01', venc_plan: null },
+  { id: 7, nombre: 'Distribuidora Colon', email: 'distrib.colon@gmail.com', plan: 'premium', registro: '2026-02-20', venc_plan: '2026-08-20' },
+  { id: 8, nombre: 'Almacén Los Pinos', email: 'lospinos@yahoo.com.ar', plan: 'vencido', registro: '2026-03-25', venc_plan: null },
+];
 
-  let allClients = [];
+var filtroActual = 'todos';
+var busquedaActual = '';
+var negocioSeleccionado = null;
 
-  function login() {
-    const pwd = document.getElementById('pwd-input').value;
-    if (pwd === ADMIN_PASSWORD) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      loadClients();
+function diasTrial(fechaReg) {
+  var reg = new Date(fechaReg);
+  var hoy = new Date('2026-06-08');
+  var dias = Math.floor((hoy - reg) / (1000 * 60 * 60 * 24));
+  return 35 - dias;
+}
+
+function renderBadgePlan(plan) {
+  var badges = {
+    trial: '<span class="badge badge-trial">⏳ Trial</span>',
+    vencido: '<span class="badge badge-vencido">✗ Vencido</span>',
+    basico: '<span class="badge badge-basico">Básico</span>',
+    pro: '<span class="badge badge-pro">Pro</span>',
+    premium: '<span class="badge badge-premium">Premium</span>',
+  };
+  return badges[plan] || plan;
+}
+
+function renderDias(n) {
+  if (n.plan !== 'trial') return '<span style="color:var(--gris-suave);font-size:12px;">—</span>';
+  var d = diasTrial(n.registro);
+  if (d > 10) return '<span class="dias-badge dias-ok">' + d + ' días</span>';
+  if (d > 0) return '<span class="dias-badge dias-alerta">' + d + ' días</span>';
+  return '<span class="dias-badge dias-vencido">Vencido</span>';
+}
+
+function renderTabla() {
+  var lista = negocios.filter(function(n) {
+    var matchFiltro = filtroActual === 'todos' ||
+      (filtroActual === 'trial' && n.plan === 'trial') ||
+      (filtroActual === 'vencido' && n.plan === 'vencido') ||
+      (filtroActual === 'pago' && ['basico','pro','premium'].includes(n.plan));
+
+    var matchBusqueda = n.nombre.toLowerCase().includes(busquedaActual.toLowerCase()) ||
+      n.email.toLowerCase().includes(busquedaActual.toLowerCase());
+
+    return matchFiltro && matchBusqueda;
+  });
+
+  var html = '';
+  lista.forEach(function(n) {
+    var d = new Date(n.registro);
+    var fechaStr = d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
+
+    html += '<tr>';
+    html += '<td><span class="negocio-nombre">' + n.nombre + '</span><span class="negocio-email">' + n.email + '</span></td>';
+    html += '<td>' + renderBadgePlan(n.plan) + '</td>';
+    html += '<td>' + renderDias(n) + '</td>';
+    html += '<td style="font-size:12.5px;color:var(--texto-suave);">' + fechaStr + '</td>';
+    html += '<td><div class="acciones">';
+    
+    if (n.plan === 'trial' || n.plan === 'vencido') {
+      html += '<button class="btn-accion verde" onclick="mostrarModalPlan(' + n.id + ')">';
+      html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Activar plan</button>';
     } else {
-      document.getElementById('login-error').style.display = 'block';
+      html += '<button class="btn-accion" onclick="mostrarModalPlan(' + n.id + ')">';
+      html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Cambiar plan</button>';
     }
+
+    var waMsg = encodeURIComponent('Hola! Te contacto por GestoPro - ' + n.nombre);
+    html += '<a href="https://wa.me/?text=' + waMsg + '" class="btn-accion" style="text-decoration:none;" target="_blank">';
+    html += '<svg viewBox="0 0 24 24" fill="currentColor" style="color:#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></a>';
+
+    html += '</div></td>';
+    html += '</tr>';
+  });
+
+  if (!html) {
+    html = '<tr><td colspan="5" style="text-align:center;color:var(--gris-suave);padding:2rem;">No se encontraron resultados</td></tr>';
   }
 
-  function logout() {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('pwd-input').value = '';
+  document.getElementById('tabla-body').innerHTML = html;
+  actualizarStats();
+}
+
+function actualizarStats() {
+  var total = negocios.length;
+  var activos = negocios.filter(function(n) { return ['basico','pro','premium'].includes(n.plan); }).length;
+  var trial = negocios.filter(function(n) { return n.plan === 'trial'; }).length;
+  var vencido = negocios.filter(function(n) { return n.plan === 'vencido'; }).length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-activos').textContent = activos;
+  document.getElementById('stat-trial').textContent = trial;
+  document.getElementById('stat-vencido').textContent = vencido;
+}
+
+function filtrar(tipo, btn) {
+  filtroActual = tipo;
+  document.querySelectorAll('.filtro-btn').forEach(function(b) { b.classList.remove('activo'); });
+  btn.classList.add('activo');
+  renderTabla();
+}
+
+function buscar(val) {
+  busquedaActual = val;
+  renderTabla();
+}
+
+function mostrarModalPlan(id) {
+  negocioSeleccionado = negocios.find(function(n) { return n.id === id; });
+  document.getElementById('modal-info').innerHTML = '<strong>' + negocioSeleccionado.nombre + '</strong><span>' + negocioSeleccionado.email + '</span>';
+  
+  var hoy = new Date('2026-06-08');
+  var proximo = new Date(hoy);
+  proximo.setMonth(proximo.getMonth() + 1);
+  document.getElementById('fecha-venc').value = proximo.toISOString().split('T')[0];
+  
+  if (['basico','pro','premium'].includes(negocioSeleccionado.plan)) {
+    document.getElementById('select-plan').value = negocioSeleccionado.plan;
   }
 
-  async function loadClients() {
-    document.getElementById('table-body').innerHTML =
-      '<tr><td colspan="5" class="loading"><span class="dot"></span>Cargando...</td></tr>';
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/negocios?select=*&order=created_at.desc`, {
-        headers: {
-          'apikey': SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-        }
-      });
-      allClients = await res.json();
-      renderTable(allClients);
-      updateStats(allClients);
-    } catch(e) {
-      document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="5" class="empty">Error al cargar datos.</td></tr>';
+  document.getElementById('modal-plan').classList.add('activo');
+}
+
+function activarPlan() {
+  var plan = document.getElementById('select-plan').value;
+  var fecha = document.getElementById('fecha-venc').value;
+  
+  negocios = negocios.map(function(n) {
+    if (n.id === negocioSeleccionado.id) {
+      return Object.assign({}, n, { plan: plan, venc_plan: fecha });
     }
+    return n;
+  });
+
+  cerrarModal();
+  renderTabla();
+  mostrarToast('Plan ' + plan + ' activado para ' + negocioSeleccionado.nombre);
+}
+
+function cerrarModal() {
+  document.getElementById('modal-plan').classList.remove('activo');
+}
+
+function mostrarModalNuevo() {
+  document.getElementById('modal-nuevo').classList.add('activo');
+}
+
+function cerrarModalNuevo() {
+  document.getElementById('modal-nuevo').classList.remove('activo');
+  document.getElementById('nuevo-nombre').value = '';
+  document.getElementById('nuevo-email').value = '';
+}
+
+function agregarNegocio() {
+  var nombre = document.getElementById('nuevo-nombre').value.trim();
+  var email = document.getElementById('nuevo-email').value.trim();
+  var plan = document.getElementById('nuevo-plan').value;
+
+  if (!nombre || !email) {
+    mostrarToast('Completá nombre y email');
+    return;
   }
 
-  function updateStats(clients) {
-    document.getElementById('stat-total').textContent = clients.length;
-    const now = new Date();
-    const thisMonth = clients.filter(c => {
-      const d = new Date(c.created_at);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    document.getElementById('stat-mes').textContent = thisMonth.length;
-    if (clients.length > 0) {
-      const last = new Date(clients[0].created_at);
-      document.getElementById('stat-ultimo').textContent =
-        last.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' });
-    }
-  }
+  var nuevoId = Math.max.apply(null, negocios.map(function(n){ return n.id; })) + 1;
+  negocios.push({
+    id: nuevoId,
+    nombre: nombre,
+    email: email,
+    plan: plan,
+    registro: '2026-06-08',
+    venc_plan: null,
+  });
 
-  function renderTable(clients) {
-    const tbody = document.getElementById('table-body');
-    if (!clients.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay clientes registrados aún.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = clients.map(c => {
-      const config = typeof c.config === 'string' ? JSON.parse(c.config || '{}') : (c.config || {});
-      const nombre = c.nombre || config.nombre || '—';
-      const email  = c.email  || '—';
-      const plan   = c.plan   || 'gratis';
-      const alias  = config.alias || '—';
-      const fecha  = c.created_at
-        ? new Date(c.created_at).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'})
-        : '—';
-      const inicial = nombre !== '—' ? nombre[0].toUpperCase() : '?';
-      const badgeClass = plan === 'pro' ? 'badge-pro' : 'badge-gratis';
+  cerrarModalNuevo();
+  renderTabla();
+  mostrarToast(nombre + ' agregado correctamente');
+}
 
-      return `<tr>
-        <td><div class="name-cell"><div class="avatar">${inicial}</div>${nombre}</div></td>
-        <td>${email}</td>
-        <td><span class="badge ${badgeClass}">${plan}</span></td>
-        <td>${alias}</td>
-        <td>${fecha}</td>
-      </tr>`;
-    }).join('');
-  }
+function mostrarToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('visible');
+  setTimeout(function() { t.classList.remove('visible'); }, 3000);
+}
 
-  function filterTable() {
-    const q = document.getElementById('search').value.toLowerCase();
-    const filtered = allClients.filter(c => {
-      const config = typeof c.config === 'string' ? JSON.parse(c.config || '{}') : (c.config || {});
-      return (c.nombre||'').toLowerCase().includes(q) ||
-             (c.email||'').toLowerCase().includes(q) ||
-             (config.alias||'').toLowerCase().includes(q);
-    });
-    renderTable(filtered);
-  }
+document.getElementById('modal-plan').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+document.getElementById('modal-nuevo').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModalNuevo();
+});
+
+renderTabla();
 </script>
 </body>
 </html>

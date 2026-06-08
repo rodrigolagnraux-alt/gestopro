@@ -723,8 +723,8 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Finanzas</div>
-    <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'gratis')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
-    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'gratis')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
+    <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
+    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goLocked('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goLocked('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
   </div>
@@ -769,12 +769,12 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="action-lbl">Egreso</div>
       <div class="action-sub">Salió mercadería</div>
     </div>
-    <div class="action-btn factura" onclick="goLocked('facturas',null,'gratis');openModal('modal-fact')">
+    <div class="action-btn factura" onclick="goLocked('facturas',null,'basico');openModal('modal-fact')">
       <div class="action-ico">🧾</div>
       <div class="action-lbl">Factura</div>
       <div class="action-sub">Cargar proveedor</div>
     </div>
-    <div class="action-btn gasto" onclick="goLocked('gastos',null,'gratis');openModal('modal-gf')">
+    <div class="action-btn gasto" onclick="goLocked('gastos',null,'basico');openModal('modal-gf')">
       <div class="action-ico">💡</div>
       <div class="action-lbl">Gasto fijo</div>
       <div class="action-sub">Luz, agua, gas...</div>
@@ -1127,7 +1127,7 @@ const PLANES={
   business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'gratis',gastos:'gratis',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -2801,6 +2801,23 @@ function cargarNegocio(){
         currentNegocioId=result.data.id;
         if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
         planActual=result.data.plan||'gratis';
+
+        // ── PAYWALL / TRIAL ──
+        var aprobado=result.data.aprobado;
+        var fechaReg=result.data.fecha_registro?new Date(result.data.fecha_registro):new Date();
+        var planVenc=result.data.plan_vencimiento?new Date(result.data.plan_vencimiento):null;
+        var hoyDate=new Date();
+        var diasRestantes=35-Math.floor((hoyDate-fechaReg)/(1000*60*60*24));
+        if(!aprobado){ mostrarPantallaEspera(); return; }
+        if(['basico','pro','premium'].includes(planActual)){
+          if(planVenc&&hoyDate>planVenc){ window.location.href='paywall.html'; return; }
+        } else {
+          if(diasRestantes<=0){ window.location.href='paywall.html'; return; }
+          if(diasRestantes<=5){ setTimeout(function(){ mostrarToastTrialPorVencer(diasRestantes); },2000); }
+          else if(diasRestantes<=30){ setTimeout(function(){ mostrarToastTrialProximo(diasRestantes); },2000); }
+        }
+        // ─────────────────────
+
       } else {
         return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
       }
@@ -2874,6 +2891,48 @@ function initApp(){
   } else {
     loadState(); initAppData();
   }
+}
+
+
+function mostrarPantallaEspera(){
+  var ls=el('login-screen'); if(ls)ls.style.display='none';
+  document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:DM Sans,sans-serif;background:#07090e;padding:2rem;text-align:center;">'
+    +'<div style="font-size:48px;">⏳</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#e0e4f0;">Tu cuenta esta siendo revisada</div>'
+    +'<div style="color:#606880;max-width:320px;line-height:1.6;font-size:14px;">En breve recibis acceso. Si tenes urgencia escribinos por WhatsApp.</div>'
+    +'<a href="https://wa.me/5492473XXXXXX?text=Hola!%20Me%20registre%20en%20GestoPro%20y%20espero%20aprobacion" style="background:#25D366;color:white;padding:12px 24px;border-radius:50px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px;">💬 Consultar por WhatsApp</a>'
+    +'<button onclick="supabaseClient.auth.signOut().then(function(){location.reload();})" style="background:transparent;border:1px solid #222a3a;color:#606880;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:4px;font-family:DM Sans,sans-serif;">Cerrar sesion</button>'
+    +"</div>";
+}
+
+function mostrarToastTrialPorVencer(dias){
+  if(sessionStorage.getItem('gp_toast_trial')) return;
+  sessionStorage.setItem('gp_toast_trial','1');
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sur);border:1.5px solid var(--yel);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9999;max-width:320px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.4);animation:fu .3s ease;';
+  t.innerHTML='<span style="font-size:24px;">⚠️</span>'
+    +'<div style="flex:1;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--yel);">Te quedan '+dias+' dia'+(dias!==1?'s':'')+' de prueba</div>'
+    +'<div style="font-size:12px;color:var(--mut2);margin-top:2px;"><a href="paywall.html" style="color:var(--acc2);font-weight:600;text-decoration:none;">Activar un plan →</a></div>'
+    +'</div>'
+    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--mut2);font-size:20px;cursor:pointer;line-height:1;padding:0;">×</button>';
+  document.body.appendChild(t);
+  setTimeout(function(){ if(t.parentElement) t.remove(); }, 10000);
+}
+
+function mostrarToastTrialProximo(dias){
+  if(sessionStorage.getItem('gp_toast_prox')) return;
+  sessionStorage.setItem('gp_toast_prox','1');
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sur);border:1.5px solid var(--acc);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9999;max-width:320px;width:90%;animation:fu .3s ease;';
+  t.innerHTML='<span style="font-size:24px;">📅</span>'
+    +'<div style="flex:1;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">'+dias+' dias para que venza tu prueba</div>'
+    +'<div style="font-size:12px;color:var(--mut2);margin-top:2px;"><a href="paywall.html" style="color:var(--acc2);font-weight:600;text-decoration:none;">Ver planes →</a></div>'
+    +'</div>'
+    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--mut2);font-size:20px;cursor:pointer;line-height:1;padding:0;">×</button>';
+  document.body.appendChild(t);
+  setTimeout(function(){ if(t.parentElement) t.remove(); }, 8000);
 }
 
 // Run when DOM is ready
