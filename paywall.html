@@ -363,7 +363,7 @@
       <li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Lectura de facturas IA</li>
       <li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reportes avanzados</li>
     </ul>
-    <button class="btn-plan" onclick="window.location.href='https://mpago.la/18wMsaQ'">Elegir Básico</button>
+    <button class="btn-plan" onclick="irAPago('Basico', '$60.000/mes', 'https://mpago.la/18wMsaQ')">Elegir Básico</button>
   </div>
 
   <!-- PRO -->
@@ -381,7 +381,7 @@
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Soporte prioritario</li>
       <li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Multi-sucursal</li>
     </ul>
-    <button class="btn-plan destacado" onclick="window.location.href='https://mpago.la/2DGu6A8'">Elegir Pro</button>
+    <button class="btn-plan destacado" onclick="irAPago('Pro', '$75.000/mes', 'https://mpago.la/2DGu6A8')">Elegir Pro</button>
   </div>
 
   <!-- PREMIUM -->
@@ -398,7 +398,7 @@
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Soporte 24/7 WhatsApp</li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Capacitación incluida</li>
     </ul>
-    <button class="btn-plan" onclick="window.location.href='https://mpago.la/19PMubJ'">Elegir Premium</button>
+    <button class="btn-plan" onclick="irAPago('Premium', '$120.000/mes', 'https://mpago.la/19PMubJ')">Elegir Premium</button>
   </div>
 
 </div>
@@ -428,10 +428,33 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  function abrirModal(nombre, precio) {
+  var SUPA_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
+  var SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
+  var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+  var userEmail = '';
+  var LINKS_MP = {
+    'Basico': 'https://mpago.la/18wMsaQ',
+    'Pro':    'https://mpago.la/2DGu6A8',
+    'Premium':'https://mpago.la/19PMubJ'
+  };
+
+  // Leer sesión activa
+  sb.auth.getSession().then(function(result) {
+    if (result.data && result.data.session) {
+      userEmail = result.data.session.user.email || '';
+    }
+  });
+
+  function irAPago(nombre, precio, linkMP) {
     document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + ' - ' + precio;
-    var msg = encodeURIComponent('Hola Rodrigo! Quiero activar el Plan ' + nombre + ' de GestoPro (' + precio + '). Por favor indicame cómo proceder.');
+    // Construir link de MP con external_reference = email|plan
+    var ref = encodeURIComponent(userEmail + '|' + nombre.toLowerCase());
+    var urlMP = linkMP + (linkMP.indexOf('?') === -1 ? '?' : '&') + 'external_reference=' + ref;
+    document.getElementById('modal-mp-link').href = urlMP;
+    // WhatsApp de respaldo
+    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
     document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
     document.getElementById('modal').classList.add('activo');
   }
