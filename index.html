@@ -2802,6 +2802,9 @@ function cargarNegocio(){
         if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
         planActual=result.data.plan||'gratis';
 
+        // ── ACTUALIZAR LOCKS SEGÚN PLAN REAL ──
+        actualizarLocksPlan(planActual);
+
         // ── PAYWALL / TRIAL ──
         var aprobado=result.data.aprobado;
         var fechaReg=result.data.fecha_registro?new Date(result.data.fecha_registro):new Date();
@@ -2816,7 +2819,6 @@ function cargarNegocio(){
           if(diasRestantes<=5){ setTimeout(function(){ mostrarToastTrialPorVencer(diasRestantes); },2000); }
           else if(diasRestantes<=30){ setTimeout(function(){ mostrarToastTrialProximo(diasRestantes); },2000); }
         }
-        // ─────────────────────
 
       } else {
         return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
@@ -2894,13 +2896,35 @@ function initApp(){
 }
 
 
+function actualizarLocksPlan(plan){
+  var planNum={'gratis':0,'basico':1,'pro':2,'premium':3};
+  var locks={facturas:'gratis',gastos:'gratis',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+  var pNum=planNum[plan]||0;
+  Object.keys(locks).forEach(function(mod){
+    var req=locks[mod];
+    var lk=el('lock-'+mod);
+    if(lk)lk.style.display=pNum>=(planNum[req]||0)?'none':'';
+  });
+  var PLANES={
+    gratis:{nombre:'Plan Gratis',sub:'Gratis para siempre'},
+    basico:{nombre:'Plan Básico',sub:'$60.000/mes'},
+    pro:{nombre:'Plan Pro',sub:'$75.000/mes'},
+    premium:{nombre:'Plan Premium',sub:'$120.000/mes'}
+  };
+  var pl=PLANES[plan]||PLANES.gratis;
+  set('plan-chip','text',pl.nombre);
+  set('plan-name-sb','text',pl.nombre);
+  set('plan-sub-sb','text',pl.sub);
+  planActual=plan;
+}
+
 function mostrarPantallaEspera(){
   var ls=el('login-screen'); if(ls)ls.style.display='none';
   document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:DM Sans,sans-serif;background:#07090e;padding:2rem;text-align:center;">'
     +'<div style="font-size:48px;">⏳</div>'
     +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#e0e4f0;">Tu cuenta esta siendo revisada</div>'
     +'<div style="color:#606880;max-width:320px;line-height:1.6;font-size:14px;">En breve recibis acceso. Si tenes urgencia escribinos por WhatsApp.</div>'
-    +'<a href="https://wa.me/5492473XXXXXX?text=Hola!%20Me%20registre%20en%20GestoPro%20y%20espero%20aprobacion" style="background:#25D366;color:white;padding:12px 24px;border-radius:50px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px;">💬 Consultar por WhatsApp</a>'
+    +'<a href="https://wa.me/5492473410437?text=Hola!%20Me%20registre%20en%20GestoPro%20y%20espero%20aprobacion" style="background:#25D366;color:white;padding:12px 24px;border-radius:50px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px;">💬 Consultar por WhatsApp</a>'
     +'<button onclick="supabaseClient.auth.signOut().then(function(){location.reload();})" style="background:transparent;border:1px solid #222a3a;color:#606880;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:4px;font-family:DM Sans,sans-serif;">Cerrar sesion</button>'
     +"</div>";
 }
