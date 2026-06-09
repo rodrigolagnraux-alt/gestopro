@@ -452,10 +452,33 @@
 
   function irAPago(nombre, precio, linkMP) {
     document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + ' - ' + precio;
-    // Construir link de MP con external_reference = email|plan
-    var ref = encodeURIComponent(userEmail + '|' + nombre.toLowerCase());
-    var urlMP = linkMP + (linkMP.indexOf('?') === -1 ? '?' : '&') + 'external_reference=' + ref;
-    document.getElementById('modal-mp-link').href = urlMP;
+    // Generar link dinámico con external_reference via Edge Function
+    var plan = nombre.toLowerCase();
+    var btn = document.getElementById('modal-mp-link');
+    btn.textContent = '⏳ Generando link...';
+    btn.style.pointerEvents = 'none';
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, plan: plan })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.url){
+        btn.href = data.url;
+        btn.textContent = '💳 Pagar con Mercado Pago';
+        btn.style.pointerEvents = 'auto';
+      } else {
+        btn.textContent = '💳 Pagar con Mercado Pago';
+        btn.href = linkMP;
+        btn.style.pointerEvents = 'auto';
+      }
+    })
+    .catch(function(){
+      btn.textContent = '💳 Pagar con Mercado Pago';
+      btn.href = linkMP;
+      btn.style.pointerEvents = 'auto';
+    });
     // WhatsApp de respaldo
     var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
     document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
