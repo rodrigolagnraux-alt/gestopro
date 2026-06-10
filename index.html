@@ -300,11 +300,55 @@ select.fi{appearance:none;cursor:pointer;}
   .pay-lbl{font-size:11px;}
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
+
+/* PIN MODAL */
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.pin-overlay.on{opacity:1;pointer-events:all;}
+.pin-modal{background:var(--sur);border:1px solid var(--brd2);border-radius:16px;padding:28px 24px;width:100%;max-width:320px;text-align:center;}
+.pin-titulo{font-family:"Syne",sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;}
+.pin-sub{font-size:12px;color:var(--mut2);margin-bottom:20px;}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(--brd2);transition:background .15s;}
+.pin-dot.on{background:var(--acc);}
+.pin-teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.pin-btn{background:var(--sur2);border:1px solid var(--brd2);border-radius:10px;padding:16px;font-family:"Syne",sans-serif;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;transition:all .15s;}
+.pin-btn:active{background:var(--acc-dim);border-color:var(--acc);}
+.pin-error{color:var(--red);font-size:12px;height:16px;margin-bottom:8px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="toast"></div>
+
+<!-- MODAL PIN -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-modal">
+    <div class="pin-titulo">🔒 Sección protegida</div>
+    <div class="pin-sub" id="pin-sub">Ingresá tu PIN de 4 dígitos</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-teclado">
+      <button class="pin-btn" onclick="pinTecla('1')">1</button>
+      <button class="pin-btn" onclick="pinTecla('2')">2</button>
+      <button class="pin-btn" onclick="pinTecla('3')">3</button>
+      <button class="pin-btn" onclick="pinTecla('4')">4</button>
+      <button class="pin-btn" onclick="pinTecla('5')">5</button>
+      <button class="pin-btn" onclick="pinTecla('6')">6</button>
+      <button class="pin-btn" onclick="pinTecla('7')">7</button>
+      <button class="pin-btn" onclick="pinTecla('8')">8</button>
+      <button class="pin-btn" onclick="pinTecla('9')">9</button>
+      <button class="pin-btn" onclick="pinBorrar()" style="font-size:16px;">⌫</button>
+      <button class="pin-btn" onclick="pinTecla('0')">0</button>
+      <button class="pin-btn" onclick="pinCancelar()" style="font-size:12px;color:var(--mut2);">✕</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- MODAL LOGIN -->
 <div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;">
@@ -685,6 +729,9 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
   <div class="fg"><label class="fl">Alias Mercado Pago / MODO</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
   <div class="fg"><label class="fl">CVU (opcional)</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
+  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric"></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
@@ -725,8 +772,8 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Finanzas</div>
     <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
     <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
-    <div class="sb-i" id="sb-resumen" onclick="goLocked('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
-    <div class="sb-i" id="sb-finanzas" onclick="goLocked('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
+    <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
+    <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Avanzado</div>
@@ -1294,6 +1341,7 @@ function guardarConfig(){
   if(n) config.nombre=n;
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
+  var pin=get('cfg-pin'); config.pin=pin;
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
   closeModal('modal-config'); saveState(); toast('Configuración guardada ✓');
@@ -2801,25 +2849,6 @@ function cargarNegocio(){
         currentNegocioId=result.data.id;
         if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
         planActual=result.data.plan||'gratis';
-
-        // ── ACTUALIZAR LOCKS SEGÚN PLAN REAL ──
-        actualizarLocksPlan(planActual);
-
-        // ── PAYWALL / TRIAL ──
-        var aprobado=result.data.aprobado;
-        var fechaReg=result.data.fecha_registro?new Date(result.data.fecha_registro):new Date();
-        var planVenc=result.data.plan_vencimiento?new Date(result.data.plan_vencimiento):null;
-        var hoyDate=new Date();
-        var diasRestantes=35-Math.floor((hoyDate-fechaReg)/(1000*60*60*24));
-        if(!aprobado){ mostrarPantallaEspera(); return; }
-        if(['basico','pro','premium'].includes(planActual)){
-          if(planVenc&&hoyDate>planVenc){ window.location.href='paywall.html'; return; }
-        } else {
-          if(diasRestantes<=0){ window.location.href='paywall.html'; return; }
-          if(diasRestantes<=5){ setTimeout(function(){ mostrarToastTrialPorVencer(diasRestantes); },2000); }
-          else if(diasRestantes<=30){ setTimeout(function(){ mostrarToastTrialProximo(diasRestantes); },2000); }
-        }
-
       } else {
         return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
       }
@@ -2864,6 +2893,7 @@ function initAppData(){
   set('cfg-nombre','val',config.nombre||'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
+  set('cfg-pin','val',config.pin||'');
   if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   var uz=el('upload-z');
@@ -2896,67 +2926,83 @@ function initApp(){
 }
 
 
-function actualizarLocksPlan(plan){
-  var planNum={'gratis':0,'basico':1,'pro':2,'premium':3};
-  var locks={facturas:'gratis',gastos:'gratis',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
-  var pNum=planNum[plan]||0;
-  Object.keys(locks).forEach(function(mod){
-    var req=locks[mod];
-    var lk=el('lock-'+mod);
-    if(lk)lk.style.display=pNum>=(planNum[req]||0)?'none':'';
-  });
-  var PLANES={
-    gratis:{nombre:'Plan Gratis',sub:'Gratis para siempre'},
-    basico:{nombre:'Plan Básico',sub:'$60.000/mes'},
-    pro:{nombre:'Plan Pro',sub:'$75.000/mes'},
-    premium:{nombre:'Plan Premium',sub:'$120.000/mes'}
-  };
-  var pl=PLANES[plan]||PLANES.gratis;
-  set('plan-chip','text',pl.nombre);
-  set('plan-name-sb','text',pl.nombre);
-  set('plan-sub-sb','text',pl.sub);
-  planActual=plan;
+// ═══ PIN ═══
+var pinActual = '';
+var pinDestino = null;
+var pinNavEl = null;
+var pinSesionDesbloqueada = {};
+
+function goConPin(id, navEl, req) {
+  // Si ya tiene el plan necesario
+  if(PLAN_N[planActual] < PLAN_N[req]) {
+    openModal('modal-plan');
+    toast('Función disponible en Plan ' + req.charAt(0).toUpperCase() + req.slice(1), 'err');
+    return;
+  }
+  // Secciones que requieren PIN
+  var seccionesPin = ['resumen', 'finanzas'];
+  var pinGuardado = config.pin || '';
+  
+  if(seccionesPin.includes(id) && pinGuardado && !pinSesionDesbloqueada[id]) {
+    pinDestino = id;
+    pinNavEl = navEl;
+    abrirPin();
+  } else {
+    go(id, navEl);
+  }
 }
 
-function mostrarPantallaEspera(){
-  var ls=el('login-screen'); if(ls)ls.style.display='none';
-  document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:DM Sans,sans-serif;background:#07090e;padding:2rem;text-align:center;">'
-    +'<div style="font-size:48px;">⏳</div>'
-    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#e0e4f0;">Tu cuenta esta siendo revisada</div>'
-    +'<div style="color:#606880;max-width:320px;line-height:1.6;font-size:14px;">En breve recibis acceso. Si tenes urgencia escribinos por WhatsApp.</div>'
-    +'<a href="https://wa.me/5492473410437?text=Hola!%20Me%20registre%20en%20GestoPro%20y%20espero%20aprobacion" style="background:#25D366;color:white;padding:12px 24px;border-radius:50px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px;">💬 Consultar por WhatsApp</a>'
-    +'<button onclick="supabaseClient.auth.signOut().then(function(){location.reload();})" style="background:transparent;border:1px solid #222a3a;color:#606880;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:4px;font-family:DM Sans,sans-serif;">Cerrar sesion</button>'
-    +"</div>";
+function abrirPin() {
+  pinActual = '';
+  actualizarDots();
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-overlay').classList.add('on');
 }
 
-function mostrarToastTrialPorVencer(dias){
-  if(sessionStorage.getItem('gp_toast_trial')) return;
-  sessionStorage.setItem('gp_toast_trial','1');
-  var t=document.createElement('div');
-  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sur);border:1.5px solid var(--yel);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9999;max-width:320px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.4);animation:fu .3s ease;';
-  t.innerHTML='<span style="font-size:24px;">⚠️</span>'
-    +'<div style="flex:1;">'
-    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--yel);">Te quedan '+dias+' dia'+(dias!==1?'s':'')+' de prueba</div>'
-    +'<div style="font-size:12px;color:var(--mut2);margin-top:2px;"><a href="paywall.html" style="color:var(--acc2);font-weight:600;text-decoration:none;">Activar un plan →</a></div>'
-    +'</div>'
-    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--mut2);font-size:20px;cursor:pointer;line-height:1;padding:0;">×</button>';
-  document.body.appendChild(t);
-  setTimeout(function(){ if(t.parentElement) t.remove(); }, 10000);
+function pinTecla(num) {
+  if(pinActual.length >= 4) return;
+  pinActual += num;
+  actualizarDots();
+  if(pinActual.length === 4) {
+    setTimeout(verificarPin, 150);
+  }
 }
 
-function mostrarToastTrialProximo(dias){
-  if(sessionStorage.getItem('gp_toast_prox')) return;
-  sessionStorage.setItem('gp_toast_prox','1');
-  var t=document.createElement('div');
-  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sur);border:1.5px solid var(--acc);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9999;max-width:320px;width:90%;animation:fu .3s ease;';
-  t.innerHTML='<span style="font-size:24px;">📅</span>'
-    +'<div style="flex:1;">'
-    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">'+dias+' dias para que venza tu prueba</div>'
-    +'<div style="font-size:12px;color:var(--mut2);margin-top:2px;"><a href="paywall.html" style="color:var(--acc2);font-weight:600;text-decoration:none;">Ver planes →</a></div>'
-    +'</div>'
-    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--mut2);font-size:20px;cursor:pointer;line-height:1;padding:0;">×</button>';
-  document.body.appendChild(t);
-  setTimeout(function(){ if(t.parentElement) t.remove(); }, 8000);
+function pinBorrar() {
+  pinActual = pinActual.slice(0, -1);
+  actualizarDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function pinCancelar() {
+  pinActual = '';
+  pinDestino = null;
+  pinNavEl = null;
+  document.getElementById('pin-overlay').classList.remove('on');
+}
+
+function actualizarDots() {
+  for(var i = 0; i < 4; i++) {
+    var dot = document.getElementById('pd' + i);
+    if(dot) dot.className = 'pin-dot' + (i < pinActual.length ? ' on' : '');
+  }
+}
+
+function verificarPin() {
+  var pinGuardado = config.pin || '';
+  if(pinActual === pinGuardado) {
+    document.getElementById('pin-overlay').classList.remove('on');
+    pinSesionDesbloqueada[pinDestino] = true;
+    go(pinDestino, pinNavEl);
+    pinActual = '';
+    pinDestino = null;
+  } else {
+    document.getElementById('pin-error').textContent = 'PIN incorrecto';
+    pinActual = '';
+    actualizarDots();
+    // Vibrar en mobile
+    if(navigator.vibrate) navigator.vibrate(200);
+  }
 }
 
 // Run when DOM is ready
