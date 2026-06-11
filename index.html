@@ -301,18 +301,7 @@ select.fi{appearance:none;cursor:pointer;}
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
 
-/* FIADO */
-.fiado-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .15s;}
-.fiado-item:last-child{border-bottom:none;}
-.fiado-item:hover{background:rgba(255,255,255,.01);}
-.fiado-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Syne",sans-serif;font-size:16px;font-weight:800;flex-shrink:0;}
-.fiado-txt{flex:1;min-width:0;}
-.fiado-nom{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fiado-meta{font-size:11px;color:var(--mut2);font-family:"DM Mono",monospace;margin-top:2px;}
-.fiado-right{text-align:right;flex-shrink:0;}
-.fiado-deuda{font-family:"Syne",sans-serif;font-size:16px;font-weight:800;color:var(--red);}
-.fiado-deuda.saldado{color:var(--grn);}
-.fiado-deuda-lbl{font-size:9px;color:var(--mut2);font-family:"DM Mono",monospace;}
+/* PIN MODAL */
 .pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .pin-overlay.on{opacity:1;pointer-events:all;}
 .pin-modal{background:var(--sur);border:1px solid var(--brd2);border-radius:16px;padding:28px 24px;width:100%;max-width:320px;text-align:center;}
@@ -437,7 +426,7 @@ select.fi{appearance:none;cursor:pointer;}
 
 <!-- MODAL COBRAR -->
 <div class="ov" id="modal-cobrar">
-<div class="modal" style="max-width:600px;">
+<div class="modal">
   <div class="modal-drag"></div>
   <div class="modal-t">💚 Cobrar</div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
@@ -731,20 +720,18 @@ select.fi{appearance:none;cursor:pointer;}
 
 <!-- CONFIG ALIAS MODAL -->
 <div class="ov" id="modal-config">
-<div class="modal" style="max-height:88vh;overflow-y:auto;">
+<div class="modal">
   <div class="modal-drag"></div>
   <div class="modal-t">⚙️ Configuración</div>
   <div class="modal-s">Datos del negocio y configuración de la app</div>
-
+  
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
   <div class="fg"><label class="fl">Alias Mercado Pago / MODO</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
   <div class="fg"><label class="fl">CVU (opcional)</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
-
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
-  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>
-  <div id="cfg-pin-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;color:var(--mut2);"></div>
+  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric"></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
@@ -756,8 +743,11 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="fg"><label class="fl">API Key de Anthropic (Plan Pro)</label><input class="fi" id="cfg-apikey" placeholder="sk-ant-..." type="password"></div>
   <div id="cfg-apikey-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;"></div>
-
-  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">💾 Guardar</button></div>
+  
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero. El empleado puede cobrar sin ver las ganancias.</div>
+  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">Guardar</button></div>
 </div>
 </div>
 
@@ -785,7 +775,6 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Finanzas</div>
     <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
     <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
-    <div class="sb-i" id="sb-fiado" onclick="goLocked('fiado',this,'basico')"><span class="sb-ico">🤝</span>Fiado<span class="sb-lock" id="lock-fiado">🔒</span><span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
   </div>
@@ -844,22 +833,6 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="action-ico">➕</div>
       <div class="action-lbl">Producto</div>
       <div class="action-sub">Agregar al stock</div>
-    </div>
-  </div>
-
-  <!-- FIADO ALERT — solo aparece si hay clientes con deuda -->
-  <div id="dash-fiado-alert" style="display:none;margin-bottom:16px;">
-    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="goLocked('fiado',el('sb-fiado'),'basico')">
-      <div style="font-size:32px;">🤝</div>
-      <div style="flex:1;">
-        <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--yel);">Clientes con fiado pendiente</div>
-        <div style="font-size:12px;color:var(--mut2);margin-top:2px;" id="dash-fiado-alert-txt">Tocá para ver quién debe</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);" id="dash-fiado-total">$0</div>
-        <div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">DEUDA TOTAL</div>
-      </div>
-      <div style="font-size:20px;color:var(--yel);">›</div>
     </div>
   </div>
 
@@ -947,70 +920,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="card"><div class="stitle">💡 Gastos del mes</div><div id="gf-list"></div></div>
 </div>
 
-<!-- FIADO -->
-<div id="pg-fiado" class="pg">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <div><div class="ptitle">Fiado 🤝</div><div class="psub" style="margin-bottom:0">Clientes con deuda · <b id="fiado-sub">$0 total</b></div></div>
-    <button class="btn btn-yel btn-sm" onclick="openModal('modal-fiado-nuevo')">+ Cliente</button>
-  </div>
-  <div class="kgrid3" id="fiado-kpis" style="margin-bottom:16px;"></div>
-  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="fiado-srch" placeholder="Buscar cliente..." oninput="renderFiado()"></div>
-  <div class="card"><div id="fiado-lista"></div></div>
-</div>
-
-<!-- MODAL NUEVO CLIENTE FIADO -->
-<div class="ov" id="modal-fiado-nuevo">
-<div class="modal" style="max-width:480px;">
-  <div class="modal-drag"></div>
-  <div class="modal-t">🤝 Nuevo cliente con fiado</div>
-  <div class="modal-s">Registrá un cliente que compra a crédito</div>
-  <div class="fg"><label class="fl">Nombre del cliente</label><input class="fi" id="fn-nombre" placeholder="Ej: Juan García"></div>
-  <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" id="fn-tel" placeholder="Ej: 011 1234-5678" type="tel"></div>
-  <div class="fg"><label class="fl">Límite de crédito $ (0 = sin límite)</label><input class="fi" id="fn-limite" type="number" placeholder="0" style="font-family:DM Mono,monospace;"></div>
-  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="fn-nota" placeholder="Ej: Vecino, paga los viernes..."></div>
-  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-fiado-nuevo')">Cancelar</button><button class="btn btn-yel" onclick="guardarClienteFiado()">✓ Guardar cliente</button></div>
-</div>
-</div>
-
-<!-- MODAL DETALLE CLIENTE FIADO -->
-<div class="ov" id="modal-fiado-detalle">
-<div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto;">
-  <div class="modal-drag"></div>
-  <div id="fd-header" style="margin-bottom:16px;"></div>
-  <div style="background:var(--red-dim);border:1px solid rgba(255,77,109,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px;">📝 Cargar fiado</div>
-    <div class="frow">
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Monto $</label><input class="fi" id="fd-monto" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Descripción</label><input class="fi" id="fd-desc" placeholder="Ej: Aceite, pan..."></div>
-    </div>
-    <button class="btn btn-red btn-full" onclick="cargarFiado()" style="margin-top:10px;">+ Cargar deuda</button>
-  </div>
-  <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
-    <div class="frow">
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Monto pagado $</label><input class="fi" id="fd-pago" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Forma de pago</label>
-        <select class="fi" id="fd-pago-metodo">
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="transferencia">🏦 Transferencia</option>
-          <option value="qr">📱 QR / MP</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn btn-grn btn-full" onclick="pagarFiado()" style="margin-top:10px;">✓ Registrar pago</button>
-  </div>
-  <div class="card" style="margin-bottom:14px;">
-    <div class="stitle">📋 Historial</div>
-    <div id="fd-historial"></div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar cliente</button>
-    <button class="btn btn-ghost" onclick="closeModal('modal-fiado-detalle')">Cerrar</button>
-  </div>
-</div>
-</div>
-
 <!-- RESUMEN FINANCIERO -->
+<div id="pg-resumen" class="pg">
   <div class="ptitle">Resumen Financiero</div>
   <div class="psub">Lo que entra y lo que sale · <b id="res-periodo">Este mes</b></div>
   <div class="ptabs">
@@ -1252,7 +1163,7 @@ function set(id, prop, val){
 function get(id){ const e=el(id); return e ? e.value : ''; }
 
 // ═══ STATE ═══
-let productos=[], movimientos=[], facturas=[], gastosFijos=[], fiados=[];
+let productos=[], movimientos=[], facturas=[], gastosFijos=[];
 let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901'};
 let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
@@ -1266,7 +1177,7 @@ const PLANES={
   business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -1311,7 +1222,7 @@ function cargarDemo(){
 
 // ═══ STORAGE ═══
 function saveState(){
-  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,fiados,planActual,config})); }catch(e){}
+  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,planActual,config})); }catch(e){}
   // Also save config to cloud
   if(supabaseClient&&currentNegocioId){
     supabaseClient.from('negocios').update({config:JSON.stringify(config),plan:planActual}).eq('id',currentNegocioId).then(function(){});
@@ -1344,7 +1255,6 @@ function loadState(){
       movimientos= Array.isArray(s.movimientos) ? s.movimientos : [];
       facturas   = Array.isArray(s.facturas)    ? s.facturas    : [];
       gastosFijos= Array.isArray(s.gastosFijos) ? s.gastosFijos : [];
-      fiados     = Array.isArray(s.fiados)      ? s.fiados      : [];
       planActual = PLANES[s.planActual] ? s.planActual : 'gratis';
       config     = (s.config && typeof s.config==='object') ? s.config : config;
       if(!productos.length) cargarDemo();
@@ -1434,13 +1344,7 @@ function guardarConfig(){
   if(n) config.nombre=n;
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
-  var pin=get('cfg-pin').trim(); config.pin=pin;
-  var pinStatus=el('cfg-pin-status');
-  if(pinStatus){
-    if(pin){ pinStatus.textContent='🔒 PIN activo — se pedirá al entrar a Resumen y Finanzas'; pinStatus.style.color='var(--grn)'; }
-    else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
-  }
-  var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
+  var pin=get('cfg-pin'); config.pin=pin;
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
   closeModal('modal-config'); saveState(); toast('Configuración guardada ✓');
@@ -1536,71 +1440,22 @@ function calcVuelto(){
 function confirmarCobro(){
   const monto=parseFloat(get('cobrar-monto'))||0;
   if(!monto){toast('Ingresá el monto a cobrar','err');return;}
-
-  // Validar fiado
-  if(pagoActual==='fiado'){
-    var fSel=get('fiado-cliente-sel');
-    if(!fSel){toast('Seleccioná un cliente para el fiado','err');return;}
-    var cFiado=fiados.find(function(f){return f.id==fSel;});
-    if(!cFiado){toast('Cliente no encontrado','err');return;}
-    if(cFiado.limite>0 && cFiado.deuda+monto>cFiado.limite){
-      toast('⚠️ Supera el límite de crédito de '+fmtM(cFiado.limite),'err');return;
-    }
-  }
-
   const desc=get('cobrar-desc')||'Venta';
-  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia',fiado:'Fiado'};
+  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
   var prods=[];
-  // Guardar detalle con precio del momento para fiado
-  var detalleFiado=[];
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
       prod.stock=Math.max(0,prod.stock-l.cant);
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
-      if(pagoActual==='fiado'){
-        detalleFiado.push({
-          prodId:prod.id,
-          nom:prod.nom,
-          cant:l.cant,
-          um:um,
-          precioVenta:prod.precioVenta||0  // precio al momento de cargar el fiado
-        });
-      }
     }
   });
   var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
-
-  // Registrar en fiado con detalle de precios
-  if(pagoActual==='fiado'){
-    var fSel2=get('fiado-cliente-sel');
-    var cf=fiados.find(function(f){return f.id==fSel2;});
-    if(cf){
-      cf.deuda+=monto;
-      if(!cf.movs) cf.movs=[];
-      cf.movs.push({
-        id:Date.now(),
-        tipo:'deuda',
-        monto:monto,
-        desc:descFinal,
-        fecha:hoy(),
-        detalle:detalleFiado  // productos + precio del día
-      });
-      descFinal='🤝 '+cf.nom+' · '+descFinal;
-    }
-  }
-
-  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
-  movimientos.unshift(_mc);
+  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods}; movimientos.unshift(_mc);
   lineasCobro=[];
-  closeModal('modal-cobrar'); saveMovimiento(_mc); saveState(); renderDash();
-  if(pagoActual==='fiado'){
-    var cf2=fiados.find(function(f){return f.id==get('fiado-cliente-sel');});
-    toast('🤝 Fiado cargado a '+(cf2?cf2.nom:'cliente')+' · '+fmtM(monto));
-  } else {
-    toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
-  }
+  closeModal('modal-cobrar'); saveMovimiento(_mc); renderDash();
+  toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
 }
 
 // ═══ INGRESO ═══
@@ -1918,15 +1773,8 @@ function renderDash(){
   set('sb-alerta','text',String(alertas.length));
   const dEl=el('dash-fecha');
   if(dEl)dEl.innerHTML=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  // Fiado alert
-  var fiadosConDeuda = fiados.filter(function(f){return f.deuda>0;});
-  var totalFiado = fiadosConDeuda.reduce(function(s,f){return s+f.deuda;},0);
-  var fiadoAlert = el('dash-fiado-alert');
-  if(fiadoAlert){
-    fiadoAlert.style.display = fiadosConDeuda.length > 0 ? 'block' : 'none';
-    set('dash-fiado-total','text',fmtM(totalFiado));
-    set('dash-fiado-alert-txt','text',fiadosConDeuda.length+' cliente'+(fiadosConDeuda.length!==1?'s':'')+' con deuda pendiente · Tocá para cobrar');
-  }
+  // Alertas
+  const da=el('dash-alertas');
   if(da)da.innerHTML=alertas.length?alertas.slice(0,5).map(function(p){const e=estadoProd(p);return'<div class="mov-item"><div class="mov-ico mi-egreso">⚑</div><div class="mov-txt"><div class="mov-name">'+p.nom+'</div><div class="mov-meta">'+p.cat+' · Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+'</div></div>'+bdg(e.cls,e.lbl)+'</div>';}).join(''):'<div class="empty"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div></div>';
   // Movimientos recientes
   const dm=el('dash-movs');
@@ -2133,7 +1981,6 @@ function renderPage(id){
   else if(id==='movimientos') renderMovs();
   else if(id==='facturas') renderFacts();
   else if(id==='gastos') renderGastos();
-  else if(id==='fiado') renderFiado();
   else if(id==='resumen') renderResumen();
   else if(id==='finanzas') renderFinanzas();
 }
@@ -3037,244 +2884,6 @@ function saveProducto(p){ saveState(); guardarEnNube('productos',p.id,p); }
 function saveMovimiento(m){ saveState(); guardarEnNube('movimientos',m.id,m); }
 function saveFactura(f){ saveState(); guardarEnNube('facturas',f.id,f); }
 function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
-
-// ═══ FIADO ═══
-var fiadoActualId = null;
-
-function guardarClienteFiado(){
-  var nom = get('fn-nombre').trim();
-  if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
-  var cliente = {
-    id: Date.now(),
-    nom: nom,
-    tel: get('fn-tel').trim(),
-    limite: parseFloat(get('fn-limite'))||0,
-    nota: get('fn-nota').trim(),
-    deuda: 0,
-    movs: [],
-    fecha: hoy()
-  };
-  fiados.push(cliente);
-  ['fn-nombre','fn-tel','fn-limite','fn-nota'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-fiado-nuevo');
-  saveState();
-  renderFiado();
-  toast('🤝 Cliente '+nom+' agregado ✓');
-}
-
-function abrirDetalleFiado(id){
-  fiadoActualId = id;
-  var c = fiados.find(function(f){return f.id===id;});
-  if(!c) return;
-  set('fd-monto','val',''); set('fd-desc','val',''); set('fd-pago','val','');
-  renderHeaderFiado(c);
-  renderHistorialFiado(c);
-  openModal('modal-fiado-detalle');
-}
-
-function renderHeaderFiado(c){
-  var inicial = c.nom.charAt(0).toUpperCase();
-  var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
-  var col = colors[c.nom.charCodeAt(0) % colors.length];
-  var saldado = c.deuda <= 0;
-  var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
-  var notaTxt = c.nota ? '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">📝 '+c.nota+'</div>' : '';
-  var telTxt = c.tel ? '<div style="font-size:11px;color:var(--mut2);">📞 <a href="tel:'+c.tel+'" style="color:var(--acc2);">'+c.tel+'</a></div>' : '';
-  var html = '<div style="display:flex;align-items:center;gap:14px;">'
-    + '<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';width:52px;height:52px;font-size:20px;">'+inicial+'</div>'
-    + '<div style="flex:1;">'
-    + '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;">'+c.nom+'</div>'
-    + telTxt + notaTxt
-    + '</div>'
-    + '<div style="text-align:right;">'
-    + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-    + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+'</div>'
-    + '</div>'
-    + '</div>';
-  set('fd-header','html',html);
-}
-
-function renderHistorialFiado(c){
-  var movs = c.movs || [];
-  if(!movs.length){
-    set('fd-historial','html','<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin movimientos</div></div>');
-    return;
-  }
-  var html = movs.slice().reverse().map(function(m){
-    var esDeuda = m.tipo === 'deuda';
-    var esAjuste = m.tipo === 'ajuste';
-    var col = esDeuda||esAjuste ? 'var(--red)' : 'var(--grn)';
-    var ico = esDeuda ? '📝' : esAjuste ? '📊' : '💵';
-    var signo = esDeuda||esAjuste ? '+' : '-';
-
-    // Comparación de precios actuales vs precio del día
-    var preciosHtml = '';
-    if(esDeuda && m.detalle && m.detalle.length){
-      var hayDiferencia = false;
-      var filasPrecio = m.detalle.map(function(d){
-        var prodActual = productos.find(function(p){return p.id==d.prodId;});
-        var precioActual = prodActual ? (prodActual.precioVenta||0) : 0;
-        var precioViejo = d.precioVenta||0;
-        var subtotalViejo = d.cant * precioViejo;
-        var subtotalActual = d.cant * precioActual;
-        var diff = subtotalActual - subtotalViejo;
-        if(diff !== 0) hayDiferencia = true;
-        var diffHtml = diff > 0
-          ? '<span style="color:var(--red);font-size:10px;font-weight:700;"> ▲ +'+fmtM(diff)+'</span>'
-          : diff < 0
-          ? '<span style="color:var(--grn);font-size:10px;font-weight:700;"> ▼ '+fmtM(diff)+'</span>'
-          : '';
-        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid var(--brd);">'
-          +'<span style="color:var(--mut2);">'+d.cant+' '+d.um+' '+d.nom+'</span>'
-          +'<span style="font-family:DM Mono,monospace;">'+fmtM(subtotalViejo)+(precioActual&&precioActual!==precioViejo?diffHtml:'')+'</span>'
-          +'</div>';
-      }).join('');
-
-      if(hayDiferencia){
-        // Calcular total actualizado
-        var totalActual = m.detalle.reduce(function(s,d){
-          var p = productos.find(function(pr){return pr.id==d.prodId;});
-          return s + d.cant*(p?p.precioVenta||0:d.precioVenta||0);
-        },0);
-        preciosHtml = '<div style="background:var(--sur2);border-radius:6px;padding:8px;margin-top:6px;">'
-          +'<div style="font-size:10px;color:var(--mut2);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">📊 Detalle de precios</div>'
-          +filasPrecio
-          +'<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:4px;">'
-          +'<span style="font-size:11px;color:var(--mut2);">Precio original</span>'
-          +'<span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(m.monto)+'</span>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;">'
-          +'<span style="font-size:12px;font-weight:700;color:var(--yel);">💰 Precio actualizado</span>'
-          +'<span style="font-family:Syne,monospace;font-size:13px;font-weight:800;color:var(--yel);">'+fmtM(totalActual)+'</span>'
-          +'</div>'
-          +'<button class="btn btn-yel btn-sm btn-full" style="margin-top:8px;font-size:11px;" onclick="cobrarPrecioActualizado('+c.id+','+m.id+','+totalActual+')">✓ Cobrar precio actualizado</button>'
-          +'</div>';
-      }
-    }
-
-    return '<div style="padding:10px 0;border-bottom:1px solid var(--brd);">'
-      +'<div style="display:flex;align-items:center;gap:10px;">'
-      +'<div style="width:32px;height:32px;border-radius:8px;background:'+(esDeuda?'var(--red-dim)':'var(--grn-dim)')+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">'+ico+'</div>'
-      +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:12.5px;font-weight:500;">'+(m.desc||( esDeuda?'Fiado':'Pago'))+'</div>'
-      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.metodo?' · '+m.metodo:'')+'</div>'
-      +'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:'+col+';">'+signo+fmtM(m.monto)+'</div>'
-      +'</div>'
-      +preciosHtml
-      +'</div>';
-  }).join('');
-  set('fd-historial','html',html);
-}
-
-function cargarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  var monto = parseFloat(get('fd-monto'))||0;
-  if(!monto){ toast('Ingresá el monto','err'); return; }
-  if(c.limite > 0 && c.deuda + monto > c.limite){
-    toast('⚠️ Supera el límite de crédito de '+fmtM(c.limite),'err'); return;
-  }
-  var desc = get('fd-desc').trim() || 'Fiado';
-  c.deuda += monto;
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'deuda',monto:monto,desc:desc,fecha:hoy()});
-  set('fd-monto','val',''); set('fd-desc','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('📝 Deuda cargada: '+fmtM(monto));
-}
-
-function pagarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  var pago = parseFloat(get('fd-pago'))||0;
-  if(!pago){ toast('Ingresá el monto','err'); return; }
-  if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
-  var metodoEl = el('fd-pago-metodo');
-  var metodo = metodoEl ? metodoEl.value : 'efectivo';
-  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',qr:'QR / MP'};
-  c.deuda = Math.max(0, c.deuda - pago);
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'pago',monto:pago,desc:'Pago '+metLbl[metodo],fecha:hoy(),metodo:metLbl[metodo]});
-  // Registrar como cobro en movimientos
-  var _mc = {id:Date.now(),tipo:'cobro',desc:'Pago fiado - '+c.nom,monto:pago,fecha:hoy(),metodo:metodo};
-  movimientos.unshift(_mc); saveMovimiento(_mc);
-  set('fd-pago','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado(); renderDash();
-  toast('✓ Pago registrado: '+fmtM(pago));
-}
-
-function cobrarPrecioActualizado(clienteId, movId, totalActual){
-  var c = fiados.find(function(f){return f.id===clienteId;});
-  if(!c) return;
-  var mov = c.movs.find(function(m){return m.id===movId;});
-  if(!mov) return;
-  var diff = totalActual - mov.monto;
-  if(diff <= 0){ toast('El precio no cambió','err'); return; }
-  // Actualizar la deuda con la diferencia
-  c.deuda += diff;
-  mov.monto = totalActual;
-  mov.desc = mov.desc + ' (actualizado)';
-  c.movs.push({
-    id:Date.now(),
-    tipo:'ajuste',
-    monto:diff,
-    desc:'Ajuste por aumento de precios',
-    fecha:hoy()
-  });
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('💰 Deuda actualizada a '+fmtM(totalActual)+' · Diferencia: +'+fmtM(diff));
-}
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  if(!confirm('¿Eliminar a '+c.nom+'? Se perderá todo el historial.')) return;
-  fiados = fiados.filter(function(f){return f.id!==fiadoActualId;});
-  fiadoActualId = null;
-  closeModal('modal-fiado-detalle');
-  saveState(); renderFiado(); toast('Cliente eliminado');
-}
-
-function renderFiado(){
-  var q = (get('fiado-srch')||'').toLowerCase();
-  var lista = fiados.filter(function(f){ return !q || f.nom.toLowerCase().includes(q); });
-  // KPIs
-  var totalDeuda = fiados.reduce(function(s,f){return s+(f.deuda||0);},0);
-  var conDeuda = fiados.filter(function(f){return f.deuda>0;}).length;
-  var saldados = fiados.filter(function(f){return f.deuda<=0&&f.movs&&f.movs.length>0;}).length;
-  set('fiado-sub','text',fmtM(totalDeuda)+' en '+conDeuda+' cliente'+(conDeuda!==1?'s':''));
-  var kpis = el('fiado-kpis');
-  if(kpis) kpis.innerHTML = ''
-    +'<div class="kpi kr"><div class="kl">DEUDA TOTAL</div><div class="kn" style="font-size:20px;">'+fmtM(totalDeuda)+'</div><div class="kd">'+conDeuda+' clientes activos</div></div>'
-    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+fiados.length+'</div><div class="kd">registrados</div></div>'
-    +'<div class="kpi kg"><div class="kl">SALDADOS</div><div class="kn">'+saldados+'</div><div class="kd">sin deuda</div></div>';
-  // Badge sidebar
-  var badge = el('sb-fiado-badge');
-  if(badge) badge.style.display = conDeuda > 0 ? '' : 'none';
-  var cont = el('fiado-lista');
-  if(!cont) return;
-  if(!lista.length){
-    cont.innerHTML = '<div class="empty"><div class="empty-ico">🤝</div><div class="empty-t">'+(fiados.length?'Sin resultados':'Sin clientes con fiado')+'</div><div class="empty-s">'+(fiados.length?'Probá con otro nombre':'Tocá + Cliente para agregar uno')+'</div></div>';
-    return;
-  }
-  var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
-  cont.innerHTML = lista.map(function(c){
-    var inicial = c.nom.charAt(0).toUpperCase();
-    var col = colors[c.nom.charCodeAt(0) % colors.length];
-    var saldado = c.deuda <= 0;
-    var lastMov = c.movs && c.movs.length ? c.movs[c.movs.length-1] : null;
-    return '<div class="fiado-item" onclick="abrirDetalleFiado('+c.id+')">'
-      +'<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';">'+inicial+'</div>'
-      +'<div class="fiado-txt">'
-      +'<div class="fiado-nom">'+c.nom+'</div>'
-      +'<div class="fiado-meta">'+(lastMov?'Último: '+fmtF(lastMov.fecha)+(c.tel?' · '+c.tel:''):'Cliente desde '+fmtF(c.fecha))+'</div>'
-      +'</div>'
-      +'<div class="fiado-right">'
-      +'<div class="fiado-deuda'+(saldado?' saldado':'')+'">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-      +'<div class="fiado-deuda-lbl">'+(saldado?'SIN DEUDA':'DEUDA')+'</div>'
-      +'</div>'
-      +'</div>';
-  }).join('');
-}
 
 // ═══ INIT DATA ═══
 function initAppData(){
