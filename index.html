@@ -768,6 +768,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="logo"><div class="logo-ico">📦</div>GestoPro</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;">
+    <button id="btn-lock-now" onclick="bloquearAhora()" title="Bloquear secciones protegidas" style="display:none;background:var(--sur2);border:1px solid var(--brd);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:15px;line-height:1;">🔒</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal('modal-config')" style="font-size:11px;">⚙️</button>
     <div class="plan-chip" onclick="openModal('modal-plan')" id="plan-chip">Plan Gratis</div>
   </div>
@@ -1006,6 +1007,28 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="btn-row">
     <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar cliente</button>
     <button class="btn btn-ghost" onclick="closeModal('modal-fiado-detalle')">Cerrar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL PAGAR FACTURA -->
+<div class="ov" id="modal-pagar-fact">
+<div class="modal" style="max-width:420px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💳 Confirmar pago de factura</div>
+  <div id="modal-pagar-fact-header" style="margin-bottom:16px;"></div>
+  <div class="fg"><label class="fl">Monto pagado $</label><input class="fi" id="fpago-monto" type="number" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
+  <div class="fg"><label class="fl">Forma de pago</label>
+    <select class="fi" id="fpago-metodo">
+      <option value="efectivo">💵 Efectivo</option>
+      <option value="transferencia">🏦 Transferencia</option>
+      <option value="cheque">📝 Cheque</option>
+    </select>
+  </div>
+  <div style="font-size:12px;color:var(--mut2);margin-bottom:14px;">Se registrará automáticamente como egreso en Movimientos.</div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-pagar-fact')">Cancelar</button>
+    <button class="btn btn-grn" onclick="confirmarPagoFactura()">✓ Confirmar pago</button>
   </div>
 </div>
 </div>
@@ -1443,7 +1466,7 @@ function guardarConfig(){
   var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
-  closeModal('modal-config'); saveState(); toast('Configuración guardada ✓');
+  closeModal('modal-config'); saveState(); toast('Configuración guardada ✓'); actualizarBotonLock();
 }
 
 // ═══ COBRAR ═══
@@ -1802,9 +1825,33 @@ function guardarFact(){
   closeModal('modal-fact'); saveFactura(_f); renderDash();
   toast('🧾 Factura guardada ✓');
 }
+var factPagarId = null;
 function marcarPagada(id){
-  const f=facturas.find(function(f){return f.id===id;});
-  if(f){f.estado='pagada';saveFactura(f);renderFacts();renderDash();toast('✅ Factura pagada ✓');}
+  factPagarId = id;
+  var f = facturas.find(function(f){return f.id===id;});
+  if(!f) return;
+  var mh = el('modal-pagar-fact-header');
+  if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+f.prov+' · '+f.num+'</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(f.monto)+'</div>';
+  var montoEl = el('fpago-monto');
+  if(montoEl) montoEl.value = f.monto;
+  openModal('modal-pagar-fact');
+}
+function confirmarPagoFactura(){
+  var f = facturas.find(function(f){return f.id===factPagarId;});
+  if(!f) return;
+  var monto = parseFloat(el('fpago-monto').value)||f.monto;
+  var metodoEl = el('fpago-metodo');
+  var metodo = metodoEl ? metodoEl.value : 'efectivo';
+  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
+  f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo;
+  // Registrar egreso automático
+  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov,monto:monto,fecha:hoy(),metodo:metodo};
+  movimientos.unshift(egreso);
+  saveFactura(f); saveMovimiento(egreso); saveState();
+  closeModal('modal-pagar-fact');
+  renderFacts(); renderDash();
+  toast('✅ Factura pagada · '+metLbl[metodo]+' · '+fmtM(monto));
 }
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
@@ -3296,7 +3343,7 @@ function initAppData(){
   if(uz){ uz.addEventListener('dragover',function(e){e.preventDefault();uz.style.borderColor='var(--acc)';}); uz.addEventListener('dragleave',function(){uz.style.borderColor='';}); uz.addEventListener('drop',function(e){e.preventDefault();uz.style.borderColor='';handleFile(e.dataTransfer.files[0]);}); }
   var ep=el('eg-prod'); if(ep) ep.addEventListener('change',updEgresoInfo);
   try{ if(window.BarcodeDetector){ BarcodeDetector.getSupportedFormats().then(function(f){ barcodeDetector=new BarcodeDetector({formats:f}); }).catch(function(){ barcodeDetector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code']}); }); } }catch(e){ barcodeDetector=null; }
-  renderDash();
+  renderDash(); actualizarBotonLock();
 }
 
 // ═══ INIT ═══
@@ -3382,6 +3429,16 @@ function actualizarDots() {
     var dot = document.getElementById('pd' + i);
     if(dot) dot.className = 'pin-dot' + (i < pinActual.length ? ' on' : '');
   }
+}
+
+function bloquearAhora(){
+  Object.keys(pinSesionDesbloqueada).forEach(function(k){ pinSesionDesbloqueada[k]=false; });
+  toast('🔒 Secciones bloqueadas');
+}
+
+function actualizarBotonLock(){
+  var btn = el('btn-lock-now');
+  if(btn) btn.style.display = (config.pin && config.pin.length===4) ? 'block' : 'none';
 }
 
 function verificarPin() {
