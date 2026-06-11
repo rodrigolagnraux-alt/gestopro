@@ -3225,6 +3225,8 @@ function cobrarPrecioActualizado(clienteId, movId, totalActual){
   saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
   toast('💰 Deuda actualizada a '+fmtM(totalActual)+' · Diferencia: +'+fmtM(diff));
 }
+
+function eliminarClienteFiado(){
   var c = fiados.find(function(f){return f.id===fiadoActualId;});
   if(!c) return;
   if(!confirm('¿Eliminar a '+c.nom+'? Se perderá todo el historial.')) return;
