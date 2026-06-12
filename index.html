@@ -1974,6 +1974,7 @@ function renderDash(){
     set('dash-fiado-total','text',fmtM(totalFiado));
     set('dash-fiado-alert-txt','text',fiadosConDeuda.length+' cliente'+(fiadosConDeuda.length!==1?'s':'')+' con deuda pendiente · Tocá para cobrar');
   }
+  var da=el('dash-alertas');
   if(da)da.innerHTML=alertas.length?alertas.slice(0,5).map(function(p){const e=estadoProd(p);return'<div class="mov-item"><div class="mov-ico mi-egreso">⚑</div><div class="mov-txt"><div class="mov-name">'+p.nom+'</div><div class="mov-meta">'+p.cat+' · Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+'</div></div>'+bdg(e.cls,e.lbl)+'</div>';}).join(''):'<div class="empty"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div></div>';
   // Movimientos recientes
   const dm=el('dash-movs');
