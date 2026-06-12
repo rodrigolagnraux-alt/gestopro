@@ -922,7 +922,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="upload-z" id="upload-z"><input type="file" id="file-inp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])"><div style="font-size:32px;margin-bottom:8px;">📁</div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Arrastrá tu Excel o tocá aquí</div><div style="font-size:12px;color:var(--mut2)">.xlsx · .xls · .csv</div></div>
     <div id="import-prev" style="display:none;"><div class="card"><div class="stitle" id="import-prev-t">Vista previa</div><div id="import-prev-b"></div><div class="btn-row"><button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button><button class="btn btn-acc" onclick="confirmarImport()">Importar</button></div></div></div>
   </div>
-  <div class="tw"><table><thead><tr><th>Estado</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>UM</th><th>Mín/Máx</th><th>Costo</th><th>Venta</th><th>Margen</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
+  <div class="tw"><table><thead><tr><th>Código</th><th>Producto</th><th>UM</th><th>Stock</th><th>Precio</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
   <div class="mc-list" id="mc-prods"></div>
 </div>
 
@@ -1459,7 +1459,16 @@ function goLocked(id,navEl,req){
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
 function openModal(id){ const m=el(id); if(m) m.classList.add('on'); }
-function closeModal(id){ const m=el(id); if(m) m.classList.remove('on'); }
+function closeModal(id){
+  const m=el(id); if(m) m.classList.remove('on');
+  if(id==='modal-prod' && prodEditId){
+    prodEditId=null;
+    var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
+    var s=document.querySelector('#modal-prod .modal-s'); if(s)s.textContent='Agregá un producto o insumo al inventario';
+    var btn=document.querySelector('#modal-prod .btn-acc'); if(btn)btn.textContent='Guardar';
+    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
+  }
+}
 
 // ═══ PLAN ═══
 function setPlan(p,planEl){
@@ -1985,11 +1994,58 @@ function eliminarGF(id){
 }
 
 // ═══ PRODUCTO ═══
+var prodEditId = null;
+function abrirEditarProd(id){
+  var p = productos.find(function(p){return p.id===id;});
+  if(!p) return;
+  prodEditId = id;
+  set('p-cod','val',p.cod||'');
+  set('p-nom','val',p.nom||'');
+  var pcat=el('p-cat'); if(pcat) pcat.value = p.cat||'Otro';
+  set('p-stock','val',p.stock);
+  var pum=el('p-um'); if(pum) pum.value = p.um||'UN';
+  set('p-precio','val',p.precio||'');
+  set('p-min','val',p.min||0);
+  set('p-max','val',p.max||0);
+  set('p-pventa','val',p.pventa||'');
+  set('p-prov','val',p.prov||'');
+  var t = document.querySelector('#modal-prod .modal-t');
+  if(t) t.textContent = '📓 Editar Producto';
+  var s = document.querySelector('#modal-prod .modal-s');
+  if(s) s.textContent = 'Costo, precio, stock mínimo y máximo';
+  var btn = document.querySelector('#modal-prod .btn-acc');
+  if(btn) btn.textContent = 'Guardar cambios';
+  openModal('modal-prod');
+}
+
 function guardarProd(){
   const nom=get('p-nom').trim();
   if(!nom){toast('Ingresá el nombre del producto','err');return;}
-  if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   const pcat=el('p-cat'); const pum=el('p-um');
+  if(prodEditId){
+    var p = productos.find(function(p){return p.id===prodEditId;});
+    if(p){
+      p.cod = get('p-cod').trim()||p.cod;
+      p.nom = nom;
+      p.cat = pcat?pcat.value:p.cat;
+      p.stock = parseFloat(get('p-stock'))||0;
+      p.um = pum?pum.value:p.um;
+      p.precio = parseFloat(get('p-precio'))||0;
+      p.pventa = parseFloat(get('p-pventa'))||0;
+      p.min = parseFloat(get('p-min'))||0;
+      p.max = parseFloat(get('p-max'))||0;
+      p.prov = get('p-prov').trim();
+    }
+    prodEditId = null;
+    var t = document.querySelector('#modal-prod .modal-t'); if(t) t.textContent = '📦 Nuevo Producto';
+    var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto o insumo al inventario';
+    var btn = document.querySelector('#modal-prod .btn-acc'); if(btn) btn.textContent = 'Guardar';
+    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
+    closeModal('modal-prod'); saveState(); renderDash(); renderProds();
+    toast('📓 Producto actualizado ✓');
+    return;
+  }
+  if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim()});
   ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
   closeModal('modal-prod'); saveState(); renderDash(); renderProds();
@@ -2144,23 +2200,20 @@ function renderProds(){
   var tb=el('tbl-prods');
   if(tb){
     if(!rows.length){
-      tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div></td></tr>';
+      tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div></td></tr>';
     } else {
       tb.innerHTML=rows.map(function(p){
         var e=estadoProd(p);
-        var mg=p.pventa&&p.precio?Math.round((p.pventa-p.precio)/p.precio*100):null;
-        var mgColor=mg!==null?(mg>30?'var(--grn)':mg>0?'var(--yel)':'var(--red)'):'var(--mut2)';
-        return '<tr><td>'+bdg(e.cls,e.lbl)+'</td>'
-          +'<td style="max-width:180px;line-height:1.4;">'+p.nom+'<br><span class="mn md">'+p.cod+'</span></td>'
-          +'<td class="mn md">'+p.cat+'</td>'
-          +'<td class="mn">'+p.stock+'</td>'
+        var stockColor = e.cls==='br' ? 'var(--red)' : (e.cls==='by' ? 'var(--yel)' : 'var(--txt)');
+        return '<tr>'
+          +'<td class="mn md">'+(p.cod||'—')+'</td>'
+          +'<td style="max-width:200px;line-height:1.4;">'+p.nom+'</td>'
           +'<td class="mn md">'+p.um+'</td>'
-          +'<td class="mn md">'+p.min+'/'+p.max+'</td>'
-          +'<td class="mn">'+(p.precio?fmtM(p.precio):'—')+'</td>'
+          +'<td class="mn" style="color:'+stockColor+';font-weight:600;">'+p.stock+'</td>'
           +'<td class="mn">'+(p.pventa?fmtM(p.pventa):'—')+'</td>'
-          +'<td class="mn" style="color:'+mgColor+';">'+(mg!==null?mg+'%':'—')+'</td>'
           +'<td><div style="display:flex;gap:4px;">'
-          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEditarProd('+p.id+')" title="Editar">📓</button>'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')" title="Salida de stock">📤</button>'
           +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
           +'</div></td></tr>';
       }).join('');
@@ -2184,6 +2237,7 @@ function renderProds(){
           +(mg!==null?'<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:'+mgColor+';">'+mg+'%</div></div>':'')
           +'</div>'
           +'<div style="display:flex;gap:6px;margin-top:8px;">'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEditarProd('+p.id+')">📓 Editar</button>'
           +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
           +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
           +'</div></div>';
