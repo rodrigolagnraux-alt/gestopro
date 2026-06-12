@@ -465,7 +465,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
   <div class="fg"><label class="fl">Descripción (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Venta mostrador, cliente..."></div>
   <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
-  <div class="pay-methods">
+  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr;">
     <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
       <div class="pay-ico">💵</div>
       <div class="pay-lbl">Efectivo</div>
@@ -480,6 +480,22 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="pay-ico">🏦</div>
       <div class="pay-lbl">Transferencia</div>
       <div class="pay-sub">Alias / CVU</div>
+    </div>
+    <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
+      <div class="pay-ico">🤝</div>
+      <div class="pay-lbl">Fiado</div>
+      <div class="pay-sub">A cuenta del cliente</div>
+    </div>
+  </div>
+  <!-- FIADO -->
+  <div id="pago-fiado" style="display:none;">
+    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:16px;margin-bottom:12px;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--yel);margin-bottom:12px;">🤝 ¿A cuenta de quién?</div>
+      <select class="fi" id="fiado-cliente-sel" style="font-size:15px;margin-bottom:10px;" onchange="selFiadoCliente(this.value)">
+        <option value="">— Elegir cliente —</option>
+      </select>
+      <div id="fiado-cliente-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;"></div>
+      <button class="btn btn-ghost btn-sm btn-full" onclick="abrirNuevoClienteRapido()" style="border-color:var(--yel);color:var(--yel);">+ Nuevo cliente</button>
     </div>
   </div>
   <!-- EFECTIVO -->
@@ -746,6 +762,19 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>
   <div id="cfg-pin-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;color:var(--mut2);"></div>
 
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤝 Precio en Fiado</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Cuando un cliente venía pagar una deuda vieja, ¿qué precio se cobra por los productos?</div>
+  <div class="fg" style="margin-bottom:0;">
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="cfg-fiado-precio-original-wrap">
+      <input type="radio" name="cfg-fiado-precio" value="original" id="cfg-fiado-precio-original" style="margin-top:3px;">
+      <span><b style="color:var(--txt);">Precio original</b><br><span style="font-size:11px;color:var(--mut2);">Se cobra el precio que tenía el producto el día que se llevó el fiado.</span></span>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;cursor:pointer;" id="cfg-fiado-precio-actual-wrap">
+      <input type="radio" name="cfg-fiado-precio" value="actual" id="cfg-fiado-precio-actual" style="margin-top:3px;">
+      <span><b style="color:var(--txt);">Precio actualizado</b><br><span style="font-size:11px;color:var(--mut2);">Se recalcula con el precio de venta actual de cada producto.</span></span>
+    </label>
+  </div>
+
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
     Para usar la IA necesitás tu propia clave de Anthropic.<br>
@@ -952,7 +981,10 @@ select.fi{appearance:none;cursor:pointer;}
 <div id="pg-fiado" class="pg">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
     <div><div class="ptitle">Fiado 🤝</div><div class="psub" style="margin-bottom:0">Clientes con deuda · <b id="fiado-sub">$0 total</b></div></div>
-    <button class="btn btn-yel btn-sm" onclick="openModal('modal-fiado-nuevo')">+ Cliente</button>
+    <div>
+      <button class="btn btn-yel btn-sm" onclick="openModal('modal-fiado-nuevo')">+ Cliente</button>
+      <button class="btn btn-ghost btn-sm" onclick="crearConsumoPropio()" title="Cuenta para registrar lo que el dueño saca del stock">🏠 Consumo propio</button>
+    </div>
   </div>
   <div class="kgrid3" id="fiado-kpis" style="margin-bottom:16px;"></div>
   <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="fiado-srch" placeholder="Buscar cliente..." oninput="renderFiado()"></div>
@@ -978,13 +1010,8 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto;">
   <div class="modal-drag"></div>
   <div id="fd-header" style="margin-bottom:16px;"></div>
-  <div style="background:var(--red-dim);border:1px solid rgba(255,77,109,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px;">📝 Cargar fiado</div>
-    <div class="frow">
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Monto $</label><input class="fi" id="fd-monto" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Descripción</label><input class="fi" id="fd-desc" placeholder="Ej: Aceite, pan..."></div>
-    </div>
-    <button class="btn btn-red btn-full" onclick="cargarFiado()" style="margin-top:10px;">+ Cargar deuda</button>
+  <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--mut2);line-height:1.6;">
+    💡 Para cargar productos fiados a este cliente, usá <b style="color:var(--acc2);">💚 Cobrar</b> y elegí <b style="color:var(--yel);">🤝 Fiado</b> como forma de pago. Así queda registrado el detalle exacto de lo que se llevó.
   </div>
   <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
@@ -1388,8 +1415,8 @@ function estadoProd(p){
 }
 function bdg(cls,lbl){ return '<span class="bdg '+cls+'">'+lbl+'</span>'; }
 function eFactBdg(e){
-  const m={pendiente:'by',vencida:'br',pagada:'bg'};
-  const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA'};
+  const m={pendiente:'by',vencida:'br',pagada:'bg',parcial:'bp'};
+  const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA',parcial:'PARCIAL'};
   return bdg(m[e]||'bm', l[e]||e);
 }
 function filtrarPeriodo(items,period){
@@ -1464,6 +1491,8 @@ function guardarConfig(){
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
   var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
+  var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
+  config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
   closeModal('modal-config'); saveState(); toast('Configuración guardada ✓'); actualizarBotonLock();
@@ -1538,17 +1567,64 @@ function updCobrar(){
   set('qr-monto-display','text',fmtM(v));
   set('transf-monto-display','text',fmtM(v));
   calcVuelto();
+  if(pagoActual==='fiado'){
+    var fSel=get('fiado-cliente-sel');
+    if(fSel) selFiadoCliente(fSel);
+  }
 }
 function selPago(tipo,selEl){
   pagoActual=tipo;
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
-  const needBasico=tipo!=='efectivo' && PLAN_N[planActual]<PLAN_N['basico'];
+  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && PLAN_N[planActual]<PLAN_N['basico'];
   if(needBasico){ toast('QR y transferencia disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
   set('pago-qr','display',tipo==='qr'?'block':'none');
   set('pago-transferencia','display',tipo==='transferencia'?'block':'none');
+  set('pago-fiado','display',tipo==='fiado'?'block':'none');
+  if(tipo==='fiado') cargarSelectorFiado();
 }
+function cargarSelectorFiado(){
+  var sel = el('fiado-cliente-sel');
+  if(!sel) return;
+  if(!fiados.length){
+    sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
+    set('fiado-cliente-info','display','none');
+    return;
+  }
+  sel.innerHTML = '<option value="">— Elegir cliente —</option>'
+    + fiados.map(function(f){
+        var deudaTxt = f.deuda > 0 ? ' · Debe '+fmtM(f.deuda) : ' · Sin deuda';
+        return '<option value="'+f.id+'">'+f.nom+deudaTxt+'</option>';
+      }).join('');
+  set('fiado-cliente-info','display','none');
+}
+
+function selFiadoCliente(id){
+  var info = el('fiado-cliente-info');
+  if(!id || !info){ if(info) info.style.display='none'; return; }
+  var c = fiados.find(function(f){return f.id==id;});
+  if(!c){ info.style.display='none'; return; }
+  var limiteTxt = c.limite > 0 ? ' · Límite: '+fmtM(c.limite) : '';
+  var monto = parseFloat(get('cobrar-monto'))||0;
+  var nuevaDeuda = c.deuda + monto;
+  var superaLimite = c.limite > 0 && nuevaDeuda > c.limite;
+  info.style.display = 'block';
+  info.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<div><b style="color:var(--txt);">'+c.nom+'</b>'+(c.tel?'<br><span style="color:var(--mut2);">📞 '+c.tel+'</span>':'')+'</div>'
+    +'<div style="text-align:right;">'
+    +'<div style="color:var(--red);font-family:Syne,sans-serif;font-size:14px;font-weight:800;">Debe: '+fmtM(c.deuda)+'</div>'
+    +(monto>0?'<div style="color:'+(superaLimite?'var(--red)':'var(--yel)')+';font-size:11px;">+ '+fmtM(monto)+' → '+fmtM(nuevaDeuda)+'</div>':'')
+    +(superaLimite?'<div style="color:var(--red);font-size:10px;font-weight:700;">⚠️ Supera el límite'+limiteTxt+'</div>':'')
+    +'</div>'
+    +'</div>';
+}
+
+function abrirNuevoClienteRapido(){
+  closeModal('modal-cobrar');
+  setTimeout(function(){ openModal('modal-fiado-nuevo'); },200);
+}
+
 function calcVuelto(){
   const total=parseFloat(get('cobrar-monto'))||0;
   const recibido=parseFloat(get('ef-recibido'))||0;
@@ -1830,11 +1906,13 @@ function marcarPagada(id){
   factPagarId = id;
   var f = facturas.find(function(f){return f.id===id;});
   if(!f) return;
+  var saldo = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
   var mh = el('modal-pagar-fact-header');
   if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+f.prov+' · '+f.num+'</div>'
-    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(f.monto)+'</div>';
+    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(saldo)+'</div>'
+    +(f.estado==='parcial'?'<div style="font-size:11px;color:var(--red);margin-top:4px;">Saldo pendiente de pago parcial anterior</div>':'');
   var montoEl = el('fpago-monto');
-  if(montoEl) montoEl.value = f.monto;
+  if(montoEl) montoEl.value = saldo;
   openModal('modal-pagar-fact');
 }
 function confirmarPagoFactura(){
@@ -1844,14 +1922,35 @@ function confirmarPagoFactura(){
   var metodoEl = el('fpago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
-  f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo;
-  // Registrar egreso automático
+  var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
+  var diff = saldoOriginal - monto;
+  // Registrar egreso automático por el monto realmente pagado
   var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov,monto:monto,fecha:hoy(),metodo:metodo};
-  movimientos.unshift(egreso);
-  saveFactura(f); saveMovimiento(egreso); saveState();
-  closeModal('modal-pagar-fact');
-  renderFacts(); renderDash();
-  toast('✅ Factura pagada · '+metLbl[metodo]+' · '+fmtM(monto));
+  movimientos.unshift(egreso); saveMovimiento(egreso);
+
+  if(diff > 0.5){
+    // Pago parcial — queda saldo pendiente
+    f.estado='parcial';
+    f.saldoPendiente = diff;
+    f.fechaPago=hoy(); f.metodoPago=metodo;
+    saveFactura(f); saveState();
+    closeModal('modal-pagar-fact');
+    renderFacts(); renderDash();
+    toast('⚠️ Pago parcial registrado · Quedan '+fmtM(diff)+' pendientes de '+f.num);
+  } else if(diff < -0.5){
+    // Pagó de más
+    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    saveFactura(f); saveState();
+    closeModal('modal-pagar-fact');
+    renderFacts(); renderDash();
+    toast('✅ Factura pagada · Pagaste '+fmtM(Math.abs(diff))+' de más');
+  } else {
+    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    saveFactura(f); saveState();
+    closeModal('modal-pagar-fact');
+    renderFacts(); renderDash();
+    toast('✅ Factura pagada · '+metLbl[metodo]+' · '+fmtM(monto));
+  }
 }
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
@@ -1950,7 +2049,7 @@ function cancelImport(){
 function renderDash(){
   const now=new Date();
   const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
-  const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
+  const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
   const gfPend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
   const cobrosHoy=movimientos.filter(function(m){
     if(m.tipo!=='cobro')return false;
@@ -2001,6 +2100,11 @@ function renderMovItem(m){
     return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
   }
   if(m.tipo==='egreso'){
+    if(m.prodId===undefined && m.prodNom===undefined){
+      var icoM3={efectivo:'💵',transferencia:'🏦',cheque:'📝'};
+      var metLbl3={efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
+      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+(m.desc||'Egreso')+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
+    }
     const prod=productos.find(function(p){return p.id===m.prodId;});
     const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
     return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
@@ -2115,8 +2219,8 @@ function fMov(f,btn){movFilter=f;document.querySelectorAll('#pg-movimientos .fr 
 
 // ═══ RENDER FACTURAS ═══
 function renderFacts(){
-  const rows=factFilter==='TODOS'?facturas:facturas.filter(function(f){return f.estado===factFilter;});
-  const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
+  const rows=factFilter==='TODOS'?facturas:(factFilter==='pendiente'?facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='parcial';}):facturas.filter(function(f){return f.estado===factFilter;}));
+  const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
   set('fact-sub','text',pend.length+' pendientes · '+fmtM(pend.reduce(function(s,f){return s+f.monto;},0)));
   const tf=el('tbl-facts');
   if(tf)tf.innerHTML=rows.length?rows.map(function(f){return'<tr><td>'+eFactBdg(f.estado)+'</td><td class="mn">'+f.num+'</td><td style="max-width:130px;">'+f.prov+'</td><td class="mn md">'+fmtF(f.fecha)+'</td><td class="mn" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</td><td class="mn" style="color:var(--yel);">'+fmtM(f.monto)+'</td><td style="font-size:11px;color:var(--mut2);max-width:130px;">'+(f.obs||'—')+'</td><td><div style="display:flex;gap:4px;">'+(f.estado!=='pagada'?'<button class="btn btn-ghost btn-sm" onclick="marcarPagada('+f.id+')">✓</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></td></tr>';}).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div></td></tr>';
@@ -3089,6 +3193,26 @@ function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
 // ═══ FIADO ═══
 var fiadoActualId = null;
 
+function crearConsumoPropio(){
+  var existe = fiados.find(function(f){return f.esConsumoPropio;});
+  if(existe){ abrirDetalleFiado(existe.id); return; }
+  var cliente = {
+    id: Date.now(),
+    nom: '🏠 Consumo propio',
+    tel: '',
+    limite: 0,
+    nota: 'Lo que el dueño/familia saca del stock para uso personal.',
+    deuda: 0,
+    movs: [],
+    fecha: hoy(),
+    esConsumoPropio: true
+  };
+  fiados.push(cliente);
+  saveState(); renderFiado();
+  toast('🏠 Cuenta de consumo propio creada. Usá Cobrar → Fiado y elegí esta cuenta.');
+  abrirDetalleFiado(cliente.id);
+}
+
 function guardarClienteFiado(){
   var nom = get('fn-nombre').trim();
   if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
@@ -3232,9 +3356,44 @@ function cargarFiado(){
   toast('📝 Deuda cargada: '+fmtM(monto));
 }
 
+function recalcularDeudaActual(clienteId){
+  var c = fiados.find(function(f){return f.id===clienteId;});
+  if(!c || !c.movs) return {totalActual:c?c.deuda:0, diff:0};
+  var totalActual = 0, totalOriginal = 0;
+  c.movs.filter(function(m){return m.tipo==='deuda';}).forEach(function(m){
+    totalOriginal += m.monto;
+    if(m.detalle && m.detalle.length){
+      var sub = 0;
+      m.detalle.forEach(function(d){
+        var prod = productos.find(function(p){return p.id===d.prodId;});
+        var precio = prod && prod.precioVenta ? prod.precioVenta : d.precioVenta;
+        sub += precio * d.cant;
+      });
+      totalActual += sub;
+    } else {
+      totalActual += m.monto;
+    }
+  });
+  // restar pagos ya hechos
+  var pagado = c.movs.filter(function(m){return m.tipo==='pago';}).reduce(function(s,m){return s+m.monto;},0);
+  var ajustes = c.movs.filter(function(m){return m.tipo==='ajuste';}).reduce(function(s,m){return s+m.monto;},0);
+  totalActual = totalActual + ajustes - pagado;
+  var diff = totalActual - c.deuda;
+  return {totalActual:Math.max(0,totalActual), diff:diff};
+}
+
 function pagarFiado(){
   var c = fiados.find(function(f){return f.id===fiadoActualId;});
   if(!c) return;
+  // Si la config dice precio actualizado, recalcular FIFO antes de pagar
+  if((config.fiadoPrecio||'original')==='actual'){
+    var r = recalcularDeudaActual(c.id);
+    if(Math.abs(r.diff) > 0.5){
+      c.deuda = r.totalActual;
+      c.movs.push({id:Date.now(),tipo:'ajuste',monto:r.diff,desc:'Ajuste a precio actual',fecha:hoy()});
+      toast('💰 Deuda actualizada a precios actuales: '+fmtM(r.totalActual));
+    }
+  }
   var pago = parseFloat(get('fd-pago'))||0;
   if(!pago){ toast('Ingresá el monto','err'); return; }
   if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
@@ -3338,6 +3497,9 @@ function initAppData(){
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-pin','val',config.pin||'');
+  var fpref = config.fiadoPrecio || 'original';
+  var fpEl = el('cfg-fiado-precio-'+fpref);
+  if(fpEl) fpEl.checked = true;
   if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   var uz=el('upload-z');
