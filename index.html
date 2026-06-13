@@ -2226,6 +2226,9 @@ function confirmarImport(){
   pendingImport=[];
   set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
   saveState(); renderDash(); renderProds();
+  if(supabaseClient&&currentNegocioId){
+    productos.forEach(function(p){ guardarEnNube('productos',p.id,p); });
+  }
   toast(nuevos+' nuevos · '+actualizados+' actualizados ✓');
 }
 function cancelImport(){
