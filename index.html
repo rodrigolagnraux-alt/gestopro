@@ -926,6 +926,16 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="mc-list" id="mc-prods"></div>
 </div>
 
+<!-- ÓRDENES DE COMPRA / PEDIDO SUGERIDO -->
+<div id="pg-oc" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div><div class="ptitle">Pedido a Proveedores</div><div class="psub" style="margin-bottom:0">Sugerencia automática según stock mínimo y máximo</div></div>
+    <button class="btn btn-acc btn-sm" onclick="renderPedidos()">↻ Recalcular</button>
+  </div>
+  <div id="oc-empty" class="empty" style="display:none;"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div><div style="font-size:12px;color:var(--mut2);margin-top:4px;">Ningún producto necesita reposición ahora.</div></div>
+  <div id="oc-groups"></div>
+</div>
+
 <!-- MOVIMIENTOS -->
 <div id="pg-movimientos" class="pg">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -1414,6 +1424,92 @@ function estadoProd(p){
   return{cls:'bg',lbl:'OK'};
 }
 function bdg(cls,lbl){ return '<span class="bdg '+cls+'">'+lbl+'</span>'; }
+
+// ═══ PEDIDO SUGERIDO A PROVEEDORES ═══
+var pedidoQtys = {}; // {prodId: cantidad}
+function renderPedidos(){
+  var grupos = el('oc-groups'), empty = el('oc-empty');
+  if(!grupos) return;
+  var necesitan = productos.filter(function(p){
+    var e = estadoProd(p);
+    return e.lbl==='CRÍTICO' || e.lbl==='SIN STOCK' || e.lbl==='MÍNIMO';
+  });
+  if(!necesitan.length){
+    grupos.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  var porCat = {};
+  necesitan.forEach(function(p){
+    var cat = p.cat || 'Otro';
+    if(!porCat[cat]) porCat[cat]=[];
+    porCat[cat].push(p);
+    if(pedidoQtys[p.id]===undefined){
+      var sugerido = Math.max(p.max - p.stock, 0);
+      if(!sugerido && p.min>0) sugerido = p.min;
+      pedidoQtys[p.id] = sugerido;
+    }
+  });
+
+  var cats = Object.keys(porCat).sort();
+  grupos.innerHTML = cats.map(function(cat){
+    var items = porCat[cat];
+    var rows = items.map(function(p){
+      var e = estadoProd(p);
+      return '<div class="mov-item">'
+        +'<div class="mov-ico mi-egreso">⚑</div>'
+        +'<div class="mov-txt">'
+          +'<div class="mov-name">'+p.nom+'</div>'
+          +'<div class="mov-meta">Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+' · Máx: '+p.max+(p.prov?' · Prov: '+p.prov:'')+'</div>'
+        +'</div>'
+        +bdg(e.cls,e.lbl)
+        +'<input class="fi" type="number" min="0" step="any" style="width:70px;margin-left:8px;text-align:center;" value="'+pedidoQtys[p.id]+'" oninput="pedidoQtys['+p.id+']=parseFloat(this.value)||0;">'
+        +'<span style="font-size:11px;color:var(--mut2);margin-left:4px;width:28px;">'+p.um+'</span>'
+      +'</div>';
+    }).join('');
+    var catId = 'oc-cat-'+cat.replace(/[^a-zA-Z0-9]/g,'_');
+    return '<div class="card">'
+      +'<div class="stitle" style="display:flex;justify-content:space-between;align-items:center;">'
+        +'<span>'+cat+' <span style="color:var(--mut2);font-weight:400;">('+items.length+')</span></span>'
+        +'<div style="display:flex;gap:6px;">'
+          +'<button class="btn btn-ghost btn-sm" onclick="copiarPedido(\''+cat.replace(/'/g,"\\'")+'\')">📋 Copiar</button>'
+          +'<button class="btn btn-grn btn-sm" onclick="wspPedido(\''+cat.replace(/'/g,"\\'")+'\')">💬 WhatsApp</button>'
+        +'</div>'
+      +'</div>'
+      +'<div id="'+catId+'">'+rows+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function pedidoTexto(cat){
+  var items = productos.filter(function(p){
+    var e = estadoProd(p);
+    return (p.cat||'Otro')===cat && (e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO') && (pedidoQtys[p.id]||0)>0;
+  });
+  if(!items.length) return '';
+  var lines = ['📋 Pedido — '+cat, ''];
+  items.forEach(function(p){
+    lines.push('• '+p.nom+': '+pedidoQtys[p.id]+' '+p.um+(p.prov?' (Prov: '+p.prov+')':''));
+  });
+  return lines.join('\n');
+}
+function copiarPedido(cat){
+  var txt = pedidoTexto(cat);
+  if(!txt){ toast('No hay productos con cantidad a pedir','err'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ toast('Pedido copiado'); }).catch(function(){ toast('No se pudo copiar','err'); });
+  } else {
+    toast('No se pudo copiar','err');
+  }
+}
+function wspPedido(cat){
+  var txt = pedidoTexto(cat);
+  if(!txt){ toast('No hay productos con cantidad a pedir','err'); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(txt), '_blank');
+}
+
 function eFactBdg(e){
   const m={pendiente:'by',vencida:'br',pagada:'bg',parcial:'bp'};
   const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA',parcial:'PARCIAL'};
@@ -2378,6 +2474,7 @@ function renderPage(id){
   else if(id==='fiado') renderFiado();
   else if(id==='resumen') renderResumen();
   else if(id==='finanzas') renderFinanzas();
+  else if(id==='oc') renderPedidos();
 }
 
 
