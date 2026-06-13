@@ -301,18 +301,7 @@ select.fi{appearance:none;cursor:pointer;}
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
 
-/* FIADO */
-.fiado-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .15s;}
-.fiado-item:last-child{border-bottom:none;}
-.fiado-item:hover{background:rgba(255,255,255,.01);}
-.fiado-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Syne",sans-serif;font-size:16px;font-weight:800;flex-shrink:0;}
-.fiado-txt{flex:1;min-width:0;}
-.fiado-nom{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fiado-meta{font-size:11px;color:var(--mut2);font-family:"DM Mono",monospace;margin-top:2px;}
-.fiado-right{text-align:right;flex-shrink:0;}
-.fiado-deuda{font-family:"Syne",sans-serif;font-size:16px;font-weight:800;color:var(--red);}
-.fiado-deuda.saldado{color:var(--grn);}
-.fiado-deuda-lbl{font-size:9px;color:var(--mut2);font-family:"DM Mono",monospace;}
+/* PIN MODAL */
 .pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .pin-overlay.on{opacity:1;pointer-events:all;}
 .pin-modal{background:var(--sur);border:1px solid var(--brd2);border-radius:16px;padding:28px 24px;width:100%;max-width:320px;text-align:center;}
@@ -437,7 +426,7 @@ select.fi{appearance:none;cursor:pointer;}
 
 <!-- MODAL COBRAR -->
 <div class="ov" id="modal-cobrar">
-<div class="modal" style="max-width:600px;">
+<div class="modal">
   <div class="modal-drag"></div>
   <div class="modal-t">💚 Cobrar</div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
@@ -465,7 +454,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
   <div class="fg"><label class="fl">Descripción (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Venta mostrador, cliente..."></div>
   <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
-  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+  <div class="pay-methods">
     <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
       <div class="pay-ico">💵</div>
       <div class="pay-lbl">Efectivo</div>
@@ -480,22 +469,6 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="pay-ico">🏦</div>
       <div class="pay-lbl">Transferencia</div>
       <div class="pay-sub">Alias / CVU</div>
-    </div>
-    <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
-      <div class="pay-ico">🤝</div>
-      <div class="pay-lbl">Fiado</div>
-      <div class="pay-sub">A cuenta del cliente</div>
-    </div>
-  </div>
-  <!-- FIADO -->
-  <div id="pago-fiado" style="display:none;">
-    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:16px;margin-bottom:12px;">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--yel);margin-bottom:12px;">🤝 ¿A cuenta de quién?</div>
-      <select class="fi" id="fiado-cliente-sel" style="font-size:15px;margin-bottom:10px;" onchange="selFiadoCliente(this.value)">
-        <option value="">— Elegir cliente —</option>
-      </select>
-      <div id="fiado-cliente-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;"></div>
-      <button class="btn btn-ghost btn-sm btn-full" onclick="abrirNuevoClienteRapido()" style="border-color:var(--yel);color:var(--yel);">+ Nuevo cliente</button>
     </div>
   </div>
   <!-- EFECTIVO -->
@@ -747,33 +720,18 @@ select.fi{appearance:none;cursor:pointer;}
 
 <!-- CONFIG ALIAS MODAL -->
 <div class="ov" id="modal-config">
-<div class="modal" style="max-height:88vh;overflow-y:auto;">
+<div class="modal">
   <div class="modal-drag"></div>
   <div class="modal-t">⚙️ Configuración</div>
   <div class="modal-s">Datos del negocio y configuración de la app</div>
-
+  
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
   <div class="fg"><label class="fl">Alias Mercado Pago / MODO</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
   <div class="fg"><label class="fl">CVU (opcional)</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
-
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
-  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>
-  <div id="cfg-pin-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;color:var(--mut2);"></div>
-
-  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤝 Precio en Fiado</div>
-  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Cuando un cliente venía pagar una deuda vieja, ¿qué precio se cobra por los productos?</div>
-  <div class="fg" style="margin-bottom:0;">
-    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="cfg-fiado-precio-original-wrap">
-      <input type="radio" name="cfg-fiado-precio" value="original" id="cfg-fiado-precio-original" style="margin-top:3px;">
-      <span><b style="color:var(--txt);">Precio original</b><br><span style="font-size:11px;color:var(--mut2);">Se cobra el precio que tenía el producto el día que se llevó el fiado.</span></span>
-    </label>
-    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;cursor:pointer;" id="cfg-fiado-precio-actual-wrap">
-      <input type="radio" name="cfg-fiado-precio" value="actual" id="cfg-fiado-precio-actual" style="margin-top:3px;">
-      <span><b style="color:var(--txt);">Precio actualizado</b><br><span style="font-size:11px;color:var(--mut2);">Se recalcula con el precio de venta actual de cada producto.</span></span>
-    </label>
-  </div>
+  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric"></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
@@ -785,8 +743,11 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="fg"><label class="fl">API Key de Anthropic (Plan Pro)</label><input class="fi" id="cfg-apikey" placeholder="sk-ant-..." type="password"></div>
   <div id="cfg-apikey-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;"></div>
-
-  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">💾 Guardar</button></div>
+  
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero. El empleado puede cobrar sin ver las ganancias.</div>
+  <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">Guardar</button></div>
 </div>
 </div>
 
@@ -797,7 +758,6 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="logo"><div class="logo-ico">📦</div>GestoPro</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;">
-    <button id="btn-lock-now" onclick="bloquearAhora()" title="Bloquear secciones protegidas" style="display:none;background:var(--sur2);border:1px solid var(--brd);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:15px;line-height:1;">🔒</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal('modal-config')" style="font-size:11px;">⚙️</button>
     <div class="plan-chip" onclick="openModal('modal-plan')" id="plan-chip">Plan Gratis</div>
   </div>
@@ -815,7 +775,6 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Finanzas</div>
     <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
     <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
-    <div class="sb-i" id="sb-fiado" onclick="goLocked('fiado',this,'basico')"><span class="sb-ico">🤝</span>Fiado<span class="sb-lock" id="lock-fiado">🔒</span><span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
   </div>
@@ -877,22 +836,6 @@ select.fi{appearance:none;cursor:pointer;}
     </div>
   </div>
 
-  <!-- FIADO ALERT — solo aparece si hay clientes con deuda -->
-  <div id="dash-fiado-alert" style="display:none;margin-bottom:16px;">
-    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="goLocked('fiado',el('sb-fiado'),'basico')">
-      <div style="font-size:32px;">🤝</div>
-      <div style="flex:1;">
-        <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--yel);">Clientes con fiado pendiente</div>
-        <div style="font-size:12px;color:var(--mut2);margin-top:2px;" id="dash-fiado-alert-txt">Tocá para ver quién debe</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);" id="dash-fiado-total">$0</div>
-        <div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">DEUDA TOTAL</div>
-      </div>
-      <div style="font-size:20px;color:var(--yel);">›</div>
-    </div>
-  </div>
-
   <!-- KPIs -->
   <div class="kgrid">
     <div class="kpi kg"><div class="kl">COBRADO HOY</div><div class="kn" id="kpi-cobrado">$0</div><div class="kd">en cobros</div></div>
@@ -922,18 +865,8 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="upload-z" id="upload-z"><input type="file" id="file-inp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])"><div style="font-size:32px;margin-bottom:8px;">📁</div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Arrastrá tu Excel o tocá aquí</div><div style="font-size:12px;color:var(--mut2)">.xlsx · .xls · .csv</div></div>
     <div id="import-prev" style="display:none;"><div class="card"><div class="stitle" id="import-prev-t">Vista previa</div><div id="import-prev-b"></div><div class="btn-row"><button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button><button class="btn btn-acc" onclick="confirmarImport()">Importar</button></div></div></div>
   </div>
-  <div class="tw"><table><thead><tr><th>Código</th><th>Producto</th><th>UM</th><th>Stock</th><th>Precio</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
+  <div class="tw"><table><thead><tr><th>Estado</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>UM</th><th>Mín/Máx</th><th>Costo</th><th>Venta</th><th>Margen</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
   <div class="mc-list" id="mc-prods"></div>
-</div>
-
-<!-- ÓRDENES DE COMPRA / PEDIDO SUGERIDO -->
-<div id="pg-oc" class="pg">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <div><div class="ptitle">Pedido a Proveedores</div><div class="psub" style="margin-bottom:0">Sugerencia automática según stock mínimo y máximo</div></div>
-    <button class="btn btn-acc btn-sm" onclick="renderPedidos()">↻ Recalcular</button>
-  </div>
-  <div id="oc-empty" class="empty" style="display:none;"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div><div style="font-size:12px;color:var(--mut2);margin-top:4px;">Ningún producto necesita reposición ahora.</div></div>
-  <div id="oc-groups"></div>
 </div>
 
 <!-- MOVIMIENTOS -->
@@ -987,90 +920,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="card"><div class="stitle">💡 Gastos del mes</div><div id="gf-list"></div></div>
 </div>
 
-<!-- FIADO -->
-<div id="pg-fiado" class="pg">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <div><div class="ptitle">Fiado 🤝</div><div class="psub" style="margin-bottom:0">Clientes con deuda · <b id="fiado-sub">$0 total</b></div></div>
-    <div>
-      <button class="btn btn-yel btn-sm" onclick="openModal('modal-fiado-nuevo')">+ Cliente</button>
-      <button class="btn btn-ghost btn-sm" onclick="crearConsumoPropio()" title="Cuenta para registrar lo que el dueño saca del stock">🏠 Consumo propio</button>
-    </div>
-  </div>
-  <div class="kgrid3" id="fiado-kpis" style="margin-bottom:16px;"></div>
-  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="fiado-srch" placeholder="Buscar cliente..." oninput="renderFiado()"></div>
-  <div class="card"><div id="fiado-lista"></div></div>
-</div>
-
-<!-- MODAL NUEVO CLIENTE FIADO -->
-<div class="ov" id="modal-fiado-nuevo">
-<div class="modal" style="max-width:480px;">
-  <div class="modal-drag"></div>
-  <div class="modal-t">🤝 Nuevo cliente con fiado</div>
-  <div class="modal-s">Registrá un cliente que compra a crédito</div>
-  <div class="fg"><label class="fl">Nombre del cliente</label><input class="fi" id="fn-nombre" placeholder="Ej: Juan García"></div>
-  <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" id="fn-tel" placeholder="Ej: 011 1234-5678" type="tel"></div>
-  <div class="fg"><label class="fl">Límite de crédito $ (0 = sin límite)</label><input class="fi" id="fn-limite" type="number" placeholder="0" style="font-family:DM Mono,monospace;"></div>
-  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="fn-nota" placeholder="Ej: Vecino, paga los viernes..."></div>
-  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-fiado-nuevo')">Cancelar</button><button class="btn btn-yel" onclick="guardarClienteFiado()">✓ Guardar cliente</button></div>
-</div>
-</div>
-
-<!-- MODAL DETALLE CLIENTE FIADO -->
-<div class="ov" id="modal-fiado-detalle">
-<div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto;">
-  <div class="modal-drag"></div>
-  <div id="fd-header" style="margin-bottom:16px;"></div>
-  <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--mut2);line-height:1.6;">
-    💡 Para cargar productos fiados a este cliente, usá <b style="color:var(--acc2);">💚 Cobrar</b> y elegí <b style="color:var(--yel);">🤝 Fiado</b> como forma de pago. Así queda registrado el detalle exacto de lo que se llevó.
-  </div>
-  <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
-    <div class="frow">
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Monto pagado $</label><input class="fi" id="fd-pago" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Forma de pago</label>
-        <select class="fi" id="fd-pago-metodo">
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="transferencia">🏦 Transferencia</option>
-          <option value="qr">📱 QR / MP</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn btn-grn btn-full" onclick="pagarFiado()" style="margin-top:10px;">✓ Registrar pago</button>
-  </div>
-  <div class="card" style="margin-bottom:14px;">
-    <div class="stitle">📋 Historial</div>
-    <div id="fd-historial"></div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar cliente</button>
-    <button class="btn btn-ghost" onclick="closeModal('modal-fiado-detalle')">Cerrar</button>
-  </div>
-</div>
-</div>
-
-<!-- MODAL PAGAR FACTURA -->
-<div class="ov" id="modal-pagar-fact">
-<div class="modal" style="max-width:420px;">
-  <div class="modal-drag"></div>
-  <div class="modal-t">💳 Confirmar pago de factura</div>
-  <div id="modal-pagar-fact-header" style="margin-bottom:16px;"></div>
-  <div class="fg"><label class="fl">Monto pagado $</label><input class="fi" id="fpago-monto" type="number" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
-  <div class="fg"><label class="fl">Forma de pago</label>
-    <select class="fi" id="fpago-metodo">
-      <option value="efectivo">💵 Efectivo</option>
-      <option value="transferencia">🏦 Transferencia</option>
-      <option value="cheque">📝 Cheque</option>
-    </select>
-  </div>
-  <div style="font-size:12px;color:var(--mut2);margin-bottom:14px;">Se registrará automáticamente como egreso en Movimientos.</div>
-  <div class="btn-row">
-    <button class="btn btn-ghost" onclick="closeModal('modal-pagar-fact')">Cancelar</button>
-    <button class="btn btn-grn" onclick="confirmarPagoFactura()">✓ Confirmar pago</button>
-  </div>
-</div>
-</div>
-
 <!-- RESUMEN FINANCIERO -->
+<div id="pg-resumen" class="pg">
   <div class="ptitle">Resumen Financiero</div>
   <div class="psub">Lo que entra y lo que sale · <b id="res-periodo">Este mes</b></div>
   <div class="ptabs">
@@ -1312,7 +1163,7 @@ function set(id, prop, val){
 function get(id){ const e=el(id); return e ? e.value : ''; }
 
 // ═══ STATE ═══
-let productos=[], movimientos=[], facturas=[], gastosFijos=[], fiados=[];
+let productos=[], movimientos=[], facturas=[], gastosFijos=[];
 let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901'};
 let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
@@ -1322,11 +1173,12 @@ let lineasIngreso=[], lineasCobro=[];
 const PLANES={
   gratis:   {nombre:'Plan Gratis',   sub:'Gratis para siempre', precio:'$0',        maxP:50},
   basico:   {nombre:'Plan Básico',   sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
-  pro:      {nombre:'Plan Pro',      sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
-  business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
+  pro:      {nombre:'Plan Pro',      sub:'$75.000/mes',         precio:'$75.000',   maxP:99999},
+  premium:  {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999},
+  business: {nombre:'Plan Business', sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
-const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+const PLAN_N={gratis:0,basico:1,pro:2,premium:3,business:3};
+const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -1371,7 +1223,7 @@ function cargarDemo(){
 
 // ═══ STORAGE ═══
 function saveState(){
-  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,fiados,planActual,config})); }catch(e){}
+  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,planActual,config})); }catch(e){}
   // Also save config to cloud
   if(supabaseClient&&currentNegocioId){
     supabaseClient.from('negocios').update({config:JSON.stringify(config),plan:planActual}).eq('id',currentNegocioId).then(function(){});
@@ -1404,7 +1256,6 @@ function loadState(){
       movimientos= Array.isArray(s.movimientos) ? s.movimientos : [];
       facturas   = Array.isArray(s.facturas)    ? s.facturas    : [];
       gastosFijos= Array.isArray(s.gastosFijos) ? s.gastosFijos : [];
-      fiados     = Array.isArray(s.fiados)      ? s.fiados      : [];
       planActual = PLANES[s.planActual] ? s.planActual : 'gratis';
       config     = (s.config && typeof s.config==='object') ? s.config : config;
       if(!productos.length) cargarDemo();
@@ -1424,95 +1275,9 @@ function estadoProd(p){
   return{cls:'bg',lbl:'OK'};
 }
 function bdg(cls,lbl){ return '<span class="bdg '+cls+'">'+lbl+'</span>'; }
-
-// ═══ PEDIDO SUGERIDO A PROVEEDORES ═══
-var pedidoQtys = {}; // {prodId: cantidad}
-function renderPedidos(){
-  var grupos = el('oc-groups'), empty = el('oc-empty');
-  if(!grupos) return;
-  var necesitan = productos.filter(function(p){
-    var e = estadoProd(p);
-    return e.lbl==='CRÍTICO' || e.lbl==='SIN STOCK' || e.lbl==='MÍNIMO';
-  });
-  if(!necesitan.length){
-    grupos.innerHTML='';
-    if(empty) empty.style.display='';
-    return;
-  }
-  if(empty) empty.style.display='none';
-
-  var porCat = {};
-  necesitan.forEach(function(p){
-    var cat = p.cat || 'Otro';
-    if(!porCat[cat]) porCat[cat]=[];
-    porCat[cat].push(p);
-    if(pedidoQtys[p.id]===undefined){
-      var sugerido = Math.max(p.max - p.stock, 0);
-      if(!sugerido && p.min>0) sugerido = p.min;
-      pedidoQtys[p.id] = sugerido;
-    }
-  });
-
-  var cats = Object.keys(porCat).sort();
-  grupos.innerHTML = cats.map(function(cat){
-    var items = porCat[cat];
-    var rows = items.map(function(p){
-      var e = estadoProd(p);
-      return '<div class="mov-item">'
-        +'<div class="mov-ico mi-egreso">⚑</div>'
-        +'<div class="mov-txt">'
-          +'<div class="mov-name">'+p.nom+'</div>'
-          +'<div class="mov-meta">Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+' · Máx: '+p.max+(p.prov?' · Prov: '+p.prov:'')+'</div>'
-        +'</div>'
-        +bdg(e.cls,e.lbl)
-        +'<input class="fi" type="number" min="0" step="any" style="width:70px;margin-left:8px;text-align:center;" value="'+pedidoQtys[p.id]+'" oninput="pedidoQtys['+p.id+']=parseFloat(this.value)||0;">'
-        +'<span style="font-size:11px;color:var(--mut2);margin-left:4px;width:28px;">'+p.um+'</span>'
-      +'</div>';
-    }).join('');
-    var catId = 'oc-cat-'+cat.replace(/[^a-zA-Z0-9]/g,'_');
-    return '<div class="card">'
-      +'<div class="stitle" style="display:flex;justify-content:space-between;align-items:center;">'
-        +'<span>'+cat+' <span style="color:var(--mut2);font-weight:400;">('+items.length+')</span></span>'
-        +'<div style="display:flex;gap:6px;">'
-          +'<button class="btn btn-ghost btn-sm" onclick="copiarPedido(\''+cat.replace(/'/g,"\\'")+'\')">📋 Copiar</button>'
-          +'<button class="btn btn-grn btn-sm" onclick="wspPedido(\''+cat.replace(/'/g,"\\'")+'\')">💬 WhatsApp</button>'
-        +'</div>'
-      +'</div>'
-      +'<div id="'+catId+'">'+rows+'</div>'
-    +'</div>';
-  }).join('');
-}
-
-function pedidoTexto(cat){
-  var items = productos.filter(function(p){
-    var e = estadoProd(p);
-    return (p.cat||'Otro')===cat && (e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO') && (pedidoQtys[p.id]||0)>0;
-  });
-  if(!items.length) return '';
-  var lines = ['📋 Pedido — '+cat, ''];
-  items.forEach(function(p){
-    lines.push('• '+p.nom+': '+pedidoQtys[p.id]+' '+p.um+(p.prov?' (Prov: '+p.prov+')':''));
-  });
-  return lines.join('\n');
-}
-function copiarPedido(cat){
-  var txt = pedidoTexto(cat);
-  if(!txt){ toast('No hay productos con cantidad a pedir','err'); return; }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(function(){ toast('Pedido copiado'); }).catch(function(){ toast('No se pudo copiar','err'); });
-  } else {
-    toast('No se pudo copiar','err');
-  }
-}
-function wspPedido(cat){
-  var txt = pedidoTexto(cat);
-  if(!txt){ toast('No hay productos con cantidad a pedir','err'); return; }
-  window.open('https://wa.me/?text='+encodeURIComponent(txt), '_blank');
-}
-
 function eFactBdg(e){
-  const m={pendiente:'by',vencida:'br',pagada:'bg',parcial:'bp'};
-  const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA',parcial:'PARCIAL'};
+  const m={pendiente:'by',vencida:'br',pagada:'bg'};
+  const l={pendiente:'PENDIENTE',vencida:'VENCIDA',pagada:'PAGADA'};
   return bdg(m[e]||'bm', l[e]||e);
 }
 function filtrarPeriodo(items,period){
@@ -1555,16 +1320,7 @@ function goLocked(id,navEl,req){
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
 function openModal(id){ const m=el(id); if(m) m.classList.add('on'); }
-function closeModal(id){
-  const m=el(id); if(m) m.classList.remove('on');
-  if(id==='modal-prod' && prodEditId){
-    prodEditId=null;
-    var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
-    var s=document.querySelector('#modal-prod .modal-s'); if(s)s.textContent='Agregá un producto o insumo al inventario';
-    var btn=document.querySelector('#modal-prod .btn-acc'); if(btn)btn.textContent='Guardar';
-    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
-  }
-}
+function closeModal(id){ const m=el(id); if(m) m.classList.remove('on'); }
 
 // ═══ PLAN ═══
 function setPlan(p,planEl){
@@ -1589,18 +1345,10 @@ function guardarConfig(){
   if(n) config.nombre=n;
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
-  var pin=get('cfg-pin').trim(); config.pin=pin;
-  var pinStatus=el('cfg-pin-status');
-  if(pinStatus){
-    if(pin){ pinStatus.textContent='🔒 PIN activo — se pedirá al entrar a Resumen y Finanzas'; pinStatus.style.color='var(--grn)'; }
-    else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
-  }
-  var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
-  var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
-  config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
+  var pin=get('cfg-pin'); config.pin=pin;
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
-  closeModal('modal-config'); saveState(); toast('Configuración guardada ✓'); actualizarBotonLock();
+  closeModal('modal-config'); saveState(); toast('Configuración guardada ✓');
 }
 
 // ═══ COBRAR ═══
@@ -1625,21 +1373,21 @@ function renderLineasCobro(){
     cont.innerHTML='<div style="font-size:11px;color:var(--mut2);text-align:center;padding:8px;">Tocá 📷 Escanear o + Manual para agregar productos</div>';
     set('cobro-subtotal','text','$0'); return;
   }
-  // datalist compartido con todos los productos (una sola vez)
-  var datalistHtml = '<datalist id="dl-productos">'+productos.map(function(p){
-    return '<option value="'+p.nom.replace(/"/g,'&quot;')+'" data-id="'+p.id+'"></option>';
-  }).join('')+'</datalist>';
-  var html=datalistHtml;
+  var html='';
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     var pventa=prod?(prod.pventa||prod.precio||0):0;
     var subtotal=pventa*l.cant;
     var um=prod?prod.um:'UN';
-    var nomVal = prod ? prod.nom.replace(/"/g,'&quot;') : '';
     // Row: name | cant input | unit | subtotal | delete
     html+='<div style="display:grid;grid-template-columns:1fr 70px 50px 70px 24px;gap:5px;margin-bottom:8px;align-items:center;">'
-      // Product search input with datalist autocomplete
-      +'<input class="fi" list="dl-productos" placeholder="Buscar producto..." value="'+nomVal+'" style="font-size:12px;padding:5px 6px;" oninput="selProdCobroNombre('+l.id+',this.value)">'
+      // Product selector
+      +'<select class="fi" style="font-size:11px;padding:5px 6px;" onchange="selProdCobro('+l.id+',this.value)">'
+      +'<option value="">— Producto —</option>'
+      +productos.map(function(p){
+        return '<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>';
+      }).join('')
+      +'</select>'
       // Cant input
       +'<input class="fi" type="number" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:13px;padding:5px;text-align:center;font-family:DM Mono,monospace;" oninput="updCantCobro('+l.id+',this.value)">'
       // Unit
@@ -1653,13 +1401,6 @@ function renderLineasCobro(){
   cont.innerHTML=html;
   actualizarTotalCobro();
 }
-function selProdCobroNombre(id,nombre){
-  const l=lineasCobro.find(function(l){return l.id===id;});
-  if(!l) return;
-  const prod=productos.find(function(p){return p.nom.toLowerCase()===nombre.trim().toLowerCase();});
-  if(prod){ l.prodId=prod.id; actualizarTotalCobro(); }
-  else { l.prodId=null; actualizarTotalCobro(); }
-}
 function selProdCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.prodId=val;renderLineasCobro();} }
 function updCantCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.cant=parseFloat(val)||1;actualizarTotalCobro();} }
 function quitarLineaCobro(id){ lineasCobro=lineasCobro.filter(function(l){return l.id!==id;});renderLineasCobro(); }
@@ -1669,7 +1410,6 @@ function actualizarTotalCobro(){
     const prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod) total+=(prod.pventa||prod.precio||0)*l.cant;
   });
-  total = Math.round(total*100)/100;
   set('cobro-subtotal','text',fmtM(total));
   if(total>0){ set('cobrar-monto','val',String(total)); updCobrar(); }
 }
@@ -1680,64 +1420,17 @@ function updCobrar(){
   set('qr-monto-display','text',fmtM(v));
   set('transf-monto-display','text',fmtM(v));
   calcVuelto();
-  if(pagoActual==='fiado'){
-    var fSel=get('fiado-cliente-sel');
-    if(fSel) selFiadoCliente(fSel);
-  }
 }
 function selPago(tipo,selEl){
   pagoActual=tipo;
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
-  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && PLAN_N[planActual]<PLAN_N['basico'];
+  const needBasico=tipo!=='efectivo' && PLAN_N[planActual]<PLAN_N['basico'];
   if(needBasico){ toast('QR y transferencia disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
   set('pago-qr','display',tipo==='qr'?'block':'none');
   set('pago-transferencia','display',tipo==='transferencia'?'block':'none');
-  set('pago-fiado','display',tipo==='fiado'?'block':'none');
-  if(tipo==='fiado') cargarSelectorFiado();
 }
-function cargarSelectorFiado(){
-  var sel = el('fiado-cliente-sel');
-  if(!sel) return;
-  if(!fiados.length){
-    sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
-    set('fiado-cliente-info','display','none');
-    return;
-  }
-  sel.innerHTML = '<option value="">— Elegir cliente —</option>'
-    + fiados.map(function(f){
-        var deudaTxt = f.deuda > 0 ? ' · Debe '+fmtM(f.deuda) : ' · Sin deuda';
-        return '<option value="'+f.id+'">'+f.nom+deudaTxt+'</option>';
-      }).join('');
-  set('fiado-cliente-info','display','none');
-}
-
-function selFiadoCliente(id){
-  var info = el('fiado-cliente-info');
-  if(!id || !info){ if(info) info.style.display='none'; return; }
-  var c = fiados.find(function(f){return f.id==id;});
-  if(!c){ info.style.display='none'; return; }
-  var limiteTxt = c.limite > 0 ? ' · Límite: '+fmtM(c.limite) : '';
-  var monto = parseFloat(get('cobrar-monto'))||0;
-  var nuevaDeuda = c.deuda + monto;
-  var superaLimite = c.limite > 0 && nuevaDeuda > c.limite;
-  info.style.display = 'block';
-  info.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">'
-    +'<div><b style="color:var(--txt);">'+c.nom+'</b>'+(c.tel?'<br><span style="color:var(--mut2);">📞 '+c.tel+'</span>':'')+'</div>'
-    +'<div style="text-align:right;">'
-    +'<div style="color:var(--red);font-family:Syne,sans-serif;font-size:14px;font-weight:800;">Debe: '+fmtM(c.deuda)+'</div>'
-    +(monto>0?'<div style="color:'+(superaLimite?'var(--red)':'var(--yel)')+';font-size:11px;">+ '+fmtM(monto)+' → '+fmtM(nuevaDeuda)+'</div>':'')
-    +(superaLimite?'<div style="color:var(--red);font-size:10px;font-weight:700;">⚠️ Supera el límite'+limiteTxt+'</div>':'')
-    +'</div>'
-    +'</div>';
-}
-
-function abrirNuevoClienteRapido(){
-  closeModal('modal-cobrar');
-  setTimeout(function(){ openModal('modal-fiado-nuevo'); },200);
-}
-
 function calcVuelto(){
   const total=parseFloat(get('cobrar-monto'))||0;
   const recibido=parseFloat(get('ef-recibido'))||0;
@@ -1748,71 +1441,22 @@ function calcVuelto(){
 function confirmarCobro(){
   const monto=parseFloat(get('cobrar-monto'))||0;
   if(!monto){toast('Ingresá el monto a cobrar','err');return;}
-
-  // Validar fiado
-  if(pagoActual==='fiado'){
-    var fSel=get('fiado-cliente-sel');
-    if(!fSel){toast('Seleccioná un cliente para el fiado','err');return;}
-    var cFiado=fiados.find(function(f){return f.id==fSel;});
-    if(!cFiado){toast('Cliente no encontrado','err');return;}
-    if(cFiado.limite>0 && cFiado.deuda+monto>cFiado.limite){
-      toast('⚠️ Supera el límite de crédito de '+fmtM(cFiado.limite),'err');return;
-    }
-  }
-
   const desc=get('cobrar-desc')||'Venta';
-  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia',fiado:'Fiado'};
+  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
   var prods=[];
-  // Guardar detalle con precio del momento para fiado
-  var detalleFiado=[];
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
       prod.stock=Math.max(0,prod.stock-l.cant);
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
-      if(pagoActual==='fiado'){
-        detalleFiado.push({
-          prodId:prod.id,
-          nom:prod.nom,
-          cant:l.cant,
-          um:um,
-          precioVenta:prod.precioVenta||0  // precio al momento de cargar el fiado
-        });
-      }
     }
   });
   var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
-
-  // Registrar en fiado con detalle de precios
-  if(pagoActual==='fiado'){
-    var fSel2=get('fiado-cliente-sel');
-    var cf=fiados.find(function(f){return f.id==fSel2;});
-    if(cf){
-      cf.deuda+=monto;
-      if(!cf.movs) cf.movs=[];
-      cf.movs.push({
-        id:Date.now(),
-        tipo:'deuda',
-        monto:monto,
-        desc:descFinal,
-        fecha:hoy(),
-        detalle:detalleFiado  // productos + precio del día
-      });
-      descFinal='🤝 '+cf.nom+' · '+descFinal;
-    }
-  }
-
-  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
-  movimientos.unshift(_mc);
+  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods}; movimientos.unshift(_mc);
   lineasCobro=[];
-  closeModal('modal-cobrar'); saveMovimiento(_mc); saveState(); renderDash();
-  if(pagoActual==='fiado'){
-    var cf2=fiados.find(function(f){return f.id==get('fiado-cliente-sel');});
-    toast('🤝 Fiado cargado a '+(cf2?cf2.nom:'cliente')+' · '+fmtM(monto));
-  } else {
-    toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
-  }
+  closeModal('modal-cobrar'); saveMovimiento(_mc); renderDash();
+  toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
 }
 
 // ═══ INGRESO ═══
@@ -2014,56 +1658,9 @@ function guardarFact(){
   closeModal('modal-fact'); saveFactura(_f); renderDash();
   toast('🧾 Factura guardada ✓');
 }
-var factPagarId = null;
 function marcarPagada(id){
-  factPagarId = id;
-  var f = facturas.find(function(f){return f.id===id;});
-  if(!f) return;
-  var saldo = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
-  var mh = el('modal-pagar-fact-header');
-  if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+f.prov+' · '+f.num+'</div>'
-    +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(saldo)+'</div>'
-    +(f.estado==='parcial'?'<div style="font-size:11px;color:var(--red);margin-top:4px;">Saldo pendiente de pago parcial anterior</div>':'');
-  var montoEl = el('fpago-monto');
-  if(montoEl) montoEl.value = saldo;
-  openModal('modal-pagar-fact');
-}
-function confirmarPagoFactura(){
-  var f = facturas.find(function(f){return f.id===factPagarId;});
-  if(!f) return;
-  var monto = parseFloat(el('fpago-monto').value)||f.monto;
-  var metodoEl = el('fpago-metodo');
-  var metodo = metodoEl ? metodoEl.value : 'efectivo';
-  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
-  var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
-  var diff = saldoOriginal - monto;
-  // Registrar egreso automático por el monto realmente pagado
-  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov,monto:monto,fecha:hoy(),metodo:metodo};
-  movimientos.unshift(egreso); saveMovimiento(egreso);
-
-  if(diff > 0.5){
-    // Pago parcial — queda saldo pendiente
-    f.estado='parcial';
-    f.saldoPendiente = diff;
-    f.fechaPago=hoy(); f.metodoPago=metodo;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
-    toast('⚠️ Pago parcial registrado · Quedan '+fmtM(diff)+' pendientes de '+f.num);
-  } else if(diff < -0.5){
-    // Pagó de más
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
-    toast('✅ Factura pagada · Pagaste '+fmtM(Math.abs(diff))+' de más');
-  } else {
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
-    toast('✅ Factura pagada · '+metLbl[metodo]+' · '+fmtM(monto));
-  }
+  const f=facturas.find(function(f){return f.id===id;});
+  if(f){f.estado='pagada';saveFactura(f);renderFacts();renderDash();toast('✅ Factura pagada ✓');}
 }
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
@@ -2098,64 +1695,11 @@ function eliminarGF(id){
 }
 
 // ═══ PRODUCTO ═══
-var prodEditId = null;
-function abrirEditarProd(id){
-  var p = productos.find(function(p){return p.id===id;});
-  if(!p) return;
-  prodEditId = id;
-  set('p-cod','val',p.cod||'');
-  set('p-nom','val',p.nom||'');
-  var pcat=el('p-cat');
-  if(pcat){
-    var cats = Array.from(new Set(productos.map(function(x){return x.cat;}).filter(Boolean)));
-    var fijas=['Alimentos','Bebidas','Limpieza','Ferretería','Electrónica','Indumentaria','Insumos','Otro'];
-    fijas.forEach(function(c){if(cats.indexOf(c)===-1)cats.push(c);});
-    pcat.innerHTML = cats.map(function(c){return '<option'+(c===p.cat?' selected':'')+'>'+c+'</option>';}).join('');
-  }
-  set('p-stock','val',p.stock);
-  var pum=el('p-um'); if(pum) pum.value = p.um||'UN';
-  set('p-precio','val',p.precio||'');
-  set('p-min','val',p.min||0);
-  set('p-max','val',p.max||0);
-  set('p-pventa','val',p.pventa||'');
-  set('p-prov','val',p.prov||'');
-  var t = document.querySelector('#modal-prod .modal-t');
-  if(t) t.textContent = '📓 Editar Producto';
-  var s = document.querySelector('#modal-prod .modal-s');
-  if(s) s.textContent = 'Costo, precio, stock mínimo y máximo';
-  var btn = document.querySelector('#modal-prod .btn-acc');
-  if(btn) btn.textContent = 'Guardar cambios';
-  openModal('modal-prod');
-}
-
 function guardarProd(){
   const nom=get('p-nom').trim();
   if(!nom){toast('Ingresá el nombre del producto','err');return;}
-  const pcat=el('p-cat'); const pum=el('p-um');
-  if(prodEditId){
-    var p = productos.find(function(p){return p.id===prodEditId;});
-    if(p){
-      p.cod = get('p-cod').trim()||p.cod;
-      p.nom = nom;
-      p.cat = pcat?pcat.value:p.cat;
-      p.stock = parseFloat(get('p-stock'))||0;
-      p.um = pum?pum.value:p.um;
-      p.precio = parseFloat(get('p-precio'))||0;
-      p.pventa = parseFloat(get('p-pventa'))||0;
-      p.min = parseFloat(get('p-min'))||0;
-      p.max = parseFloat(get('p-max'))||0;
-      p.prov = get('p-prov').trim();
-    }
-    prodEditId = null;
-    var t = document.querySelector('#modal-prod .modal-t'); if(t) t.textContent = '📦 Nuevo Producto';
-    var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto o insumo al inventario';
-    var btn = document.querySelector('#modal-prod .btn-acc'); if(btn) btn.textContent = 'Guardar';
-    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
-    closeModal('modal-prod'); saveState(); renderDash(); renderProds();
-    toast('📓 Producto actualizado ✓');
-    return;
-  }
   if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
+  const pcat=el('p-cat'); const pum=el('p-um');
   productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim()});
   ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
   closeModal('modal-prod'); saveState(); renderDash(); renderProds();
@@ -2181,16 +1725,15 @@ function handleFile(file){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       pendingImport=rows.map(function(r,i){
-        const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
         const keys=Object.keys(r);
         const find=function(){
           const terms=[].slice.call(arguments);
-          return keys.find(function(k){return terms.some(function(t){return norm(k).includes(norm(t));});});
+          return keys.find(function(k){return terms.some(function(t){return k.toLowerCase().includes(t.toLowerCase());});});
         };
-        const fN=find('nombre del producto','nombre','descripcion','producto','articulo');
+        const fN=find('nombre','descripcion','producto','articulo');
         const nom=String(r[fN]||'').trim();
         if(!nom||nom.length<2)return null;
-        return{id:Date.now()+i,cod:String(r[find('codigo de barra','codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:parseFloat(r[find('stock actual','stock','cantidad','qty')])||0,um:String(r[find('unidad de medida','unidad','um')]||'UN').trim(),precio:parseFloat(r[find('precio costo','costo','precio unit')])||0,pventa:parseFloat(r[find('precio de venta','precio venta','venta')])||0,min:parseFloat(r[find('stock minimo','minimo','min stock')])||0,max:parseFloat(r[find('stock maximo','maximo','max stock')])||0,prov:String(r[find('proveedor')]||'').trim()};
+        return{id:Date.now()+i,cod:String(r[find('codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:parseFloat(r[find('stock','cantidad','qty')])||0,um:String(r[find('unidad','um')]||'UN').trim(),precio:parseFloat(r[find('precio costo','costo','precio unit')])||0,pventa:parseFloat(r[find('precio venta','venta')])||0,min:parseFloat(r[find('minimo','min stock')])||0,max:parseFloat(r[find('maximo','max stock')])||0,prov:String(r[find('proveedor')]||'').trim()};
       }).filter(Boolean);
       const ipt=el('import-prev-t'); if(ipt)ipt.textContent='Vista previa · '+pendingImport.length+' productos';
       const ipb=el('import-prev-b');
@@ -2202,34 +1745,10 @@ function handleFile(file){
 }
 function confirmarImport(){
   if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
-  var actualizados=0, nuevos=0;
-  pendingImport.forEach(function(imp){
-    var existente = productos.find(function(p){
-      return (imp.cod && p.cod===imp.cod) || (p.nom.trim().toLowerCase()===imp.nom.trim().toLowerCase());
-    });
-    if(existente){
-      existente.cod=imp.cod||existente.cod;
-      existente.cat=imp.cat||existente.cat;
-      existente.stock=imp.stock||existente.stock;
-      existente.um=imp.um||existente.um;
-      existente.precio=imp.precio||existente.precio;
-      existente.pventa=imp.pventa||existente.pventa;
-      existente.min=imp.min||existente.min;
-      existente.max=imp.max||existente.max;
-      existente.prov=imp.prov||existente.prov;
-      actualizados++;
-    } else {
-      productos.push(imp);
-      nuevos++;
-    }
-  });
-  pendingImport=[];
+  productos=productos.concat(pendingImport); pendingImport=[];
   set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
   saveState(); renderDash(); renderProds();
-  if(supabaseClient&&currentNegocioId){
-    productos.forEach(function(p){ guardarEnNube('productos',p.id,p); });
-  }
-  toast(nuevos+' nuevos · '+actualizados+' actualizados ✓');
+  toast(productos.length+' productos cargados ✓');
 }
 function cancelImport(){
   pendingImport=[];
@@ -2240,7 +1759,7 @@ function cancelImport(){
 function renderDash(){
   const now=new Date();
   const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
-  const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
+  const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   const gfPend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
   const cobrosHoy=movimientos.filter(function(m){
     if(m.tipo!=='cobro')return false;
@@ -2255,16 +1774,8 @@ function renderDash(){
   set('sb-alerta','text',String(alertas.length));
   const dEl=el('dash-fecha');
   if(dEl)dEl.innerHTML=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  // Fiado alert
-  var fiadosConDeuda = fiados.filter(function(f){return f.deuda>0;});
-  var totalFiado = fiadosConDeuda.reduce(function(s,f){return s+f.deuda;},0);
-  var fiadoAlert = el('dash-fiado-alert');
-  if(fiadoAlert){
-    fiadoAlert.style.display = fiadosConDeuda.length > 0 ? 'block' : 'none';
-    set('dash-fiado-total','text',fmtM(totalFiado));
-    set('dash-fiado-alert-txt','text',fiadosConDeuda.length+' cliente'+(fiadosConDeuda.length!==1?'s':'')+' con deuda pendiente · Tocá para cobrar');
-  }
-  var da=el('dash-alertas');
+  // Alertas
+  const da=el('dash-alertas');
   if(da)da.innerHTML=alertas.length?alertas.slice(0,5).map(function(p){const e=estadoProd(p);return'<div class="mov-item"><div class="mov-ico mi-egreso">⚑</div><div class="mov-txt"><div class="mov-name">'+p.nom+'</div><div class="mov-meta">'+p.cat+' · Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+'</div></div>'+bdg(e.cls,e.lbl)+'</div>';}).join(''):'<div class="empty"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div></div>';
   // Movimientos recientes
   const dm=el('dash-movs');
@@ -2291,11 +1802,6 @@ function renderMovItem(m){
     return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
   }
   if(m.tipo==='egreso'){
-    if(m.prodId===undefined && m.prodNom===undefined){
-      var icoM3={efectivo:'💵',transferencia:'🏦',cheque:'📝'};
-      var metLbl3={efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
-      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+(m.desc||'Egreso')+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
-    }
     const prod=productos.find(function(p){return p.id===m.prodId;});
     const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
     return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
@@ -2335,20 +1841,23 @@ function renderProds(){
   var tb=el('tbl-prods');
   if(tb){
     if(!rows.length){
-      tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div></td></tr>';
+      tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div></td></tr>';
     } else {
       tb.innerHTML=rows.map(function(p){
         var e=estadoProd(p);
-        var stockColor = e.cls==='br' ? 'var(--red)' : (e.cls==='by' ? 'var(--yel)' : 'var(--txt)');
-        return '<tr>'
-          +'<td class="mn md">'+(p.cod||'—')+'</td>'
-          +'<td style="max-width:200px;line-height:1.4;">'+p.nom+'</td>'
+        var mg=p.pventa&&p.precio?Math.round((p.pventa-p.precio)/p.precio*100):null;
+        var mgColor=mg!==null?(mg>30?'var(--grn)':mg>0?'var(--yel)':'var(--red)'):'var(--mut2)';
+        return '<tr><td>'+bdg(e.cls,e.lbl)+'</td>'
+          +'<td style="max-width:180px;line-height:1.4;">'+p.nom+'<br><span class="mn md">'+p.cod+'</span></td>'
+          +'<td class="mn md">'+p.cat+'</td>'
+          +'<td class="mn">'+p.stock+'</td>'
           +'<td class="mn md">'+p.um+'</td>'
-          +'<td class="mn" style="color:'+stockColor+';font-weight:600;">'+p.stock+'</td>'
+          +'<td class="mn md">'+p.min+'/'+p.max+'</td>'
+          +'<td class="mn">'+(p.precio?fmtM(p.precio):'—')+'</td>'
           +'<td class="mn">'+(p.pventa?fmtM(p.pventa):'—')+'</td>'
+          +'<td class="mn" style="color:'+mgColor+';">'+(mg!==null?mg+'%':'—')+'</td>'
           +'<td><div style="display:flex;gap:4px;">'
-          +'<button class="btn btn-ghost btn-sm" onclick="abrirEditarProd('+p.id+')" title="Editar">📓</button>'
-          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')" title="Salida de stock">📤</button>'
+          +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
           +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
           +'</div></td></tr>';
       }).join('');
@@ -2372,7 +1881,6 @@ function renderProds(){
           +(mg!==null?'<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:'+mgColor+';">'+mg+'%</div></div>':'')
           +'</div>'
           +'<div style="display:flex;gap:6px;margin-top:8px;">'
-          +'<button class="btn btn-ghost btn-sm" onclick="abrirEditarProd('+p.id+')">📓 Editar</button>'
           +'<button class="btn btn-ghost btn-sm" onclick="abrirEgresoProd('+p.id+')">📤</button>'
           +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+')">✕</button>'
           +'</div></div>';
@@ -2408,8 +1916,8 @@ function fMov(f,btn){movFilter=f;document.querySelectorAll('#pg-movimientos .fr 
 
 // ═══ RENDER FACTURAS ═══
 function renderFacts(){
-  const rows=factFilter==='TODOS'?facturas:(factFilter==='pendiente'?facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='parcial';}):facturas.filter(function(f){return f.estado===factFilter;}));
-  const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
+  const rows=factFilter==='TODOS'?facturas:facturas.filter(function(f){return f.estado===factFilter;});
+  const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   set('fact-sub','text',pend.length+' pendientes · '+fmtM(pend.reduce(function(s,f){return s+f.monto;},0)));
   const tf=el('tbl-facts');
   if(tf)tf.innerHTML=rows.length?rows.map(function(f){return'<tr><td>'+eFactBdg(f.estado)+'</td><td class="mn">'+f.num+'</td><td style="max-width:130px;">'+f.prov+'</td><td class="mn md">'+fmtF(f.fecha)+'</td><td class="mn" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</td><td class="mn" style="color:var(--yel);">'+fmtM(f.monto)+'</td><td style="font-size:11px;color:var(--mut2);max-width:130px;">'+(f.obs||'—')+'</td><td><div style="display:flex;gap:4px;">'+(f.estado!=='pagada'?'<button class="btn btn-ghost btn-sm" onclick="marcarPagada('+f.id+')">✓</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></td></tr>';}).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div></td></tr>';
@@ -2474,10 +1982,8 @@ function renderPage(id){
   else if(id==='movimientos') renderMovs();
   else if(id==='facturas') renderFacts();
   else if(id==='gastos') renderGastos();
-  else if(id==='fiado') renderFiado();
   else if(id==='resumen') renderResumen();
   else if(id==='finanzas') renderFinanzas();
-  else if(id==='oc') renderPedidos();
 }
 
 
@@ -3380,301 +2886,6 @@ function saveMovimiento(m){ saveState(); guardarEnNube('movimientos',m.id,m); }
 function saveFactura(f){ saveState(); guardarEnNube('facturas',f.id,f); }
 function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
 
-// ═══ FIADO ═══
-var fiadoActualId = null;
-
-function crearConsumoPropio(){
-  var existe = fiados.find(function(f){return f.esConsumoPropio;});
-  if(existe){ abrirDetalleFiado(existe.id); return; }
-  var cliente = {
-    id: Date.now(),
-    nom: '🏠 Consumo propio',
-    tel: '',
-    limite: 0,
-    nota: 'Lo que el dueño/familia saca del stock para uso personal.',
-    deuda: 0,
-    movs: [],
-    fecha: hoy(),
-    esConsumoPropio: true
-  };
-  fiados.push(cliente);
-  saveState(); renderFiado();
-  toast('🏠 Cuenta de consumo propio creada. Usá Cobrar → Fiado y elegí esta cuenta.');
-  abrirDetalleFiado(cliente.id);
-}
-
-function guardarClienteFiado(){
-  var nom = get('fn-nombre').trim();
-  if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
-  var cliente = {
-    id: Date.now(),
-    nom: nom,
-    tel: get('fn-tel').trim(),
-    limite: parseFloat(get('fn-limite'))||0,
-    nota: get('fn-nota').trim(),
-    deuda: 0,
-    movs: [],
-    fecha: hoy()
-  };
-  fiados.push(cliente);
-  ['fn-nombre','fn-tel','fn-limite','fn-nota'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-fiado-nuevo');
-  saveState();
-  renderFiado();
-  toast('🤝 Cliente '+nom+' agregado ✓');
-}
-
-function abrirDetalleFiado(id){
-  fiadoActualId = id;
-  var c = fiados.find(function(f){return f.id===id;});
-  if(!c) return;
-  set('fd-monto','val',''); set('fd-desc','val',''); set('fd-pago','val','');
-  renderHeaderFiado(c);
-  renderHistorialFiado(c);
-  openModal('modal-fiado-detalle');
-}
-
-function renderHeaderFiado(c){
-  var inicial = c.nom.charAt(0).toUpperCase();
-  var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
-  var col = colors[c.nom.charCodeAt(0) % colors.length];
-  var saldado = c.deuda <= 0;
-  var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
-  var notaTxt = c.nota ? '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">📝 '+c.nota+'</div>' : '';
-  var telTxt = c.tel ? '<div style="font-size:11px;color:var(--mut2);">📞 <a href="tel:'+c.tel+'" style="color:var(--acc2);">'+c.tel+'</a></div>' : '';
-  var html = '<div style="display:flex;align-items:center;gap:14px;">'
-    + '<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';width:52px;height:52px;font-size:20px;">'+inicial+'</div>'
-    + '<div style="flex:1;">'
-    + '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;">'+c.nom+'</div>'
-    + telTxt + notaTxt
-    + '</div>'
-    + '<div style="text-align:right;">'
-    + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-    + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+'</div>'
-    + '</div>'
-    + '</div>';
-  set('fd-header','html',html);
-}
-
-function renderHistorialFiado(c){
-  var movs = c.movs || [];
-  if(!movs.length){
-    set('fd-historial','html','<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin movimientos</div></div>');
-    return;
-  }
-  var html = movs.slice().reverse().map(function(m){
-    var esDeuda = m.tipo === 'deuda';
-    var esAjuste = m.tipo === 'ajuste';
-    var col = esDeuda||esAjuste ? 'var(--red)' : 'var(--grn)';
-    var ico = esDeuda ? '📝' : esAjuste ? '📊' : '💵';
-    var signo = esDeuda||esAjuste ? '+' : '-';
-
-    // Comparación de precios actuales vs precio del día
-    var preciosHtml = '';
-    if(esDeuda && m.detalle && m.detalle.length){
-      var hayDiferencia = false;
-      var filasPrecio = m.detalle.map(function(d){
-        var prodActual = productos.find(function(p){return p.id==d.prodId;});
-        var precioActual = prodActual ? (prodActual.precioVenta||0) : 0;
-        var precioViejo = d.precioVenta||0;
-        var subtotalViejo = d.cant * precioViejo;
-        var subtotalActual = d.cant * precioActual;
-        var diff = subtotalActual - subtotalViejo;
-        if(diff !== 0) hayDiferencia = true;
-        var diffHtml = diff > 0
-          ? '<span style="color:var(--red);font-size:10px;font-weight:700;"> ▲ +'+fmtM(diff)+'</span>'
-          : diff < 0
-          ? '<span style="color:var(--grn);font-size:10px;font-weight:700;"> ▼ '+fmtM(diff)+'</span>'
-          : '';
-        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid var(--brd);">'
-          +'<span style="color:var(--mut2);">'+d.cant+' '+d.um+' '+d.nom+'</span>'
-          +'<span style="font-family:DM Mono,monospace;">'+fmtM(subtotalViejo)+(precioActual&&precioActual!==precioViejo?diffHtml:'')+'</span>'
-          +'</div>';
-      }).join('');
-
-      if(hayDiferencia){
-        // Calcular total actualizado
-        var totalActual = m.detalle.reduce(function(s,d){
-          var p = productos.find(function(pr){return pr.id==d.prodId;});
-          return s + d.cant*(p?p.precioVenta||0:d.precioVenta||0);
-        },0);
-        preciosHtml = '<div style="background:var(--sur2);border-radius:6px;padding:8px;margin-top:6px;">'
-          +'<div style="font-size:10px;color:var(--mut2);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">📊 Detalle de precios</div>'
-          +filasPrecio
-          +'<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:4px;">'
-          +'<span style="font-size:11px;color:var(--mut2);">Precio original</span>'
-          +'<span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(m.monto)+'</span>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;">'
-          +'<span style="font-size:12px;font-weight:700;color:var(--yel);">💰 Precio actualizado</span>'
-          +'<span style="font-family:Syne,monospace;font-size:13px;font-weight:800;color:var(--yel);">'+fmtM(totalActual)+'</span>'
-          +'</div>'
-          +'<button class="btn btn-yel btn-sm btn-full" style="margin-top:8px;font-size:11px;" onclick="cobrarPrecioActualizado('+c.id+','+m.id+','+totalActual+')">✓ Cobrar precio actualizado</button>'
-          +'</div>';
-      }
-    }
-
-    return '<div style="padding:10px 0;border-bottom:1px solid var(--brd);">'
-      +'<div style="display:flex;align-items:center;gap:10px;">'
-      +'<div style="width:32px;height:32px;border-radius:8px;background:'+(esDeuda?'var(--red-dim)':'var(--grn-dim)')+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">'+ico+'</div>'
-      +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:12.5px;font-weight:500;">'+(m.desc||( esDeuda?'Fiado':'Pago'))+'</div>'
-      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.metodo?' · '+m.metodo:'')+'</div>'
-      +'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:'+col+';">'+signo+fmtM(m.monto)+'</div>'
-      +'</div>'
-      +preciosHtml
-      +'</div>';
-  }).join('');
-  set('fd-historial','html',html);
-}
-
-function cargarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  var monto = parseFloat(get('fd-monto'))||0;
-  if(!monto){ toast('Ingresá el monto','err'); return; }
-  if(c.limite > 0 && c.deuda + monto > c.limite){
-    toast('⚠️ Supera el límite de crédito de '+fmtM(c.limite),'err'); return;
-  }
-  var desc = get('fd-desc').trim() || 'Fiado';
-  c.deuda += monto;
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'deuda',monto:monto,desc:desc,fecha:hoy()});
-  set('fd-monto','val',''); set('fd-desc','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('📝 Deuda cargada: '+fmtM(monto));
-}
-
-function recalcularDeudaActual(clienteId){
-  var c = fiados.find(function(f){return f.id===clienteId;});
-  if(!c || !c.movs) return {totalActual:c?c.deuda:0, diff:0};
-  var totalActual = 0, totalOriginal = 0;
-  c.movs.filter(function(m){return m.tipo==='deuda';}).forEach(function(m){
-    totalOriginal += m.monto;
-    if(m.detalle && m.detalle.length){
-      var sub = 0;
-      m.detalle.forEach(function(d){
-        var prod = productos.find(function(p){return p.id===d.prodId;});
-        var precio = prod && prod.precioVenta ? prod.precioVenta : d.precioVenta;
-        sub += precio * d.cant;
-      });
-      totalActual += sub;
-    } else {
-      totalActual += m.monto;
-    }
-  });
-  // restar pagos ya hechos
-  var pagado = c.movs.filter(function(m){return m.tipo==='pago';}).reduce(function(s,m){return s+m.monto;},0);
-  var ajustes = c.movs.filter(function(m){return m.tipo==='ajuste';}).reduce(function(s,m){return s+m.monto;},0);
-  totalActual = totalActual + ajustes - pagado;
-  var diff = totalActual - c.deuda;
-  return {totalActual:Math.max(0,totalActual), diff:diff};
-}
-
-function pagarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  // Si la config dice precio actualizado, recalcular FIFO antes de pagar
-  if((config.fiadoPrecio||'original')==='actual'){
-    var r = recalcularDeudaActual(c.id);
-    if(Math.abs(r.diff) > 0.5){
-      c.deuda = r.totalActual;
-      c.movs.push({id:Date.now(),tipo:'ajuste',monto:r.diff,desc:'Ajuste a precio actual',fecha:hoy()});
-      toast('💰 Deuda actualizada a precios actuales: '+fmtM(r.totalActual));
-    }
-  }
-  var pago = parseFloat(get('fd-pago'))||0;
-  if(!pago){ toast('Ingresá el monto','err'); return; }
-  if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
-  var metodoEl = el('fd-pago-metodo');
-  var metodo = metodoEl ? metodoEl.value : 'efectivo';
-  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',qr:'QR / MP'};
-  c.deuda = Math.max(0, c.deuda - pago);
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'pago',monto:pago,desc:'Pago '+metLbl[metodo],fecha:hoy(),metodo:metLbl[metodo]});
-  // Registrar como cobro en movimientos
-  var _mc = {id:Date.now(),tipo:'cobro',desc:'Pago fiado - '+c.nom,monto:pago,fecha:hoy(),metodo:metodo};
-  movimientos.unshift(_mc); saveMovimiento(_mc);
-  set('fd-pago','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado(); renderDash();
-  toast('✓ Pago registrado: '+fmtM(pago));
-}
-
-function cobrarPrecioActualizado(clienteId, movId, totalActual){
-  var c = fiados.find(function(f){return f.id===clienteId;});
-  if(!c) return;
-  var mov = c.movs.find(function(m){return m.id===movId;});
-  if(!mov) return;
-  var diff = totalActual - mov.monto;
-  if(diff <= 0){ toast('El precio no cambió','err'); return; }
-  // Actualizar la deuda con la diferencia
-  c.deuda += diff;
-  mov.monto = totalActual;
-  mov.desc = mov.desc + ' (actualizado)';
-  c.movs.push({
-    id:Date.now(),
-    tipo:'ajuste',
-    monto:diff,
-    desc:'Ajuste por aumento de precios',
-    fecha:hoy()
-  });
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('💰 Deuda actualizada a '+fmtM(totalActual)+' · Diferencia: +'+fmtM(diff));
-}
-
-function eliminarClienteFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  if(!confirm('¿Eliminar a '+c.nom+'? Se perderá todo el historial.')) return;
-  fiados = fiados.filter(function(f){return f.id!==fiadoActualId;});
-  fiadoActualId = null;
-  closeModal('modal-fiado-detalle');
-  saveState(); renderFiado(); toast('Cliente eliminado');
-}
-
-function renderFiado(){
-  var q = (get('fiado-srch')||'').toLowerCase();
-  var lista = fiados.filter(function(f){ return !q || f.nom.toLowerCase().includes(q); });
-  // KPIs
-  var totalDeuda = fiados.reduce(function(s,f){return s+(f.deuda||0);},0);
-  var conDeuda = fiados.filter(function(f){return f.deuda>0;}).length;
-  var saldados = fiados.filter(function(f){return f.deuda<=0&&f.movs&&f.movs.length>0;}).length;
-  set('fiado-sub','text',fmtM(totalDeuda)+' en '+conDeuda+' cliente'+(conDeuda!==1?'s':''));
-  var kpis = el('fiado-kpis');
-  if(kpis) kpis.innerHTML = ''
-    +'<div class="kpi kr"><div class="kl">DEUDA TOTAL</div><div class="kn" style="font-size:20px;">'+fmtM(totalDeuda)+'</div><div class="kd">'+conDeuda+' clientes activos</div></div>'
-    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+fiados.length+'</div><div class="kd">registrados</div></div>'
-    +'<div class="kpi kg"><div class="kl">SALDADOS</div><div class="kn">'+saldados+'</div><div class="kd">sin deuda</div></div>';
-  // Badge sidebar
-  var badge = el('sb-fiado-badge');
-  if(badge) badge.style.display = conDeuda > 0 ? '' : 'none';
-  var cont = el('fiado-lista');
-  if(!cont) return;
-  if(!lista.length){
-    cont.innerHTML = '<div class="empty"><div class="empty-ico">🤝</div><div class="empty-t">'+(fiados.length?'Sin resultados':'Sin clientes con fiado')+'</div><div class="empty-s">'+(fiados.length?'Probá con otro nombre':'Tocá + Cliente para agregar uno')+'</div></div>';
-    return;
-  }
-  var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
-  cont.innerHTML = lista.map(function(c){
-    var inicial = c.nom.charAt(0).toUpperCase();
-    var col = colors[c.nom.charCodeAt(0) % colors.length];
-    var saldado = c.deuda <= 0;
-    var lastMov = c.movs && c.movs.length ? c.movs[c.movs.length-1] : null;
-    return '<div class="fiado-item" onclick="abrirDetalleFiado('+c.id+')">'
-      +'<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';">'+inicial+'</div>'
-      +'<div class="fiado-txt">'
-      +'<div class="fiado-nom">'+c.nom+'</div>'
-      +'<div class="fiado-meta">'+(lastMov?'Último: '+fmtF(lastMov.fecha)+(c.tel?' · '+c.tel:''):'Cliente desde '+fmtF(c.fecha))+'</div>'
-      +'</div>'
-      +'<div class="fiado-right">'
-      +'<div class="fiado-deuda'+(saldado?' saldado':'')+'">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-      +'<div class="fiado-deuda-lbl">'+(saldado?'SIN DEUDA':'DEUDA')+'</div>'
-      +'</div>'
-      +'</div>';
-  }).join('');
-}
-
 // ═══ INIT DATA ═══
 function initAppData(){
   var pl=PLANES[planActual]||PLANES.gratis;
@@ -3687,16 +2898,13 @@ function initAppData(){
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-pin','val',config.pin||'');
-  var fpref = config.fiadoPrecio || 'original';
-  var fpEl = el('cfg-fiado-precio-'+fpref);
-  if(fpEl) fpEl.checked = true;
   if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   var uz=el('upload-z');
   if(uz){ uz.addEventListener('dragover',function(e){e.preventDefault();uz.style.borderColor='var(--acc)';}); uz.addEventListener('dragleave',function(){uz.style.borderColor='';}); uz.addEventListener('drop',function(e){e.preventDefault();uz.style.borderColor='';handleFile(e.dataTransfer.files[0]);}); }
   var ep=el('eg-prod'); if(ep) ep.addEventListener('change',updEgresoInfo);
   try{ if(window.BarcodeDetector){ BarcodeDetector.getSupportedFormats().then(function(f){ barcodeDetector=new BarcodeDetector({formats:f}); }).catch(function(){ barcodeDetector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code']}); }); } }catch(e){ barcodeDetector=null; }
-  renderDash(); actualizarBotonLock();
+  renderDash();
 }
 
 // ═══ INIT ═══
@@ -3782,16 +2990,6 @@ function actualizarDots() {
     var dot = document.getElementById('pd' + i);
     if(dot) dot.className = 'pin-dot' + (i < pinActual.length ? ' on' : '');
   }
-}
-
-function bloquearAhora(){
-  Object.keys(pinSesionDesbloqueada).forEach(function(k){ pinSesionDesbloqueada[k]=false; });
-  toast('🔒 Secciones bloqueadas');
-}
-
-function actualizarBotonLock(){
-  var btn = el('btn-lock-now');
-  if(btn) btn.style.display = (config.pin && config.pin.length===4) ? 'block' : 'none';
 }
 
 function verificarPin() {
