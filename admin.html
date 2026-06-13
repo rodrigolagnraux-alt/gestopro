@@ -656,20 +656,31 @@
   <span id="toast-msg">Operación exitosa</span>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══ SUPABASE CONFIG ═══
 const SUPA_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
 const SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
-var supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+var supaToken = null;
+
+function supaFetch(path, method, body){
+  var headers = {'apikey': SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'};
+  if(supaToken) headers['Authorization'] = 'Bearer ' + supaToken;
+  return fetch(SUPA_URL + path, {method: method||'GET', headers: headers, body: body ? JSON.stringify(body) : undefined}).then(function(r){ return r.json(); });
+}
 
 function loginAdmin(){
   var email = document.getElementById('adm-email').value.trim();
   var pass = document.getElementById('adm-pass').value;
   var errEl = document.getElementById('adm-error');
   if(!email||!pass){ errEl.textContent='Completá email y contraseña'; errEl.style.display='block'; return; }
-  supabaseClient.auth.signInWithPassword({email:email, password:pass}).then(function(r){
-    if(r.error){ errEl.textContent='Email o contraseña incorrectos'; errEl.style.display='block'; return; }
+  fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: {'apikey': SUPA_KEY, 'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, password: pass})
+  }).then(function(r){ return r.json(); }).then(function(r){
+    if(r.error || !r.access_token){ errEl.textContent='Email o contraseña incorrectos'; errEl.style.display='block'; return; }
+    supaToken = r.access_token;
+    localStorage.setItem('gp_adm_token', supaToken);
     document.getElementById('login-screen').style.display='none';
     cargarNegocios();
   });
@@ -684,31 +695,17 @@ var negocioSeleccionado = null;
 function hoyStr(){ return new Date().toISOString().split('T')[0]; }
 
 function cargarNegocios(){
-  supabaseClient.from('negocios').select('*').then(function(r){
-    if(r.error){ console.log('Error cargando negocios:', r.error); mostrarToast('Error al cargar negocios'); return; }
-    negocios = (r.data||[]).map(function(n){
-      // Determinar estado real: trial / vencido / plan pago
+  supaFetch('/rest/v1/negocios?select=*').then(function(data){
+    if(!Array.isArray(data)){ console.log('Error cargando negocios:', data); mostrarToast('Error al cargar negocios'); return; }
+    negocios = data.map(function(n){
       var plan = n.plan || 'gratis';
       var esPago = ['basico','pro','premium'].includes(plan);
       var estado = plan;
-      if(!esPago){
-        // gratis = trial. Si venció el trial (fecha_registro + 35 dias < hoy) -> vencido
-        var dias = diasTrial(n.fecha_registro);
-        estado = dias > 0 ? 'trial' : 'vencido';
-      }
-      return {
-        id: n.id,
-        nombre: n.nombre || '(sin nombre)',
-        email: n.email || '',
-        plan: estado,
-        planReal: plan,
-        registro: n.fecha_registro,
-        venc_plan: n.plan_vencimiento,
-        aprobado: n.aprobado
-      };
+      if(!esPago){ var dias = diasTrial(n.fecha_registro); estado = dias > 0 ? 'trial' : 'vencido'; }
+      return { id: n.id, nombre: n.nombre||'(sin nombre)', email: n.email||'', plan: estado, planReal: plan, registro: n.fecha_registro, venc_plan: n.plan_vencimiento, aprobado: n.aprobado };
     });
     renderTabla();
-  }).catch(function(e){ console.log('Error:', e); mostrarToast('Error al conectar con Supabase'); });
+  }).catch(function(e){ console.log('Error:', e); mostrarToast('Error al conectar'); });
 }
 
 function diasTrial(fechaReg) {
@@ -828,13 +825,11 @@ function mostrarModalPlan(id) {
 function activarPlan() {
   var plan = document.getElementById('select-plan').value;
   var fecha = document.getElementById('fecha-venc').value;
-
-  supabaseClient.from('negocios').update({ plan: plan, plan_vencimiento: fecha, aprobado: true }).eq('id', negocioSeleccionado.id).then(function(r){
-    if(r.error){ mostrarToast('Error al guardar el plan'); console.log(r.error); return; }
+  supaFetch('/rest/v1/negocios?id=eq.'+negocioSeleccionado.id, 'PATCH', {plan: plan, plan_vencimiento: fecha, aprobado: true}).then(function(r){
     cerrarModal();
     mostrarToast('Plan ' + plan + ' activado para ' + negocioSeleccionado.nombre);
     cargarNegocios();
-  });
+  }).catch(function(){ mostrarToast('Error al guardar el plan'); });
 }
 
 function cerrarModal() {
@@ -855,22 +850,15 @@ function agregarNegocio() {
   var nombre = document.getElementById('nuevo-nombre').value.trim();
   var email = document.getElementById('nuevo-email').value.trim();
   var plan = document.getElementById('nuevo-plan').value;
-
-  if (!nombre || !email) {
-    mostrarToast('Completá nombre y email');
-    return;
-  }
-
+  if (!nombre || !email) { mostrarToast('Completá nombre y email'); return; }
   var data = { nombre: nombre, email: email, fecha_registro: hoyStr() };
   if(plan === 'trial'){ data.plan = 'gratis'; }
   else { data.plan = plan; data.plan_vencimiento = (function(){ var d=new Date(); d.setMonth(d.getMonth()+1); return d.toISOString().split('T')[0]; })(); data.aprobado = true; }
-
-  supabaseClient.from('negocios').insert(data).then(function(r){
-    if(r.error){ mostrarToast('Error al crear negocio'); console.log(r.error); return; }
+  supaFetch('/rest/v1/negocios', 'POST', data).then(function(r){
     cerrarModalNuevo();
     mostrarToast(nombre + ' agregado correctamente');
     cargarNegocios();
-  });
+  }).catch(function(){ mostrarToast('Error al crear negocio'); });
 }
 
 function mostrarToast(msg) {
@@ -887,11 +875,10 @@ document.getElementById('modal-nuevo').addEventListener('click', function(e) {
   if (e.target === this) cerrarModalNuevo();
 });
 
-supabaseClient.auth.getSession().then(function(r){
-  if(r.data&&r.data.session){
-    document.getElementById('login-screen').style.display='none';
-    cargarNegocios();
-  }
-});
+supaToken = localStorage.getItem('gp_adm_token');
+if(supaToken){
+  document.getElementById('login-screen').style.display='none';
+  cargarNegocios();
+}
 </script>
 </html>
