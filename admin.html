@@ -696,7 +696,12 @@ function hoyStr(){ return new Date().toISOString().split('T')[0]; }
 
 function cargarNegocios(){
   supaFetch('/rest/v1/negocios?select=*').then(function(data){
-    if(!Array.isArray(data)){ console.log('Error cargando negocios:', data); mostrarToast('Error al cargar negocios'); return; }
+    if(!Array.isArray(data)){
+      // Token vencido u otro error — volver al login
+      localStorage.removeItem('gp_adm_token');
+      document.getElementById('login-screen').style.display='flex';
+      return;
+    }
     negocios = data.map(function(n){
       var plan = n.plan || 'gratis';
       var esPago = ['basico','pro','premium'].includes(plan);
