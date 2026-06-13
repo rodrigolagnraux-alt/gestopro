@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GestoPro Admin</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 
@@ -471,6 +470,24 @@
 <body>
 
 <!-- SIDEBAR -->
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--gris-fondo);position:fixed;inset:0;z-index:9999;">
+  <div style="background:#fff;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="font-family:Sora,sans-serif;font-size:22px;font-weight:700;margin-bottom:4px;color:#1a1a1a;">GestoPro Admin</div>
+    <div style="font-size:13px;color:var(--gris-suave);margin-bottom:28px;">Ingresá con tu cuenta de administrador</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:6px;">Email</label>
+      <input id="adm-email" type="email" placeholder="correo@ejemplo.com" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:6px;">Contraseña</label>
+      <input id="adm-pass" type="password" placeholder="••••••••" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')loginAdmin()">
+    </div>
+    <div id="adm-error" style="display:none;color:#e53935;font-size:12px;margin-bottom:12px;"></div>
+    <button onclick="loginAdmin()" style="width:100%;background:var(--verde);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Ingresar</button>
+  </div>
+</div>
+
 <aside class="sidebar">
   <div class="logo-admin">Gesto<span>Pro</span><small>Admin Panel</small></div>
   
@@ -639,11 +656,24 @@
   <span id="toast-msg">Operación exitosa</span>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══ SUPABASE CONFIG ═══
 const SUPA_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
 const SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
 var supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+function loginAdmin(){
+  var email = document.getElementById('adm-email').value.trim();
+  var pass = document.getElementById('adm-pass').value;
+  var errEl = document.getElementById('adm-error');
+  if(!email||!pass){ errEl.textContent='Completá email y contraseña'; errEl.style.display='block'; return; }
+  supabaseClient.auth.signInWithPassword({email:email, password:pass}).then(function(r){
+    if(r.error){ errEl.textContent='Email o contraseña incorrectos'; errEl.style.display='block'; return; }
+    document.getElementById('login-screen').style.display='none';
+    cargarNegocios();
+  });
+}
 
 var negocios = [];
 
@@ -857,7 +887,11 @@ document.getElementById('modal-nuevo').addEventListener('click', function(e) {
   if (e.target === this) cerrarModalNuevo();
 });
 
-cargarNegocios();
+supabaseClient.auth.getSession().then(function(r){
+  if(r.data&&r.data.session){
+    document.getElementById('login-screen').style.display='none';
+    cargarNegocios();
+  }
+});
 </script>
-</body>
 </html>
