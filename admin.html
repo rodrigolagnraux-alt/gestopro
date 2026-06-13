@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GestoPro Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 
@@ -639,25 +640,51 @@
 </div>
 
 <script>
-// Datos demo (en producción vienen de Supabase)
-var negocios = [
-  { id: 1, nombre: 'La 17 - Almacén', email: 'rodrigogestopro@gmail.com', plan: 'trial', registro: '2026-05-04', venc_plan: null },
-  { id: 2, nombre: 'Carnicería El Gaucho', email: 'elgaucho@gmail.com', plan: 'pro', registro: '2026-04-10', venc_plan: '2026-07-10' },
-  { id: 3, nombre: 'Despensa Familiar', email: 'despensaf@gmail.com', plan: 'trial', registro: '2026-05-20', venc_plan: null },
-  { id: 4, nombre: 'Kiosco Sol', email: 'kiosco.sol@hotmail.com', plan: 'vencido', registro: '2026-04-01', venc_plan: null },
-  { id: 5, nombre: 'Fiambrería Barrio Norte', email: 'fiamb.norte@gmail.com', plan: 'basico', registro: '2026-03-15', venc_plan: '2026-07-01' },
-  { id: 6, nombre: 'Verdulería Rivas', email: 'rivas.verduleria@gmail.com', plan: 'trial', registro: '2026-06-01', venc_plan: null },
-  { id: 7, nombre: 'Distribuidora Colon', email: 'distrib.colon@gmail.com', plan: 'premium', registro: '2026-02-20', venc_plan: '2026-08-20' },
-  { id: 8, nombre: 'Almacén Los Pinos', email: 'lospinos@yahoo.com.ar', plan: 'vencido', registro: '2026-03-25', venc_plan: null },
-];
+// ═══ SUPABASE CONFIG ═══
+const SUPA_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co';
+const SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
+var supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+var negocios = [];
 
 var filtroActual = 'todos';
 var busquedaActual = '';
 var negocioSeleccionado = null;
 
+function hoyStr(){ return new Date().toISOString().split('T')[0]; }
+
+function cargarNegocios(){
+  supabaseClient.from('negocios').select('*').then(function(r){
+    if(r.error){ console.log('Error cargando negocios:', r.error); mostrarToast('Error al cargar negocios'); return; }
+    negocios = (r.data||[]).map(function(n){
+      // Determinar estado real: trial / vencido / plan pago
+      var plan = n.plan || 'gratis';
+      var esPago = ['basico','pro','premium'].includes(plan);
+      var estado = plan;
+      if(!esPago){
+        // gratis = trial. Si venció el trial (fecha_registro + 35 dias < hoy) -> vencido
+        var dias = diasTrial(n.fecha_registro);
+        estado = dias > 0 ? 'trial' : 'vencido';
+      }
+      return {
+        id: n.id,
+        nombre: n.nombre || '(sin nombre)',
+        email: n.email || '',
+        plan: estado,
+        planReal: plan,
+        registro: n.fecha_registro,
+        venc_plan: n.plan_vencimiento,
+        aprobado: n.aprobado
+      };
+    });
+    renderTabla();
+  }).catch(function(e){ console.log('Error:', e); mostrarToast('Error al conectar con Supabase'); });
+}
+
 function diasTrial(fechaReg) {
+  if(!fechaReg) return 0;
   var reg = new Date(fechaReg);
-  var hoy = new Date('2026-06-08');
+  var hoy = new Date();
   var dias = Math.floor((hoy - reg) / (1000 * 60 * 60 * 24));
   return 35 - dias;
 }
@@ -756,14 +783,13 @@ function buscar(val) {
 function mostrarModalPlan(id) {
   negocioSeleccionado = negocios.find(function(n) { return n.id === id; });
   document.getElementById('modal-info').innerHTML = '<strong>' + negocioSeleccionado.nombre + '</strong><span>' + negocioSeleccionado.email + '</span>';
-  
-  var hoy = new Date('2026-06-08');
-  var proximo = new Date(hoy);
+
+  var proximo = new Date();
   proximo.setMonth(proximo.getMonth() + 1);
   document.getElementById('fecha-venc').value = proximo.toISOString().split('T')[0];
-  
-  if (['basico','pro','premium'].includes(negocioSeleccionado.plan)) {
-    document.getElementById('select-plan').value = negocioSeleccionado.plan;
+
+  if (['basico','pro','premium'].includes(negocioSeleccionado.planReal)) {
+    document.getElementById('select-plan').value = negocioSeleccionado.planReal;
   }
 
   document.getElementById('modal-plan').classList.add('activo');
@@ -772,17 +798,13 @@ function mostrarModalPlan(id) {
 function activarPlan() {
   var plan = document.getElementById('select-plan').value;
   var fecha = document.getElementById('fecha-venc').value;
-  
-  negocios = negocios.map(function(n) {
-    if (n.id === negocioSeleccionado.id) {
-      return Object.assign({}, n, { plan: plan, venc_plan: fecha });
-    }
-    return n;
-  });
 
-  cerrarModal();
-  renderTabla();
-  mostrarToast('Plan ' + plan + ' activado para ' + negocioSeleccionado.nombre);
+  supabaseClient.from('negocios').update({ plan: plan, plan_vencimiento: fecha, aprobado: true }).eq('id', negocioSeleccionado.id).then(function(r){
+    if(r.error){ mostrarToast('Error al guardar el plan'); console.log(r.error); return; }
+    cerrarModal();
+    mostrarToast('Plan ' + plan + ' activado para ' + negocioSeleccionado.nombre);
+    cargarNegocios();
+  });
 }
 
 function cerrarModal() {
@@ -809,19 +831,16 @@ function agregarNegocio() {
     return;
   }
 
-  var nuevoId = Math.max.apply(null, negocios.map(function(n){ return n.id; })) + 1;
-  negocios.push({
-    id: nuevoId,
-    nombre: nombre,
-    email: email,
-    plan: plan,
-    registro: '2026-06-08',
-    venc_plan: null,
-  });
+  var data = { nombre: nombre, email: email, fecha_registro: hoyStr() };
+  if(plan === 'trial'){ data.plan = 'gratis'; }
+  else { data.plan = plan; data.plan_vencimiento = (function(){ var d=new Date(); d.setMonth(d.getMonth()+1); return d.toISOString().split('T')[0]; })(); data.aprobado = true; }
 
-  cerrarModalNuevo();
-  renderTabla();
-  mostrarToast(nombre + ' agregado correctamente');
+  supabaseClient.from('negocios').insert(data).then(function(r){
+    if(r.error){ mostrarToast('Error al crear negocio'); console.log(r.error); return; }
+    cerrarModalNuevo();
+    mostrarToast(nombre + ' agregado correctamente');
+    cargarNegocios();
+  });
 }
 
 function mostrarToast(msg) {
@@ -838,7 +857,7 @@ document.getElementById('modal-nuevo').addEventListener('click', function(e) {
   if (e.target === this) cerrarModalNuevo();
 });
 
-renderTabla();
+cargarNegocios();
 </script>
 </body>
 </html>
