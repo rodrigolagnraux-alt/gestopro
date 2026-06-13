@@ -1529,21 +1529,21 @@ function renderLineasCobro(){
     cont.innerHTML='<div style="font-size:11px;color:var(--mut2);text-align:center;padding:8px;">Tocá 📷 Escanear o + Manual para agregar productos</div>';
     set('cobro-subtotal','text','$0'); return;
   }
-  var html='';
+  // datalist compartido con todos los productos (una sola vez)
+  var datalistHtml = '<datalist id="dl-productos">'+productos.map(function(p){
+    return '<option value="'+p.nom.replace(/"/g,'&quot;')+'" data-id="'+p.id+'"></option>';
+  }).join('')+'</datalist>';
+  var html=datalistHtml;
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     var pventa=prod?(prod.pventa||prod.precio||0):0;
     var subtotal=pventa*l.cant;
     var um=prod?prod.um:'UN';
+    var nomVal = prod ? prod.nom.replace(/"/g,'&quot;') : '';
     // Row: name | cant input | unit | subtotal | delete
     html+='<div style="display:grid;grid-template-columns:1fr 70px 50px 70px 24px;gap:5px;margin-bottom:8px;align-items:center;">'
-      // Product selector
-      +'<select class="fi" style="font-size:11px;padding:5px 6px;" onchange="selProdCobro('+l.id+',this.value)">'
-      +'<option value="">— Producto —</option>'
-      +productos.map(function(p){
-        return '<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>';
-      }).join('')
-      +'</select>'
+      // Product search input with datalist autocomplete
+      +'<input class="fi" list="dl-productos" placeholder="Buscar producto..." value="'+nomVal+'" style="font-size:12px;padding:5px 6px;" oninput="selProdCobroNombre('+l.id+',this.value)">'
       // Cant input
       +'<input class="fi" type="number" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:13px;padding:5px;text-align:center;font-family:DM Mono,monospace;" oninput="updCantCobro('+l.id+',this.value)">'
       // Unit
@@ -1557,6 +1557,13 @@ function renderLineasCobro(){
   cont.innerHTML=html;
   actualizarTotalCobro();
 }
+function selProdCobroNombre(id,nombre){
+  const l=lineasCobro.find(function(l){return l.id===id;});
+  if(!l) return;
+  const prod=productos.find(function(p){return p.nom.toLowerCase()===nombre.trim().toLowerCase();});
+  if(prod){ l.prodId=prod.id; actualizarTotalCobro(); }
+  else { l.prodId=null; actualizarTotalCobro(); }
+}
 function selProdCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.prodId=val;renderLineasCobro();} }
 function updCantCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.cant=parseFloat(val)||1;actualizarTotalCobro();} }
 function quitarLineaCobro(id){ lineasCobro=lineasCobro.filter(function(l){return l.id!==id;});renderLineasCobro(); }
@@ -1566,6 +1573,7 @@ function actualizarTotalCobro(){
     const prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod) total+=(prod.pventa||prod.precio||0)*l.cant;
   });
+  total = Math.round(total*100)/100;
   set('cobro-subtotal','text',fmtM(total));
   if(total>0){ set('cobrar-monto','val',String(total)); updCobrar(); }
 }
@@ -2001,7 +2009,13 @@ function abrirEditarProd(id){
   prodEditId = id;
   set('p-cod','val',p.cod||'');
   set('p-nom','val',p.nom||'');
-  var pcat=el('p-cat'); if(pcat) pcat.value = p.cat||'Otro';
+  var pcat=el('p-cat');
+  if(pcat){
+    var cats = Array.from(new Set(productos.map(function(x){return x.cat;}).filter(Boolean)));
+    var fijas=['Alimentos','Bebidas','Limpieza','Ferretería','Electrónica','Indumentaria','Insumos','Otro'];
+    fijas.forEach(function(c){if(cats.indexOf(c)===-1)cats.push(c);});
+    pcat.innerHTML = cats.map(function(c){return '<option'+(c===p.cat?' selected':'')+'>'+c+'</option>';}).join('');
+  }
   set('p-stock','val',p.stock);
   var pum=el('p-um'); if(pum) pum.value = p.um||'UN';
   set('p-precio','val',p.precio||'');
