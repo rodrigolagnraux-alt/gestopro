@@ -2071,15 +2071,16 @@ function handleFile(file){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       pendingImport=rows.map(function(r,i){
+        const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
         const keys=Object.keys(r);
         const find=function(){
           const terms=[].slice.call(arguments);
-          return keys.find(function(k){return terms.some(function(t){return k.toLowerCase().includes(t.toLowerCase());});});
+          return keys.find(function(k){return terms.some(function(t){return norm(k).includes(norm(t));});});
         };
-        const fN=find('nombre','descripcion','producto','articulo');
+        const fN=find('nombre del producto','nombre','descripcion','producto','articulo');
         const nom=String(r[fN]||'').trim();
         if(!nom||nom.length<2)return null;
-        return{id:Date.now()+i,cod:String(r[find('codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:parseFloat(r[find('stock','cantidad','qty')])||0,um:String(r[find('unidad','um')]||'UN').trim(),precio:parseFloat(r[find('precio costo','costo','precio unit')])||0,pventa:parseFloat(r[find('precio venta','venta')])||0,min:parseFloat(r[find('minimo','min stock')])||0,max:parseFloat(r[find('maximo','max stock')])||0,prov:String(r[find('proveedor')]||'').trim()};
+        return{id:Date.now()+i,cod:String(r[find('codigo de barra','codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:parseFloat(r[find('stock actual','stock','cantidad','qty')])||0,um:String(r[find('unidad de medida','unidad','um')]||'UN').trim(),precio:parseFloat(r[find('precio costo','costo','precio unit')])||0,pventa:parseFloat(r[find('precio de venta','precio venta','venta')])||0,min:parseFloat(r[find('stock minimo','minimo','min stock')])||0,max:parseFloat(r[find('stock maximo','maximo','max stock')])||0,prov:String(r[find('proveedor')]||'').trim()};
       }).filter(Boolean);
       const ipt=el('import-prev-t'); if(ipt)ipt.textContent='Vista previa · '+pendingImport.length+' productos';
       const ipb=el('import-prev-b');
@@ -2091,10 +2092,31 @@ function handleFile(file){
 }
 function confirmarImport(){
   if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
-  productos=productos.concat(pendingImport); pendingImport=[];
+  var actualizados=0, nuevos=0;
+  pendingImport.forEach(function(imp){
+    var existente = productos.find(function(p){
+      return (imp.cod && p.cod===imp.cod) || (p.nom.trim().toLowerCase()===imp.nom.trim().toLowerCase());
+    });
+    if(existente){
+      existente.cod=imp.cod||existente.cod;
+      existente.cat=imp.cat||existente.cat;
+      existente.stock=imp.stock||existente.stock;
+      existente.um=imp.um||existente.um;
+      existente.precio=imp.precio||existente.precio;
+      existente.pventa=imp.pventa||existente.pventa;
+      existente.min=imp.min||existente.min;
+      existente.max=imp.max||existente.max;
+      existente.prov=imp.prov||existente.prov;
+      actualizados++;
+    } else {
+      productos.push(imp);
+      nuevos++;
+    }
+  });
+  pendingImport=[];
   set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
   saveState(); renderDash(); renderProds();
-  toast(productos.length+' productos cargados ✓');
+  toast(nuevos+' nuevos · '+actualizados+' actualizados ✓');
 }
 function cancelImport(){
   pendingImport=[];
