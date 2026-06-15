@@ -404,6 +404,99 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="sb-ov" id="sbov" onclick="closeSB()"></div>
 
 <!-- MODAL PLAN -->
+<!-- MODALES EMPLEADOS -->
+
+<!-- Modal: Nuevo/Editar Empleado -->
+<div class="ov" id="modal-empleado">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t" id="modal-empleado-titulo">👤 Nuevo Empleado</div>
+  <div class="fg"><label class="fl">Nombre</label><input class="fi" id="emp-form-nombre" placeholder="Ej: Juan García"></div>
+  <div class="fg"><label class="fl">Rol / Puesto</label><input class="fi" id="emp-form-rol" placeholder="Ej: Repositor, Cajero..."></div>
+  <div class="fg"><label class="fl">Sueldo semanal $</label><input class="fi" id="emp-form-sueldo" type="number" placeholder="0" inputmode="numeric"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-empleado')">Cancelar</button>
+    <button class="btn btn-acc" onclick="guardarEmpleado()">Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal: Registrar Mercadería -->
+<div class="ov" id="modal-emp-mercaderia">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🛒 Mercadería llevada</div>
+  <div class="modal-s" id="modal-merc-emp-nombre"></div>
+  <div class="fg"><label class="fl">Producto</label><input class="fi" id="emp-merc-prod" placeholder="Nombre del producto"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="emp-merc-cant" type="number" placeholder="1" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Precio unitario $</label><input class="fi" id="emp-merc-precio" type="number" placeholder="0" inputmode="numeric"></div>
+  </div>
+  <div style="background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;">
+    Total: <strong id="emp-merc-total" style="color:var(--txt);">$0</strong> — se descuenta del sueldo semanal
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-emp-mercaderia')">Cancelar</button>
+    <button class="btn btn-acc" onclick="guardarMercaderiaEmpleado()">Registrar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal: Anticipo -->
+<div class="ov" id="modal-emp-anticipo">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💵 Registrar Anticipo</div>
+  <div class="modal-s" id="modal-anticipo-emp-nombre"></div>
+  <div class="fg"><label class="fl">Monto del anticipo $</label><input class="fi" id="emp-anticipo-monto" type="number" placeholder="0" inputmode="numeric"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-emp-anticipo')">Cancelar</button>
+    <button class="btn btn-acc" onclick="guardarAnticipo()">Registrar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal: Liquidar Semana -->
+<div class="ov" id="modal-emp-liquidar">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">✅ Liquidar Semana</div>
+  <div class="modal-s" id="modal-liq-emp-nombre"></div>
+  <div style="background:var(--sur2);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
+      <span style="color:var(--mut2);">Sueldo base</span>
+      <span id="liq-base" style="font-family:DM Mono,monospace;"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
+      <span style="color:var(--mut2);">Horas extra</span>
+      <span id="liq-extra" style="font-family:DM Mono,monospace;color:var(--grn);"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
+      <span style="color:var(--mut2);">Anticipos</span>
+      <span id="liq-anticipos" style="font-family:DM Mono,monospace;color:var(--red);"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
+      <span style="color:var(--mut2);">Mercadería llevada</span>
+      <span id="liq-merc" style="font-family:DM Mono,monospace;color:var(--red);"></span>
+    </div>
+    <div style="border-top:1px solid var(--brd);margin:10px 0;"></div>
+    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
+      <span>Total a pagar</span>
+      <span id="liq-total" style="font-family:Syne,sans-serif;color:var(--grn);"></span>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Horas extra esta semana (opcional)</label><input class="fi" id="liq-horas-extra" type="number" placeholder="0" inputmode="numeric" oninput="recalcularLiquidacion()"></div>
+  <div class="fg" style="display:none;" id="liq-valor-hora-wrap"><label class="fl">Valor por hora extra $</label><input class="fi" id="liq-valor-hora" type="number" placeholder="0" inputmode="numeric" oninput="recalcularLiquidacion()"></div>
+  <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:8px;padding:10px;font-size:11px;color:var(--mut2);margin-bottom:14px;">
+    💡 Al confirmar se registra un egreso automático en Flujo Financiero
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-emp-liquidar')">Cancelar</button>
+    <button class="btn btn-acc" onclick="confirmarLiquidacion()">💰 Confirmar pago</button>
+  </div>
+</div>
+</div>
+
 <div class="ov" id="modal-plan">
 <div class="modal">
   <div class="modal-drag"></div>
@@ -825,6 +918,10 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i" id="sb-pventa" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
     <div class="sb-i" id="sb-oc" onclick="goLocked('oc',this,'business')"><span class="sb-ico">📋</span>Órd. de Compra<span class="sb-lock" id="lock-oc">🔒</span></div>
   </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Mi Negocio</div>
+    <div class="sb-i" id="sb-empleados" onclick="goConPin('empleados',this,'business')"><span class="sb-ico">👥</span>Empleados<span class="sb-lock" id="lock-empleados">🔒</span></div>
+  </div>
   <div class="sb-foot">
     <div class="plan-box">
       <div class="plan-box-name" id="plan-name-sb">Plan Gratis</div>
@@ -1121,6 +1218,93 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="locked"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">📋</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Órdenes de Compra</div><div style="font-size:12px;">Creá pedidos · Seguí el estado · Recepcioná mercadería</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Business</div><div class="lock-s">Gestión completa de pedidos a proveedores con seguimiento de estado</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
 </div>
 
+<!-- MÓDULO EMPLEADOS -->
+<div id="pg-empleados" class="pg">
+  <div class="ptitle">👥 Empleados</div>
+
+  <!-- Vista: Lista de empleados -->
+  <div id="emp-vista-lista">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--mut2);" id="emp-cantidad">Cargando...</div>
+      <button class="btn btn-acc btn-sm" onclick="abrirModalNuevoEmpleado()">+ Nuevo empleado</button>
+    </div>
+    <div id="emp-lista-container"></div>
+
+    <!-- Reporte mensual -->
+    <div class="card" style="margin-top:16px;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;">📊 Costo real este mes</div>
+      <div id="emp-reporte-mes"></div>
+    </div>
+  </div>
+
+  <!-- Vista: Detalle de un empleado -->
+  <div id="emp-vista-detalle" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <button class="btn btn-ghost btn-sm" onclick="empVolverLista()">← Volver</button>
+      <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;" id="emp-detalle-nombre"></div>
+    </div>
+
+    <!-- Info del empleado -->
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">SUELDO SEMANAL</div>
+          <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);" id="emp-detalle-sueldo"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalEditarEmpleado()">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalMercaderia()" style="color:var(--acc2);">🛒 Mercadería</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Semana actual -->
+    <div class="card" style="margin-bottom:12px;border:1px solid var(--acc);">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;color:var(--acc2);">⚡ Semana actual</div>
+      <div id="emp-semana-actual-resumen" style="font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
+      <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span style="color:var(--mut2);">Sueldo base</span>
+          <span id="emp-sw-base" style="font-family:DM Mono,monospace;"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span style="color:var(--mut2);">Horas extra</span>
+          <span id="emp-sw-extra" style="font-family:DM Mono,monospace;color:var(--grn);"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span style="color:var(--mut2);">Anticipos</span>
+          <span id="emp-sw-anticipos" style="font-family:DM Mono,monospace;color:var(--red);"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span style="color:var(--mut2);">Mercadería llevada</span>
+          <span id="emp-sw-merc" style="font-family:DM Mono,monospace;color:var(--red);"></span>
+        </div>
+        <div style="border-top:1px solid var(--brd);margin:8px 0;"></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;">
+          <span>A pagar</span>
+          <span id="emp-sw-total" style="font-family:Syne,sans-serif;color:var(--acc2);"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalAnticipo()" style="flex:1;">💵 Anticipo</button>
+        <button class="btn btn-acc btn-sm" onclick="abrirModalLiquidar()" style="flex:1;">✅ Liquidar semana</button>
+      </div>
+    </div>
+
+    <!-- Historial de semanas -->
+    <div class="card">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;">📋 Historial de semanas</div>
+      <div id="emp-historial-semanas"></div>
+    </div>
+
+    <!-- Mercadería del mes -->
+    <div class="card" style="margin-top:12px;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;">🛒 Mercadería llevada este mes</div>
+      <div id="emp-merc-mes-lista"></div>
+    </div>
+  </div>
+</div>
+
 
 <!-- MODAL RESUMEN PRECIOS -->
 <div class="ov" id="modal-precios">
@@ -1312,11 +1496,11 @@ let lineasIngreso=[], lineasCobro=[];
 const PLANES={
   gratis:   {nombre:'Plan Gratis',   sub:'Gratis para siempre', precio:'$0',        maxP:50},
   basico:   {nombre:'Plan Básico',   sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
-  pro:      {nombre:'Plan Pro',      sub:'$60.000/mes',         precio:'$60.000',   maxP:99999},
-  business: {nombre:'Plan Business', sub:'$100.000/mes',         precio:'$100.000',   maxP:99999}
+  pro:      {nombre:'Plan Pro',      sub:'$75.000/mes',         precio:'$75.000',   maxP:99999},
+  business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business'};
+const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business',empleados:'business'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -2378,6 +2562,7 @@ function renderPage(id){
   else if(id==='fiado') renderFiado();
   else if(id==='resumen') renderResumen();
   else if(id==='finanzas') renderFinanzas();
+  else if(id==='empleados') renderEmpleados();
 }
 
 
@@ -3636,7 +3821,7 @@ function goConPin(id, navEl, req) {
     return;
   }
   // Secciones que requieren PIN
-  var seccionesPin = ['resumen', 'finanzas'];
+  var seccionesPin = ['resumen', 'finanzas', 'empleados'];
   var pinGuardado = config.pin || '';
   
   if(seccionesPin.includes(id) && pinGuardado && !pinSesionDesbloqueada[id]) {
@@ -3682,6 +3867,417 @@ function actualizarDots() {
     var dot = document.getElementById('pd' + i);
     if(dot) dot.className = 'pin-dot' + (i < pinActual.length ? ' on' : '');
   }
+}
+
+// ═══════════════════════════════════════════════
+// MÓDULO EMPLEADOS
+// ═══════════════════════════════════════════════
+var empActual = null; // empleado seleccionado
+var empEditId = null;
+var empSemanaActual = null; // datos semana en curso
+
+function getLunesActual() {
+  var hoy = new Date();
+  var dia = hoy.getDay();
+  var diff = (dia === 0) ? -6 : 1 - dia;
+  var lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() + diff);
+  lunes.setHours(0,0,0,0);
+  return lunes;
+}
+
+function getSabadoActual() {
+  var lunes = getLunesActual();
+  var sab = new Date(lunes);
+  sab.setDate(lunes.getDate() + 6);
+  return sab;
+}
+
+function fechaCorta(d) {
+  if(!d) return '';
+  var f = new Date(d);
+  return f.getDate()+'/'+(f.getMonth()+1);
+}
+
+function pesos(n) {
+  return '$'+Math.round(n||0).toLocaleString('es-AR');
+}
+
+async function renderEmpleados() {
+  el('emp-vista-lista').style.display = 'block';
+  el('emp-vista-detalle').style.display = 'none';
+  if(!currentNegocioId) return;
+
+  var res = await supabaseClient.from('empleados')
+    .select('*').eq('negocio_id', currentNegocioId).eq('activo', true).order('nombre');
+
+  var lista = res.data || [];
+  el('emp-cantidad').textContent = lista.length + ' empleado'+(lista.length===1?'':'s');
+
+  var html = '';
+  if(lista.length === 0) {
+    html = '<div class="card" style="text-align:center;padding:32px;color:var(--mut2);">'+
+      '<div style="font-size:36px;margin-bottom:10px;">👥</div>'+
+      '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--txt);margin-bottom:6px;">Sin empleados registrados</div>'+
+      '<div style="font-size:12px;">Agregá tu primer empleado para empezar a gestionar sueldos</div></div>';
+  } else {
+    lista.forEach(function(emp) {
+      html += '<div class="fiado-item" onclick="abrirDetalleEmpleado(\''+emp.id+'\')">'+
+        '<div class="fiado-avatar" style="background:var(--acc-dim);color:var(--acc2);">'+emp.nombre.charAt(0).toUpperCase()+'</div>'+
+        '<div class="fiado-txt">'+
+          '<div class="fiado-nom">'+emp.nombre+'</div>'+
+          '<div class="fiado-meta">'+(emp.rol||'Empleado')+'</div>'+
+        '</div>'+
+        '<div class="fiado-right">'+
+          '<div class="fiado-deuda" style="color:var(--grn);">'+pesos(emp.sueldo_semanal)+'/sem</div>'+
+          '<div class="fiado-deuda-lbl">sueldo</div>'+
+        '</div>'+
+      '</div>';
+    });
+    html = '<div class="card">'+html+'</div>';
+  }
+  el('emp-lista-container').innerHTML = html;
+
+  // Reporte mensual
+  if(lista.length > 0) await renderReporteMes(lista);
+}
+
+async function renderReporteMes(listaEmpleados) {
+  var hoy = new Date();
+  var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0,10);
+  var finMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).toISOString().slice(0,10);
+
+  var html = '';
+  for(var i=0; i<listaEmpleados.length; i++){
+    var emp = listaEmpleados[i];
+    // Semanas liquidadas del mes
+    var sw = await supabaseClient.from('empleados_semanas')
+      .select('total_pagado,mercaderia')
+      .eq('empleado_id', emp.id)
+      .eq('pagado', true)
+      .gte('semana_inicio', inicioMes)
+      .lte('semana_fin', finMes);
+    var semanas = sw.data || [];
+    var totalSueldos = semanas.reduce(function(a,s){ return a+(s.total_pagado||0); }, 0);
+
+    // Mercadería del mes
+    var mr = await supabaseClient.from('empleados_mercaderia')
+      .select('total')
+      .eq('empleado_id', emp.id)
+      .gte('fecha', inicioMes)
+      .lte('fecha', finMes+'T23:59:59');
+    var mercs = mr.data || [];
+    var totalMerc = mercs.reduce(function(a,m){ return a+(m.total||0); }, 0);
+
+    var costoReal = totalSueldos + totalMerc;
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);font-size:12px;">'+
+      '<div>'+
+        '<div style="font-weight:600;">'+emp.nombre+'</div>'+
+        '<div style="color:var(--mut2);font-size:11px;">Sueldos: '+pesos(totalSueldos)+' · Mercadería: '+pesos(totalMerc)+'</div>'+
+      '</div>'+
+      '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:var(--acc2);">'+pesos(costoReal)+'</div>'+
+    '</div>';
+  }
+  el('emp-reporte-mes').innerHTML = html || '<div style="font-size:12px;color:var(--mut2);">Sin movimientos este mes</div>';
+}
+
+async function abrirDetalleEmpleado(empId) {
+  var res = await supabaseClient.from('empleados').select('*').eq('id', empId).single();
+  if(!res.data) return;
+  empActual = res.data;
+
+  el('emp-vista-lista').style.display = 'none';
+  el('emp-vista-detalle').style.display = 'block';
+  el('emp-detalle-nombre').textContent = empActual.nombre;
+  el('emp-detalle-sueldo').textContent = pesos(empActual.sueldo_semanal)+'/semana';
+
+  await cargarSemanaActual();
+  await cargarHistorialSemanas();
+  await cargarMercaderiaMes();
+}
+
+async function cargarSemanaActual() {
+  var lunes = getLunesActual().toISOString().slice(0,10);
+  var sabado = getSabadoActual().toISOString().slice(0,10);
+
+  // Mercadería de esta semana
+  var mr = await supabaseClient.from('empleados_mercaderia')
+    .select('total').eq('empleado_id', empActual.id)
+    .gte('fecha', lunes).lte('fecha', sabado+'T23:59:59');
+  var totalMerc = (mr.data||[]).reduce(function(a,m){ return a+(m.total||0); }, 0);
+
+  // Semana en curso (no pagada)
+  var sw = await supabaseClient.from('empleados_semanas')
+    .select('*').eq('empleado_id', empActual.id)
+    .eq('semana_inicio', lunes).eq('pagado', false).maybeSingle();
+
+  var anticipos = sw.data ? (sw.data.anticipos||0) : 0;
+  var horasExtra = sw.data ? (sw.data.horas_extra||0) : 0;
+  var base = empActual.sueldo_semanal || 0;
+  var total = Math.max(0, base + horasExtra - anticipos - totalMerc);
+
+  empSemanaActual = {
+    id: sw.data ? sw.data.id : null,
+    lunes: lunes,
+    sabado: sabado,
+    base: base,
+    horasExtra: horasExtra,
+    anticipos: anticipos,
+    mercaderia: totalMerc,
+    total: total
+  };
+
+  el('emp-semana-actual-resumen').textContent = 'Semana '+fechaCorta(lunes)+' al '+fechaCorta(sabado);
+  el('emp-sw-base').textContent = pesos(base);
+  el('emp-sw-extra').textContent = horasExtra > 0 ? '+'+pesos(horasExtra) : '$0';
+  el('emp-sw-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
+  el('emp-sw-merc').textContent = totalMerc > 0 ? '-'+pesos(totalMerc) : '$0';
+  el('emp-sw-total').textContent = pesos(total);
+}
+
+async function cargarHistorialSemanas() {
+  var res = await supabaseClient.from('empleados_semanas')
+    .select('*').eq('empleado_id', empActual.id)
+    .eq('pagado', true).order('semana_inicio', {ascending:false}).limit(10);
+  var semanas = res.data || [];
+  if(semanas.length === 0) {
+    el('emp-historial-semanas').innerHTML = '<div style="font-size:12px;color:var(--mut2);">Sin semanas liquidadas aún</div>';
+    return;
+  }
+  var html = '';
+  semanas.forEach(function(s) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);font-size:12px;">'+
+      '<div>'+
+        '<div style="font-weight:600;">Sem. '+fechaCorta(s.semana_inicio)+' al '+fechaCorta(s.semana_fin)+'</div>'+
+        '<div style="color:var(--mut2);font-size:11px;">Merc: '+pesos(s.mercaderia)+' · Anticipos: '+pesos(s.anticipos)+'</div>'+
+      '</div>'+
+      '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--grn);">'+pesos(s.total_pagado)+'</div>'+
+    '</div>';
+  });
+  el('emp-historial-semanas').innerHTML = html;
+}
+
+async function cargarMercaderiaMes() {
+  var hoy = new Date();
+  var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0,10);
+  var res = await supabaseClient.from('empleados_mercaderia')
+    .select('*').eq('empleado_id', empActual.id)
+    .gte('fecha', inicioMes).order('fecha', {ascending:false});
+  var items = res.data || [];
+  if(items.length === 0) {
+    el('emp-merc-mes-lista').innerHTML = '<div style="font-size:12px;color:var(--mut2);">Sin mercadería registrada este mes</div>';
+    return;
+  }
+  var html = '';
+  var totalMes = 0;
+  items.forEach(function(m) {
+    totalMes += (m.total||0);
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--brd);">'+
+      '<div><span style="font-weight:600;">'+m.producto_nom+'</span> <span style="color:var(--mut2);">x'+m.cantidad+'</span></div>'+
+      '<div style="font-family:DM Mono,monospace;color:var(--red);">-'+pesos(m.total)+'</div>'+
+    '</div>';
+  });
+  html += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:8px;">'+
+    '<span>Total mes</span><span style="color:var(--red);font-family:Syne,sans-serif;">'+pesos(totalMes)+'</span></div>';
+  el('emp-merc-mes-lista').innerHTML = html;
+}
+
+function empVolverLista() {
+  empActual = null;
+  empSemanaActual = null;
+  el('emp-vista-lista').style.display = 'block';
+  el('emp-vista-detalle').style.display = 'none';
+  renderEmpleados();
+}
+
+function abrirModalNuevoEmpleado() {
+  empEditId = null;
+  el('modal-empleado-titulo').textContent = '👤 Nuevo Empleado';
+  el('emp-form-nombre').value = '';
+  el('emp-form-rol').value = '';
+  el('emp-form-sueldo').value = '';
+  openModal('modal-empleado');
+}
+
+function abrirModalEditarEmpleado() {
+  if(!empActual) return;
+  empEditId = empActual.id;
+  el('modal-empleado-titulo').textContent = '✏️ Editar Empleado';
+  el('emp-form-nombre').value = empActual.nombre;
+  el('emp-form-rol').value = empActual.rol||'';
+  el('emp-form-sueldo').value = empActual.sueldo_semanal||0;
+  openModal('modal-empleado');
+}
+
+async function guardarEmpleado() {
+  var nombre = el('emp-form-nombre').value.trim();
+  var rol = el('emp-form-rol').value.trim()||'Empleado';
+  var sueldo = parseFloat(el('emp-form-sueldo').value)||0;
+  if(!nombre){ toast('Ingresá el nombre del empleado','err'); return; }
+  if(sueldo <= 0){ toast('Ingresá el sueldo semanal','err'); return; }
+
+  if(empEditId) {
+    await supabaseClient.from('empleados').update({nombre:nombre,rol:rol,sueldo_semanal:sueldo}).eq('id',empEditId);
+    toast('Empleado actualizado ✓');
+    closeModal('modal-empleado');
+    var res = await supabaseClient.from('empleados').select('*').eq('id',empEditId).single();
+    if(res.data){ empActual = res.data; el('emp-detalle-nombre').textContent = empActual.nombre; el('emp-detalle-sueldo').textContent = pesos(empActual.sueldo_semanal)+'/semana'; }
+  } else {
+    await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,sueldo_semanal:sueldo,activo:true});
+    toast('Empleado agregado ✓');
+    closeModal('modal-empleado');
+    renderEmpleados();
+  }
+}
+
+function abrirModalMercaderia() {
+  if(!empActual) return;
+  el('modal-merc-emp-nombre').textContent = empActual.nombre;
+  el('emp-merc-prod').value = '';
+  el('emp-merc-cant').value = '1';
+  el('emp-merc-precio').value = '';
+  el('emp-merc-total').textContent = '$0';
+  openModal('modal-emp-mercaderia');
+  el('emp-merc-cant').oninput = el('emp-merc-precio').oninput = function(){
+    var c = parseFloat(el('emp-merc-cant').value)||0;
+    var p = parseFloat(el('emp-merc-precio').value)||0;
+    el('emp-merc-total').textContent = pesos(c*p);
+  };
+}
+
+async function guardarMercaderiaEmpleado() {
+  var prod = el('emp-merc-prod').value.trim();
+  var cant = parseFloat(el('emp-merc-cant').value)||1;
+  var precio = parseFloat(el('emp-merc-precio').value)||0;
+  if(!prod){ toast('Ingresá el nombre del producto','err'); return; }
+  if(precio <= 0){ toast('Ingresá el precio','err'); return; }
+  var total = cant * precio;
+  await supabaseClient.from('empleados_mercaderia').insert({
+    negocio_id: currentNegocioId,
+    empleado_id: empActual.id,
+    producto_nom: prod,
+    cantidad: cant,
+    precio_unit: precio,
+    total: total,
+    fecha: new Date().toISOString()
+  });
+  toast('Mercadería registrada — '+pesos(total)+' descontado del sueldo ✓');
+  closeModal('modal-emp-mercaderia');
+  await cargarSemanaActual();
+  await cargarMercaderiaMes();
+}
+
+function abrirModalAnticipo() {
+  if(!empActual) return;
+  el('modal-anticipo-emp-nombre').textContent = empActual.nombre;
+  el('emp-anticipo-monto').value = '';
+  openModal('modal-emp-anticipo');
+}
+
+async function guardarAnticipo() {
+  var monto = parseFloat(el('emp-anticipo-monto').value)||0;
+  if(monto <= 0){ toast('Ingresá el monto del anticipo','err'); return; }
+  var lunes = getLunesActual().toISOString().slice(0,10);
+  var sabado = getSabadoActual().toISOString().slice(0,10);
+
+  // Buscar o crear registro de semana
+  var sw = await supabaseClient.from('empleados_semanas')
+    .select('*').eq('empleado_id',empActual.id).eq('semana_inicio',lunes).eq('pagado',false).maybeSingle();
+
+  if(sw.data) {
+    var nuevoAnt = (sw.data.anticipos||0) + monto;
+    await supabaseClient.from('empleados_semanas').update({anticipos:nuevoAnt}).eq('id',sw.data.id);
+  } else {
+    await supabaseClient.from('empleados_semanas').insert({
+      negocio_id: currentNegocioId,
+      empleado_id: empActual.id,
+      semana_inicio: lunes,
+      semana_fin: sabado,
+      sueldo_base: empActual.sueldo_semanal,
+      anticipos: monto,
+      horas_extra: 0,
+      mercaderia: 0,
+      pagado: false
+    });
+  }
+  // Egreso en movimientos
+  movimientos.unshift({id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Anticipo — '+empActual.nombre,cant:1,precio:monto,total:monto,fecha:new Date().toISOString()});
+  saveState();
+  toast('Anticipo de '+pesos(monto)+' registrado ✓');
+  closeModal('modal-emp-anticipo');
+  await cargarSemanaActual();
+}
+
+function abrirModalLiquidar() {
+  if(!empActual || !empSemanaActual) return;
+  el('modal-liq-emp-nombre').textContent = empActual.nombre;
+  el('liq-horas-extra').value = '';
+  el('liq-valor-hora').value = '';
+  recalcularLiquidacion();
+  openModal('modal-emp-liquidar');
+}
+
+function recalcularLiquidacion() {
+  if(!empSemanaActual) return;
+  var horasEx = parseFloat(el('liq-horas-extra').value)||0;
+  var valorHora = parseFloat(el('liq-valor-hora').value)||0;
+  var extra = horasEx * valorHora;
+  el('liq-valor-hora-wrap').style.display = horasEx > 0 ? '' : 'none';
+  var base = empSemanaActual.base;
+  var anticipos = empSemanaActual.anticipos;
+  var merc = empSemanaActual.mercaderia;
+  var total = Math.max(0, base + extra - anticipos - merc);
+  el('liq-base').textContent = pesos(base);
+  el('liq-extra').textContent = extra > 0 ? '+'+pesos(extra) : '$0';
+  el('liq-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
+  el('liq-merc').textContent = merc > 0 ? '-'+pesos(merc) : '$0';
+  el('liq-total').textContent = pesos(total);
+  empSemanaActual._extraCalc = extra;
+  empSemanaActual._totalCalc = total;
+}
+
+async function confirmarLiquidacion() {
+  if(!empActual || !empSemanaActual) return;
+  var extra = empSemanaActual._extraCalc || 0;
+  var total = empSemanaActual._totalCalc !== undefined ? empSemanaActual._totalCalc : empSemanaActual.total;
+  var lunes = empSemanaActual.lunes;
+  var sabado = empSemanaActual.sabado;
+
+  // Upsert semana
+  if(empSemanaActual.id) {
+    await supabaseClient.from('empleados_semanas').update({
+      horas_extra: extra,
+      mercaderia: empSemanaActual.mercaderia,
+      total_pagado: total,
+      pagado: true,
+      fecha_pago: new Date().toISOString()
+    }).eq('id', empSemanaActual.id);
+  } else {
+    await supabaseClient.from('empleados_semanas').insert({
+      negocio_id: currentNegocioId,
+      empleado_id: empActual.id,
+      semana_inicio: lunes,
+      semana_fin: sabado,
+      sueldo_base: empSemanaActual.base,
+      horas_extra: extra,
+      anticipos: empSemanaActual.anticipos,
+      mercaderia: empSemanaActual.mercaderia,
+      total_pagado: total,
+      pagado: true,
+      fecha_pago: new Date().toISOString()
+    });
+  }
+
+  // Egreso automático en movimientos
+  if(total > 0) {
+    movimientos.unshift({id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Sueldo semanal — '+empActual.nombre,cant:1,precio:total,total:total,fecha:new Date().toISOString()});
+    saveState();
+  }
+
+  toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
+  closeModal('modal-emp-liquidar');
+  await cargarSemanaActual();
+  await cargarHistorialSemanas();
 }
 
 function bloquearAhora(){
