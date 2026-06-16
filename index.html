@@ -413,7 +413,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-t" id="modal-empleado-titulo">👤 Nuevo Empleado</div>
   <div class="fg"><label class="fl">Nombre</label><input class="fi" id="emp-form-nombre" placeholder="Ej: Juan García"></div>
   <div class="fg"><label class="fl">Rol / Puesto</label><input class="fi" id="emp-form-rol" placeholder="Ej: Repositor, Cajero..."></div>
-  <div class="fg"><label class="fl">Sueldo semanal $</label><input class="fi" id="emp-form-sueldo" type="number" placeholder="0" inputmode="numeric"></div>
+  <div class="fg"><label class="fl">Valor por hora $</label><input class="fi" id="emp-form-valorhora" type="number" placeholder="0" inputmode="numeric"></div>
   <div class="fg"><label class="fl">PIN de caja (4 dígitos)</label><input class="fi" id="emp-form-pin" type="password" placeholder="1234" maxlength="4" inputmode="numeric">
   <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El empleado lo usa para identificarse al cobrar en caja</div></div>
   <div class="btn-row">
@@ -466,11 +466,11 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-s" id="modal-liq-emp-nombre"></div>
   <div style="background:var(--sur2);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
-      <span style="color:var(--mut2);">Sueldo base</span>
+      <span style="color:var(--mut2);">Horas trabajadas</span>
       <span id="liq-base" style="font-family:DM Mono,monospace;"></span>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
-      <span style="color:var(--mut2);">Horas extra</span>
+      <span style="color:var(--mut2);">Recargo domingo</span>
       <span id="liq-extra" style="font-family:DM Mono,monospace;color:var(--grn);"></span>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">
@@ -487,8 +487,6 @@ select.fi{appearance:none;cursor:pointer;}
       <span id="liq-total" style="font-family:Syne,sans-serif;color:var(--grn);"></span>
     </div>
   </div>
-  <div class="fg"><label class="fl">Horas extra esta semana (opcional)</label><input class="fi" id="liq-horas-extra" type="number" placeholder="0" inputmode="numeric" oninput="recalcularLiquidacion()"></div>
-  <div class="fg" style="display:none;" id="liq-valor-hora-wrap"><label class="fl">Valor por hora extra $</label><input class="fi" id="liq-valor-hora" type="number" placeholder="0" inputmode="numeric" oninput="recalcularLiquidacion()"></div>
   <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:8px;padding:10px;font-size:11px;color:var(--mut2);margin-bottom:14px;">
     💡 Al confirmar se registra un egreso automático en Flujo Financiero
   </div>
@@ -912,6 +910,10 @@ select.fi{appearance:none;cursor:pointer;}
     </label>
   </div>
 
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">👥 Empleados</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Las horas trabajadas el domingo se pagan con recargo sobre el valor hora normal.</div>
+  <div class="fg"><label class="fl">Recargo domingo (%)</label><input class="fi" id="cfg-recargo-domingo" type="number" placeholder="50" inputmode="numeric"></div>
+
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
     Para usar la IA necesitás tu propia clave de Anthropic.<br>
@@ -1293,7 +1295,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="card" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">SUELDO SEMANAL</div>
+          <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">VALOR POR HORA</div>
           <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);" id="emp-detalle-sueldo"></div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -1303,17 +1305,23 @@ select.fi{appearance:none;cursor:pointer;}
       </div>
     </div>
 
+    <!-- Horas de la semana -->
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;">⏱️ Horas trabajadas</div>
+      <div id="emp-semana-actual-resumen" style="font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
+      <div id="emp-horas-dias"></div>
+    </div>
+
     <!-- Semana actual -->
     <div class="card" style="margin-bottom:12px;border:1px solid var(--acc);">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;color:var(--acc2);">⚡ Semana actual</div>
-      <div id="emp-semana-actual-resumen" style="font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;color:var(--acc2);">⚡ Resumen semana actual</div>
       <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
-          <span style="color:var(--mut2);">Sueldo base</span>
+          <span style="color:var(--mut2);">Horas trabajadas (<span id="emp-sw-horas-total">0</span>hs)</span>
           <span id="emp-sw-base" style="font-family:DM Mono,monospace;"></span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
-          <span style="color:var(--mut2);">Horas extra</span>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;" id="emp-sw-dom-row">
+          <span style="color:var(--mut2);">Recargo domingo</span>
           <span id="emp-sw-extra" style="font-family:DM Mono,monospace;color:var(--grn);"></span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
@@ -1532,7 +1540,7 @@ function get(id){ const e=el(id); return e ? e.value : ''; }
 
 // ═══ STATE ═══
 let productos=[], movimientos=[], facturas=[], gastosFijos=[], fiados=[];
-let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901'};
+let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901',recargoDomingo:50};
 let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
@@ -1730,6 +1738,7 @@ function guardarConfig(){
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
   var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
+  var rd=parseFloat(get('cfg-recargo-domingo')); config.recargoDomingo = isNaN(rd) ? 50 : rd;
   var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
   config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
   set('alias-display','text',config.alias);
@@ -1930,7 +1939,7 @@ function selPago(tipo,selEl){
 async function cargarSelectorEmpleadoCobro(){
   var sel = el('cobro-empleado-sel');
   if(!sel||!currentNegocioId) return;
-  var res = await supabaseClient.from('empleados').select('id,nombre,sueldo_semanal').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+  var res = await supabaseClient.from('empleados').select('id,nombre,valor_hora').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
   var lista = res.data||[];
   if(!lista.length){
     sel.innerHTML='<option value="">— No hay empleados registrados —</option>';
@@ -3986,6 +3995,7 @@ function initAppData(){
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-pin','val',config.pin||'');
+  set('cfg-recargo-domingo','val',config.recargoDomingo!==undefined?config.recargoDomingo:50);
   var fpref = config.fiadoPrecio || 'original';
   var fpEl = el('cfg-fiado-precio-'+fpref);
   if(fpEl) fpEl.checked = true;
@@ -4100,11 +4110,11 @@ function getLunesActual() {
   return lunes;
 }
 
-function getSabadoActual() {
+function getDomingoActual() {
   var lunes = getLunesActual();
-  var sab = new Date(lunes);
-  sab.setDate(lunes.getDate() + 6);
-  return sab;
+  var dom = new Date(lunes);
+  dom.setDate(lunes.getDate() + 6);
+  return dom;
 }
 
 function fechaCorta(d) {
@@ -4143,7 +4153,7 @@ async function renderEmpleados() {
           '<div class="fiado-meta">'+(emp.rol||'Empleado')+'</div>'+
         '</div>'+
         '<div class="fiado-right">'+
-          '<div class="fiado-deuda" style="color:var(--grn);">'+pesos(emp.sueldo_semanal)+'/sem</div>'+
+          '<div class="fiado-deuda" style="color:var(--grn);">'+pesos(emp.valor_hora)+'/hora</div>'+
           '<div class="fiado-deuda-lbl">sueldo</div>'+
         '</div>'+
       '</div>';
@@ -4203,47 +4213,128 @@ async function abrirDetalleEmpleado(empId) {
   el('emp-vista-lista').style.display = 'none';
   el('emp-vista-detalle').style.display = 'block';
   el('emp-detalle-nombre').textContent = empActual.nombre;
-  el('emp-detalle-sueldo').textContent = pesos(empActual.sueldo_semanal)+'/semana';
+  el('emp-detalle-sueldo').textContent = pesos(empActual.valor_hora)+'/hora';
 
+  await cargarHorasDias();
   await cargarSemanaActual();
   await cargarHistorialSemanas();
   await cargarMercaderiaMes();
 }
 
+var DIAS_SEMANA = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+async function cargarHorasDias() {
+  var lunes = getLunesActual();
+  var domingo = getDomingoActual().toISOString().slice(0,10);
+  var lunesStr = lunes.toISOString().slice(0,10);
+
+  var res = await supabaseClient.from('empleados_horas')
+    .select('*').eq('empleado_id', empActual.id)
+    .gte('fecha', lunesStr).lte('fecha', domingo);
+  var registros = res.data || [];
+
+  var html = '';
+  for(var i=0; i<7; i++){
+    var d = new Date(lunes);
+    d.setDate(lunes.getDate()+i);
+    var fechaStr = d.toISOString().slice(0,10);
+    var reg = registros.find(function(r){ return r.fecha === fechaStr; });
+    var horas = reg ? reg.horas : '';
+    var esDomingo = i === 6;
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd);">'+
+      '<div style="font-size:12px;'+(esDomingo?'color:var(--yel);font-weight:700;':'color:var(--mut2);')+'">'+DIAS_SEMANA[i]+(esDomingo?' 🔶':'')+' <span style="font-size:10px;opacity:0.7;">'+fechaCorta(fechaStr)+'</span></div>'+
+      '<input class="fi" style="width:80px;text-align:center;padding:6px;font-size:13px;" type="number" step="0.5" placeholder="0" value="'+horas+'" data-fecha="'+fechaStr+'" onchange="guardarHorasDia(this)">'+
+    '</div>';
+  }
+  el('emp-horas-dias').innerHTML = html;
+}
+
+async function guardarHorasDia(inputEl) {
+  var fecha = inputEl.getAttribute('data-fecha');
+  var horas = parseFloat(inputEl.value)||0;
+
+  var existe = await supabaseClient.from('empleados_horas')
+    .select('id').eq('empleado_id', empActual.id).eq('fecha', fecha).maybeSingle();
+
+  if(existe.data){
+    if(horas <= 0){
+      await supabaseClient.from('empleados_horas').delete().eq('id', existe.data.id);
+    } else {
+      await supabaseClient.from('empleados_horas').update({horas:horas}).eq('id', existe.data.id);
+    }
+  } else if(horas > 0){
+    await supabaseClient.from('empleados_horas').insert({
+      negocio_id: currentNegocioId,
+      empleado_id: empActual.id,
+      fecha: fecha,
+      horas: horas
+    });
+  }
+  toast('Horas guardadas ✓');
+  await cargarSemanaActual();
+}
+
 async function cargarSemanaActual() {
-  var lunes = getLunesActual().toISOString().slice(0,10);
-  var sabado = getSabadoActual().toISOString().slice(0,10);
+  var lunes = getLunesActual();
+  var lunesStr = lunes.toISOString().slice(0,10);
+  var domingo = getDomingoActual().toISOString().slice(0,10);
+
+  // Horas trabajadas esta semana
+  var hr = await supabaseClient.from('empleados_horas')
+    .select('*').eq('empleado_id', empActual.id)
+    .gte('fecha', lunesStr).lte('fecha', domingo);
+  var registros = hr.data || [];
+
+  var valorHora = empActual.valor_hora || 0;
+  var recargoPct = (config.recargoDomingo!==undefined ? config.recargoDomingo : 50) / 100;
+
+  var horasNormales = 0, horasDomingo = 0;
+  registros.forEach(function(r){
+    var d = new Date(r.fecha+'T00:00:00');
+    if(d.getDay() === 0){ horasDomingo += (r.horas||0); }
+    else { horasNormales += (r.horas||0); }
+  });
+
+  var montoNormal = horasNormales * valorHora;
+  var montoDomingo = horasDomingo * valorHora * (1+recargoPct);
+  var totalHoras = horasNormales + horasDomingo;
+  var totalHorasMonto = montoNormal + montoDomingo;
 
   // Mercadería de esta semana
   var mr = await supabaseClient.from('empleados_mercaderia')
     .select('total').eq('empleado_id', empActual.id)
-    .gte('fecha', lunes).lte('fecha', sabado+'T23:59:59');
+    .gte('fecha', lunesStr).lte('fecha', domingo+'T23:59:59');
   var totalMerc = (mr.data||[]).reduce(function(a,m){ return a+(m.total||0); }, 0);
 
-  // Semana en curso (no pagada)
+  // Semana en curso (no pagada) — para anticipos
   var sw = await supabaseClient.from('empleados_semanas')
     .select('*').eq('empleado_id', empActual.id)
-    .eq('semana_inicio', lunes).eq('pagado', false).maybeSingle();
+    .eq('semana_inicio', lunesStr).eq('pagado', false).maybeSingle();
 
   var anticipos = sw.data ? (sw.data.anticipos||0) : 0;
-  var horasExtra = sw.data ? (sw.data.horas_extra||0) : 0;
-  var base = empActual.sueldo_semanal || 0;
-  var total = Math.max(0, base + horasExtra - anticipos - totalMerc);
+  var total = Math.max(0, totalHorasMonto - anticipos - totalMerc);
 
   empSemanaActual = {
     id: sw.data ? sw.data.id : null,
-    lunes: lunes,
-    sabado: sabado,
-    base: base,
-    horasExtra: horasExtra,
+    lunes: lunesStr,
+    domingo: domingo,
+    horasNormales: horasNormales,
+    horasDomingo: horasDomingo,
+    montoNormal: montoNormal,
+    montoDomingo: montoDomingo,
+    totalHoras: totalHoras,
+    totalHorasMonto: totalHorasMonto,
     anticipos: anticipos,
     mercaderia: totalMerc,
     total: total
   };
 
-  el('emp-semana-actual-resumen').textContent = 'Semana '+fechaCorta(lunes)+' al '+fechaCorta(sabado);
-  el('emp-sw-base').textContent = pesos(base);
-  el('emp-sw-extra').textContent = horasExtra > 0 ? '+'+pesos(horasExtra) : '$0';
+  el('emp-semana-actual-resumen').textContent = 'Semana '+fechaCorta(lunesStr)+' al '+fechaCorta(domingo);
+  el('emp-sw-horas-total').textContent = totalHoras;
+  el('emp-sw-base').textContent = pesos(montoNormal);
+  var domRow = el('emp-sw-dom-row');
+  if(domRow) domRow.style.display = horasDomingo > 0 ? 'flex' : 'none';
+  el('emp-sw-extra').textContent = horasDomingo > 0 ? horasDomingo+'hs +'+pesos(montoDomingo) : '$0';
   el('emp-sw-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
   el('emp-sw-merc').textContent = totalMerc > 0 ? '-'+pesos(totalMerc) : '$0';
   el('emp-sw-total').textContent = pesos(total);
@@ -4309,7 +4400,7 @@ function abrirModalNuevoEmpleado() {
   el('modal-empleado-titulo').textContent = '👤 Nuevo Empleado';
   el('emp-form-nombre').value = '';
   el('emp-form-rol').value = '';
-  el('emp-form-sueldo').value = '';
+  el('emp-form-valorhora').value = '';
   if(el('emp-form-pin')) el('emp-form-pin').value = '';
   openModal('modal-empleado');
 }
@@ -4320,31 +4411,21 @@ function abrirModalEditarEmpleado() {
   el('modal-empleado-titulo').textContent = '✏️ Editar Empleado';
   el('emp-form-nombre').value = empActual.nombre;
   el('emp-form-rol').value = empActual.rol||'';
-  el('emp-form-sueldo').value = empActual.sueldo_semanal||0;
+  el('emp-form-valorhora').value = empActual.valor_hora||0;
   if(el('emp-form-pin')) el('emp-form-pin').value = '';
-  openModal('modal-empleado');
-}
-
-function abrirModalEditarEmpleado() {
-  if(!empActual) return;
-  empEditId = empActual.id;
-  el('modal-empleado-titulo').textContent = '✏️ Editar Empleado';
-  el('emp-form-nombre').value = empActual.nombre;
-  el('emp-form-rol').value = empActual.rol||'';
-  el('emp-form-sueldo').value = empActual.sueldo_semanal||0;
   openModal('modal-empleado');
 }
 
 async function guardarEmpleado() {
   var nombre = el('emp-form-nombre').value.trim();
   var rol = el('emp-form-rol').value.trim()||'Empleado';
-  var sueldo = parseFloat(el('emp-form-sueldo').value)||0;
+  var valorHora = parseFloat(el('emp-form-valorhora').value)||0;
   var pin = el('emp-form-pin') ? el('emp-form-pin').value.trim() : '';
   if(!nombre){ toast('Ingresá el nombre del empleado','err'); return; }
-  if(sueldo <= 0){ toast('Ingresá el sueldo semanal','err'); return; }
+  if(valorHora <= 0){ toast('Ingresá el valor por hora','err'); return; }
   if(pin && (pin.length !== 4 || isNaN(pin))){ toast('El PIN debe ser de 4 dígitos numéricos','err'); return; }
 
-  var datos = {nombre:nombre, rol:rol, sueldo_semanal:sueldo};
+  var datos = {nombre:nombre, rol:rol, valor_hora:valorHora};
   if(pin) datos.pin_caja = pin;
 
   if(empEditId) {
@@ -4352,9 +4433,9 @@ async function guardarEmpleado() {
     toast('Empleado actualizado ✓');
     closeModal('modal-empleado');
     var res = await supabaseClient.from('empleados').select('*').eq('id',empEditId).single();
-    if(res.data){ empActual = res.data; el('emp-detalle-nombre').textContent = empActual.nombre; el('emp-detalle-sueldo').textContent = pesos(empActual.sueldo_semanal)+'/semana'; }
+    if(res.data){ empActual = res.data; el('emp-detalle-nombre').textContent = empActual.nombre; el('emp-detalle-sueldo').textContent = pesos(empActual.valor_hora)+'/hora'; }
   } else {
-    await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,sueldo_semanal:sueldo,pin_caja:pin||null,activo:true});
+    await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,valor_hora:valorHora,pin_caja:pin||null,activo:true});
     toast('Empleado agregado ✓');
     closeModal('modal-empleado');
     renderEmpleados();
@@ -4409,7 +4490,7 @@ async function guardarAnticipo() {
   var monto = parseFloat(el('emp-anticipo-monto').value)||0;
   if(monto <= 0){ toast('Ingresá el monto del anticipo','err'); return; }
   var lunes = getLunesActual().toISOString().slice(0,10);
-  var sabado = getSabadoActual().toISOString().slice(0,10);
+  var domingo = getDomingoActual().toISOString().slice(0,10);
 
   // Buscar o crear registro de semana
   var sw = await supabaseClient.from('empleados_semanas')
@@ -4423,8 +4504,8 @@ async function guardarAnticipo() {
       negocio_id: currentNegocioId,
       empleado_id: empActual.id,
       semana_inicio: lunes,
-      semana_fin: sabado,
-      sueldo_base: empActual.sueldo_semanal,
+      semana_fin: domingo,
+      sueldo_base: 0,
       anticipos: monto,
       horas_extra: 0,
       mercaderia: 0,
@@ -4442,42 +4523,25 @@ async function guardarAnticipo() {
 function abrirModalLiquidar() {
   if(!empActual || !empSemanaActual) return;
   el('modal-liq-emp-nombre').textContent = empActual.nombre;
-  el('liq-horas-extra').value = '';
-  el('liq-valor-hora').value = '';
-  recalcularLiquidacion();
+  el('liq-base').textContent = pesos(empSemanaActual.montoNormal);
+  var domTxt = empSemanaActual.horasDomingo > 0 ? empSemanaActual.horasDomingo+'hs +'+pesos(empSemanaActual.montoDomingo) : '$0';
+  el('liq-extra').textContent = domTxt;
+  el('liq-anticipos').textContent = empSemanaActual.anticipos > 0 ? '-'+pesos(empSemanaActual.anticipos) : '$0';
+  el('liq-merc').textContent = empSemanaActual.mercaderia > 0 ? '-'+pesos(empSemanaActual.mercaderia) : '$0';
+  el('liq-total').textContent = pesos(empSemanaActual.total);
   openModal('modal-emp-liquidar');
-}
-
-function recalcularLiquidacion() {
-  if(!empSemanaActual) return;
-  var horasEx = parseFloat(el('liq-horas-extra').value)||0;
-  var valorHora = parseFloat(el('liq-valor-hora').value)||0;
-  var extra = horasEx * valorHora;
-  el('liq-valor-hora-wrap').style.display = horasEx > 0 ? '' : 'none';
-  var base = empSemanaActual.base;
-  var anticipos = empSemanaActual.anticipos;
-  var merc = empSemanaActual.mercaderia;
-  var total = Math.max(0, base + extra - anticipos - merc);
-  el('liq-base').textContent = pesos(base);
-  el('liq-extra').textContent = extra > 0 ? '+'+pesos(extra) : '$0';
-  el('liq-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
-  el('liq-merc').textContent = merc > 0 ? '-'+pesos(merc) : '$0';
-  el('liq-total').textContent = pesos(total);
-  empSemanaActual._extraCalc = extra;
-  empSemanaActual._totalCalc = total;
 }
 
 async function confirmarLiquidacion() {
   if(!empActual || !empSemanaActual) return;
-  var extra = empSemanaActual._extraCalc || 0;
-  var total = empSemanaActual._totalCalc !== undefined ? empSemanaActual._totalCalc : empSemanaActual.total;
+  var total = empSemanaActual.total;
   var lunes = empSemanaActual.lunes;
-  var sabado = empSemanaActual.sabado;
+  var domingo = empSemanaActual.domingo;
 
   // Upsert semana
   if(empSemanaActual.id) {
     await supabaseClient.from('empleados_semanas').update({
-      horas_extra: extra,
+      horas_extra: empSemanaActual.montoDomingo,
       mercaderia: empSemanaActual.mercaderia,
       total_pagado: total,
       pagado: true,
@@ -4488,9 +4552,9 @@ async function confirmarLiquidacion() {
       negocio_id: currentNegocioId,
       empleado_id: empActual.id,
       semana_inicio: lunes,
-      semana_fin: sabado,
-      sueldo_base: empSemanaActual.base,
-      horas_extra: extra,
+      semana_fin: domingo,
+      sueldo_base: empSemanaActual.montoNormal,
+      horas_extra: empSemanaActual.montoDomingo,
       anticipos: empSemanaActual.anticipos,
       mercaderia: empSemanaActual.mercaderia,
       total_pagado: total,
@@ -4507,6 +4571,7 @@ async function confirmarLiquidacion() {
 
   toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
   closeModal('modal-emp-liquidar');
+  await cargarHorasDias();
   await cargarSemanaActual();
   await cargarHistorialSemanas();
 }
