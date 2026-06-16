@@ -1056,6 +1056,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fr">
     <button class="fb on" onclick="fMov('TODOS',this)">Todos</button>
     <button class="fb" onclick="fMov('cobro',this)">💚 Cobros</button>
+    <button class="fb" onclick="fMov('fiado',this)">🤝 Fiados</button>
     <button class="fb" onclick="fMov('ingreso',this)">📦 Ingresos</button>
     <button class="fb" onclick="fMov('egreso',this)">📤 Egresos</button>
   </div>
@@ -1962,7 +1963,7 @@ function confirmarCobro(){
     descFinal='👤 '+empNom+' · '+descFinal;
   }
 
-  const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
+  const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
   movimientos.unshift(_mc);
   lineasCobro=[];
   closeModal('modal-cobrar'); saveMovimiento(_mc); saveState(); renderDash();
@@ -2434,6 +2435,15 @@ function renderDash(){
 function renderMovItem(m){
   const icoM={efectivo:'💵',qr:'📱',transferencia:'🏦'};
   const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+  if(m.tipo==='fiado'){
+    return '<div class="mov-item"><div class="mov-ico" style="background:var(--yel-dim);color:var(--yel);">🤝</div>'
+      +'<div class="mov-txt">'
+      +'<div class="mov-name">'+(m.desc||'Fiado')+'</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' · Fiado · No cobrado aún</div>'
+      +'</div>'
+      +'<div class="mov-right"><div class="mov-monto" style="color:var(--yel);">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">FIADO</div></div>'
+      +'</div>';
+  }
   if(m.tipo==='cobro'){
     var icoM2={efectivo:'💵',qr:'📱',transferencia:'🏦'};
     var metLbl2={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
@@ -2555,11 +2565,16 @@ function renderMovs(){
   const filtrados=filtrarPeriodo(movimientos,movPeriod);
   const rows=movFilter==='TODOS'?filtrados:filtrados.filter(function(m){return m.tipo===movFilter;});
   const cobros=filtrados.filter(function(m){return m.tipo==='cobro';});
+  const fiados=filtrados.filter(function(m){return m.tipo==='fiado';});
   const ingresos=filtrados.filter(function(m){return m.tipo==='ingreso';});
   const egresos=filtrados.filter(function(m){return m.tipo==='egreso';});
   const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+  const totalFiado=fiados.reduce(function(s,m){return s+(m.monto||0);},0);
   const mk=el('mov-kpis');
-  if(mk)mk.innerHTML='<div class="kpi kg"><div class="kl">COBRADO</div><div class="kn" style="font-size:18px;">'+fmtM(totalCobrado)+'</div><div class="kd">'+cobros.length+' cobros</div></div><div class="kpi kb"><div class="kl">ENTRADAS STOCK</div><div class="kn">'+ingresos.length+'</div><div class="kd">movimientos</div></div><div class="kpi kr"><div class="kl">SALIDAS STOCK</div><div class="kn">'+egresos.length+'</div><div class="kd">movimientos</div></div>';
+  if(mk)mk.innerHTML=
+    '<div class="kpi kg"><div class="kl">COBRADO EN CAJA</div><div class="kn" style="font-size:18px;">'+fmtM(totalCobrado)+'</div><div class="kd">'+cobros.length+' cobros</div></div>'+
+    '<div class="kpi" style="border-color:var(--yel);"><div class="kl">FIADO (NO COBRADO)</div><div class="kn" style="font-size:18px;color:var(--yel);">'+fmtM(totalFiado)+'</div><div class="kd">'+fiados.length+' operaciones</div></div>'+
+    '<div class="kpi kb"><div class="kl">ENTRADAS STOCK</div><div class="kn">'+ingresos.length+'</div><div class="kd">movimientos</div></div>';
   const ml=el('movs-list');
   if(ml)ml.innerHTML=rows.length?rows.map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos en este período</div></div>';
 }
