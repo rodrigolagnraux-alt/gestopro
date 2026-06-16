@@ -1954,7 +1954,7 @@ async function selEmpleadoCobro(empId){
   var info = el('cobro-empleado-info');
   if(!empId||!info){ if(info) info.style.display='none'; return; }
   // Calcular mercadería acumulada esta semana
-  var lunes = getLunesActual ? getLunesActual().toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  var lunes = getLunesActual ? fechaLocalStr(getLunesActual()) : fechaLocalStr(new Date());
   var mr = await supabaseClient.from('empleados_mercaderia').select('total').eq('empleado_id',empId).gte('fecha',lunes);
   var acum = (mr.data||[]).reduce(function(a,m){return a+(m.total||0);},0);
   var monto = parseFloat(get('cobrar-monto'))||0;
@@ -4100,6 +4100,14 @@ var empActual = null; // empleado seleccionado
 var empEditId = null;
 var empSemanaActual = null; // datos semana en curso
 
+function fechaLocalStr(d) {
+  // Evita el corrimiento de día que produce toISOString() en zonas horarias negativas (Argentina UTC-3)
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var dia = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dia;
+}
+
 function getLunesActual() {
   var hoy = new Date();
   var dia = hoy.getDay();
@@ -4168,8 +4176,8 @@ async function renderEmpleados() {
 
 async function renderReporteMes(listaEmpleados) {
   var hoy = new Date();
-  var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0,10);
-  var finMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).toISOString().slice(0,10);
+  var inicioMes = fechaLocalStr(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  var finMes = fechaLocalStr(new Date(hoy.getFullYear(), hoy.getMonth()+1, 0));
 
   var html = '';
   for(var i=0; i<listaEmpleados.length; i++){
@@ -4225,8 +4233,8 @@ var DIAS_SEMANA = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','D
 
 async function cargarHorasDias() {
   var lunes = getLunesActual();
-  var domingo = getDomingoActual().toISOString().slice(0,10);
-  var lunesStr = lunes.toISOString().slice(0,10);
+  var domingo = fechaLocalStr(getDomingoActual());
+  var lunesStr = fechaLocalStr(lunes);
 
   var res = await supabaseClient.from('empleados_horas')
     .select('*').eq('empleado_id', empActual.id)
@@ -4237,7 +4245,7 @@ async function cargarHorasDias() {
   for(var i=0; i<7; i++){
     var d = new Date(lunes);
     d.setDate(lunes.getDate()+i);
-    var fechaStr = d.toISOString().slice(0,10);
+    var fechaStr = fechaLocalStr(d);
     var reg = registros.find(function(r){ return r.fecha === fechaStr; });
     var horas = reg ? reg.horas : '';
     var esDomingo = i === 6;
@@ -4276,8 +4284,8 @@ async function guardarHorasDia(inputEl) {
 
 async function cargarSemanaActual() {
   var lunes = getLunesActual();
-  var lunesStr = lunes.toISOString().slice(0,10);
-  var domingo = getDomingoActual().toISOString().slice(0,10);
+  var lunesStr = fechaLocalStr(lunes);
+  var domingo = fechaLocalStr(getDomingoActual());
 
   // Horas trabajadas esta semana
   var hr = await supabaseClient.from('empleados_horas')
@@ -4294,6 +4302,7 @@ async function cargarSemanaActual() {
     if(d.getDay() === 0){ horasDomingo += (r.horas||0); }
     else { horasNormales += (r.horas||0); }
   });
+  console.log('[DEBUG empleados]', {lunesStr:lunesStr, domingo:domingo, valorHora:valorHora, registros:registros, horasNormales:horasNormales, horasDomingo:horasDomingo});
 
   var montoNormal = horasNormales * valorHora;
   var montoDomingo = horasDomingo * valorHora * (1+recargoPct);
@@ -4364,7 +4373,7 @@ async function cargarHistorialSemanas() {
 
 async function cargarMercaderiaMes() {
   var hoy = new Date();
-  var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0,10);
+  var inicioMes = fechaLocalStr(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
   var res = await supabaseClient.from('empleados_mercaderia')
     .select('*').eq('empleado_id', empActual.id)
     .gte('fecha', inicioMes).order('fecha', {ascending:false});
@@ -4489,8 +4498,8 @@ function abrirModalAnticipo() {
 async function guardarAnticipo() {
   var monto = parseFloat(el('emp-anticipo-monto').value)||0;
   if(monto <= 0){ toast('Ingresá el monto del anticipo','err'); return; }
-  var lunes = getLunesActual().toISOString().slice(0,10);
-  var domingo = getDomingoActual().toISOString().slice(0,10);
+  var lunes = fechaLocalStr(getLunesActual());
+  var domingo = fechaLocalStr(getDomingoActual());
 
   // Buscar o crear registro de semana
   var sw = await supabaseClient.from('empleados_semanas')
