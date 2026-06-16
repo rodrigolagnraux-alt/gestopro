@@ -558,7 +558,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
   <div class="fg"><label class="fl">Descripción (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Venta mostrador, cliente..."></div>
   <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
-  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
     <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
       <div class="pay-ico">💵</div>
       <div class="pay-lbl">Efectivo</div>
@@ -578,6 +578,21 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="pay-ico">🤝</div>
       <div class="pay-lbl">Fiado</div>
       <div class="pay-sub">A cuenta del cliente</div>
+    </div>
+    <div class="pay-method" onclick="selPago('empleado',this)" id="pm-empleado">
+      <div class="pay-ico">👤</div>
+      <div class="pay-lbl">Empleado</div>
+      <div class="pay-sub">Descuenta del sueldo</div>
+    </div>
+  </div>
+  <!-- EMPLEADO -->
+  <div id="pago-empleado" style="display:none;">
+    <div style="background:var(--acc-dim);border:1px solid var(--acc);border-radius:10px;padding:16px;margin-bottom:12px;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--acc2);margin-bottom:12px;">👤 ¿A cuenta de qué empleado?</div>
+      <select class="fi" id="cobro-empleado-sel" style="font-size:15px;margin-bottom:10px;" onchange="selEmpleadoCobro(this.value)">
+        <option value="">— Elegir empleado —</option>
+      </select>
+      <div id="cobro-empleado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;"></div>
     </div>
   </div>
   <!-- FIADO -->
@@ -1777,13 +1792,49 @@ function selPago(tipo,selEl){
   pagoActual=tipo;
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
-  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && PLAN_N[planActual]<PLAN_N['basico'];
+  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && tipo!=='empleado' && PLAN_N[planActual]<PLAN_N['basico'];
   if(needBasico){ toast('QR y transferencia disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
+  const needPremium=tipo==='empleado' && PLAN_N[planActual]<PLAN_N['business'];
+  if(needPremium){ toast('Cargo a empleado disponible en Plan Premium','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
   set('pago-qr','display',tipo==='qr'?'block':'none');
   set('pago-transferencia','display',tipo==='transferencia'?'block':'none');
   set('pago-fiado','display',tipo==='fiado'?'block':'none');
+  set('pago-empleado','display',tipo==='empleado'?'block':'none');
   if(tipo==='fiado') cargarSelectorFiado();
+  if(tipo==='empleado') cargarSelectorEmpleadoCobro();
+}
+async function cargarSelectorEmpleadoCobro(){
+  var sel = el('cobro-empleado-sel');
+  if(!sel||!currentNegocioId) return;
+  var res = await supabaseClient.from('empleados').select('id,nombre,sueldo_semanal').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+  var lista = res.data||[];
+  if(!lista.length){
+    sel.innerHTML='<option value="">— No hay empleados registrados —</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">— Elegir empleado —</option>'+lista.map(function(e){
+    return '<option value="'+e.id+'">'+e.nombre+'</option>';
+  }).join('');
+  set('cobro-empleado-info','display','none');
+}
+async function selEmpleadoCobro(empId){
+  var info = el('cobro-empleado-info');
+  if(!empId||!info){ if(info) info.style.display='none'; return; }
+  // Calcular mercadería acumulada esta semana
+  var lunes = getLunesActual ? getLunesActual().toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  var mr = await supabaseClient.from('empleados_mercaderia').select('total').eq('empleado_id',empId).gte('fecha',lunes);
+  var acum = (mr.data||[]).reduce(function(a,m){return a+(m.total||0);},0);
+  var monto = parseFloat(get('cobrar-monto'))||0;
+  info.style.display='block';
+  info.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;">'+
+    '<div style="color:var(--mut2);">Mercadería llevada esta semana</div>'+
+    '<div style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(acum)+'</div>'+
+    '</div>'+
+    (monto>0?'<div style="display:flex;justify-content:space-between;margin-top:4px;">'+
+    '<div style="color:var(--mut2);">+ Este cobro</div>'+
+    '<div style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(monto)+'</div>'+
+    '</div>':'');
 }
 function cargarSelectorFiado(){
   var sel = el('fiado-cliente-sel');
@@ -1848,11 +1899,17 @@ function confirmarCobro(){
     }
   }
 
+  // Validar empleado
+  if(pagoActual==='empleado'){
+    var empSel=get('cobro-empleado-sel');
+    if(!empSel){toast('Seleccioná un empleado','err');return;}
+  }
+
   const desc=get('cobrar-desc')||'Venta';
-  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia',fiado:'Fiado'};
+  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia',fiado:'Fiado',empleado:'Empleado'};
   var prods=[];
-  // Guardar detalle con precio del momento para fiado
   var detalleFiado=[];
+  var detalleEmpleado=[];
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
@@ -1860,35 +1917,49 @@ function confirmarCobro(){
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
       if(pagoActual==='fiado'){
-        detalleFiado.push({
-          prodId:prod.id,
-          nom:prod.nom,
-          cant:l.cant,
-          um:um,
-          precioVenta:prod.precioVenta||0  // precio al momento de cargar el fiado
-        });
+        detalleFiado.push({prodId:prod.id,nom:prod.nom,cant:l.cant,um:um,precioVenta:prod.precioVenta||0});
+      }
+      if(pagoActual==='empleado'){
+        detalleEmpleado.push({nom:prod.nom,cant:l.cant,precio_unit:prod.precioVenta||0,total:l.cant*(prod.precioVenta||0)});
       }
     }
   });
   var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
 
-  // Registrar en fiado con detalle de precios
+  // Registrar en fiado
   if(pagoActual==='fiado'){
     var fSel2=get('fiado-cliente-sel');
     var cf=fiados.find(function(f){return f.id==fSel2;});
     if(cf){
       cf.deuda+=monto;
       if(!cf.movs) cf.movs=[];
-      cf.movs.push({
-        id:Date.now(),
-        tipo:'deuda',
-        monto:monto,
-        desc:descFinal,
-        fecha:hoy(),
-        detalle:detalleFiado  // productos + precio del día
-      });
+      cf.movs.push({id:Date.now(),tipo:'deuda',monto:monto,desc:descFinal,fecha:hoy(),detalle:detalleFiado});
       descFinal='🤝 '+cf.nom+' · '+descFinal;
     }
+  }
+
+  // Registrar en empleado
+  if(pagoActual==='empleado'){
+    var empSelId=get('cobro-empleado-sel');
+    // Guardar cada producto en empleados_mercaderia
+    var empNomEl = el('cobro-empleado-sel');
+    var empNom = empNomEl ? empNomEl.options[empNomEl.selectedIndex].text : 'Empleado';
+    if(currentNegocioId && empSelId){
+      // Si hay productos detallados los guardamos uno a uno, si no guardamos el total como un item
+      var itemsAGuardar = detalleEmpleado.length > 0 ? detalleEmpleado : [{nom:descFinal,cant:1,precio_unit:monto,total:monto}];
+      itemsAGuardar.forEach(function(item){
+        supabaseClient.from('empleados_mercaderia').insert({
+          negocio_id: currentNegocioId,
+          empleado_id: empSelId,
+          producto_nom: item.nom,
+          cantidad: item.cant,
+          precio_unit: item.precio_unit,
+          total: item.total||monto,
+          fecha: new Date().toISOString()
+        }).then(function(){});
+      });
+    }
+    descFinal='👤 '+empNom+' · '+descFinal;
   }
 
   const _mc={id:Date.now(),tipo:'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
@@ -1898,6 +1969,10 @@ function confirmarCobro(){
   if(pagoActual==='fiado'){
     var cf2=fiados.find(function(f){return f.id==get('fiado-cliente-sel');});
     toast('🤝 Fiado cargado a '+(cf2?cf2.nom:'cliente')+' · '+fmtM(monto));
+  } else if(pagoActual==='empleado'){
+    var empNomFinal = el('cobro-empleado-sel');
+    var nomFinal = empNomFinal ? empNomFinal.options[empNomFinal.selectedIndex].text : 'empleado';
+    toast('👤 Cargado a '+nomFinal+' · '+fmtM(monto)+' descontado del sueldo');
   } else {
     toast('✓ Cobrado '+fmtM(monto)+' · '+(metLbl[pagoActual]||''));
   }
