@@ -414,6 +414,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Nombre</label><input class="fi" id="emp-form-nombre" placeholder="Ej: Juan García"></div>
   <div class="fg"><label class="fl">Rol / Puesto</label><input class="fi" id="emp-form-rol" placeholder="Ej: Repositor, Cajero..."></div>
   <div class="fg"><label class="fl">Sueldo semanal $</label><input class="fi" id="emp-form-sueldo" type="number" placeholder="0" inputmode="numeric"></div>
+  <div class="fg"><label class="fl">PIN de caja (4 dígitos)</label><input class="fi" id="emp-form-pin" type="password" placeholder="1234" maxlength="4" inputmode="numeric">
+  <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El empleado lo usa para identificarse al cobrar en caja</div></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="closeModal('modal-empleado')">Cancelar</button>
     <button class="btn btn-acc" onclick="guardarEmpleado()">Guardar</button>
@@ -529,10 +531,37 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 
 <!-- MODAL COBRAR -->
+<!-- MODAL SESIÓN DE CAJA -->
+<div class="ov" id="modal-sesion-caja">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🏪 ¿Quién está en caja?</div>
+  <div class="modal-s">Elegí tu nombre e ingresá tu PIN para empezar a cobrar</div>
+  <div class="fg">
+    <label class="fl">Cajero</label>
+    <select class="fi" id="caja-cajero-sel" style="font-size:15px;" onchange="onCajeroCambia()">
+      <option value="">— Elegir —</option>
+    </select>
+  </div>
+  <div class="fg" id="caja-pin-wrap">
+    <label class="fl">PIN</label>
+    <input class="fi" id="caja-pin-inp" type="password" placeholder="••••" maxlength="4" inputmode="numeric" style="font-size:24px;text-align:center;letter-spacing:8px;" onkeydown="if(event.key==='Enter')confirmarSesionCaja()">
+  </div>
+  <div id="caja-pin-error" style="display:none;color:var(--red);font-size:12px;text-align:center;margin-bottom:10px;">PIN incorrecto. Intentá de nuevo.</div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-sesion-caja')">Cancelar</button>
+    <button class="btn btn-grn" onclick="confirmarSesionCaja()">✓ Entrar a caja</button>
+  </div>
+</div>
+</div>
+
 <div class="ov" id="modal-cobrar">
 <div class="modal" style="max-width:600px;">
   <div class="modal-drag"></div>
-  <div class="modal-t">💚 Cobrar</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+    <div class="modal-t" style="margin-bottom:0;">💚 Cobrar</div>
+    <div id="caja-cajero-badge" style="display:none;background:var(--acc-dim);color:var(--acc2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;" onclick="cerrarSesionCaja()">👤 <span id="caja-cajero-nombre"></span> 🔒</div>
+  </div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
 
   <!-- PRODUCTOS VENDIDOS -->
@@ -556,7 +585,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="cobrar-total-num" id="cobrar-num">$0</div>
   </div>
   <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
-  <div class="fg"><label class="fl">Descripción (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Venta mostrador, cliente..."></div>
+  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Pedido especial, cliente VIP..."></div>
   <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
   <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
     <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
@@ -1507,6 +1536,7 @@ let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'000000310001234567890
 let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
+var cajeroActual = null; // {id, nombre, esDueno}
 let lineasIngreso=[], lineasCobro=[];
 
 const PLANES={
@@ -1709,6 +1739,10 @@ function guardarConfig(){
 
 // ═══ COBRAR ═══
 function abrirCobrar(){
+  if(!cajeroActual){
+    abrirSesionCaja();
+    return;
+  }
   lineasCobro=[];
   set('cobrar-monto','val',''); set('cobrar-num','text','$0');
   set('cobrar-desc','val',''); set('ef-recibido','val','');
@@ -1717,7 +1751,95 @@ function abrirCobrar(){
   set('cvu-display','text',config.cvu||'');
   renderLineasCobro();
   const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
+  // Mostrar badge cajero
+  var badge = el('caja-cajero-badge');
+  var nomEl = el('caja-cajero-nombre');
+  if(badge && nomEl){ badge.style.display='flex'; nomEl.textContent=cajeroActual.nombre; }
   openModal('modal-cobrar');
+}
+
+async function abrirSesionCaja(){
+  var sel = el('caja-cajero-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Elegir —</option>';
+  // Opción dueño
+  sel.innerHTML += '<option value="dueno">👑 ' + (config.negocioNom||'El dueño') + ' (dueño)</option>';
+  // Empleados con PIN
+  if(currentNegocioId){
+    var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+    (res.data||[]).forEach(function(e){
+      sel.innerHTML += '<option value="'+e.id+'">'+e.nombre+'</option>';
+    });
+  }
+  el('caja-pin-inp').value = '';
+  el('caja-pin-error').style.display = 'none';
+  openModal('modal-sesion-caja');
+}
+
+function onCajeroCambia(){
+  el('caja-pin-inp').value = '';
+  el('caja-pin-error').style.display = 'none';
+  setTimeout(function(){ el('caja-pin-inp').focus(); }, 100);
+}
+
+async function confirmarSesionCaja(){
+  var selEl = el('caja-cajero-sel');
+  var selVal = selEl ? selEl.value : '';
+  var pin = el('caja-pin-inp').value.trim();
+  if(!selVal){ toast('Elegí un cajero','err'); return; }
+  if(!pin){ toast('Ingresá el PIN','err'); return; }
+
+  var pinValido = false;
+  var nombre = '';
+
+  if(selVal === 'dueno'){
+    // PIN del dueño = PIN del sistema guardado en config
+    var pinSistema = config.pin || '';
+    pinValido = pinSistema && pin === pinSistema;
+    nombre = config.negocioNom || 'El dueño';
+    if(!pinSistema){ pinValido = true; nombre = config.negocioNom||'El dueño'; } // si no tiene PIN configurado, acceso libre
+  } else {
+    // PIN del empleado
+    var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('id',selVal).single();
+    if(res.data){
+      nombre = res.data.nombre;
+      var pinEmp = res.data.pin_caja||'';
+      pinValido = pinEmp && pin === pinEmp;
+      if(!pinEmp) pinValido = true; // sin PIN configurado, acceso libre
+    }
+  }
+
+  if(!pinValido){
+    el('caja-pin-error').style.display = 'block';
+    el('caja-pin-inp').value = '';
+    el('caja-pin-inp').focus();
+    return;
+  }
+
+  cajeroActual = { id: selVal, nombre: nombre, esDueno: selVal==='dueno' };
+  closeModal('modal-sesion-caja');
+  // Abrir cobrar directamente
+  setTimeout(function(){
+    lineasCobro=[];
+    set('cobrar-monto','val',''); set('cobrar-num','text','$0');
+    set('cobrar-desc','val',''); set('ef-recibido','val','');
+    set('ef-vuelto','text','$0'); set('ef-total','text','$0');
+    set('alias-display','text',config.alias||'mi.negocio.mp');
+    set('cvu-display','text',config.cvu||'');
+    renderLineasCobro();
+    const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
+    var badge = el('caja-cajero-badge');
+    var nomEl = el('caja-cajero-nombre');
+    if(badge && nomEl){ badge.style.display='flex'; nomEl.textContent=cajeroActual.nombre; }
+    openModal('modal-cobrar');
+  }, 200);
+}
+
+function cerrarSesionCaja(){
+  var nom = cajeroActual ? cajeroActual.nombre : 'Sesión';
+  cajeroActual = null;
+  closeModal('modal-cobrar');
+  toast('🔒 Caja cerrada — '+nom);
 }
 function agregarLineaCobro(){
   lineasCobro.push({id:Date.now(),prodId:'',cant:1});
@@ -1926,6 +2048,8 @@ function confirmarCobro(){
     }
   });
   var descFinal=prods.length?prods.join(' · '):(desc||'Venta mostrador');
+  // Agregar cajero al registro
+  if(cajeroActual) descFinal = descFinal + ' · 👤 '+cajeroActual.nombre;
 
   // Registrar en fiado
   if(pagoActual==='fiado'){
@@ -4186,6 +4310,18 @@ function abrirModalNuevoEmpleado() {
   el('emp-form-nombre').value = '';
   el('emp-form-rol').value = '';
   el('emp-form-sueldo').value = '';
+  if(el('emp-form-pin')) el('emp-form-pin').value = '';
+  openModal('modal-empleado');
+}
+
+function abrirModalEditarEmpleado() {
+  if(!empActual) return;
+  empEditId = empActual.id;
+  el('modal-empleado-titulo').textContent = '✏️ Editar Empleado';
+  el('emp-form-nombre').value = empActual.nombre;
+  el('emp-form-rol').value = empActual.rol||'';
+  el('emp-form-sueldo').value = empActual.sueldo_semanal||0;
+  if(el('emp-form-pin')) el('emp-form-pin').value = '';
   openModal('modal-empleado');
 }
 
@@ -4203,17 +4339,22 @@ async function guardarEmpleado() {
   var nombre = el('emp-form-nombre').value.trim();
   var rol = el('emp-form-rol').value.trim()||'Empleado';
   var sueldo = parseFloat(el('emp-form-sueldo').value)||0;
+  var pin = el('emp-form-pin') ? el('emp-form-pin').value.trim() : '';
   if(!nombre){ toast('Ingresá el nombre del empleado','err'); return; }
   if(sueldo <= 0){ toast('Ingresá el sueldo semanal','err'); return; }
+  if(pin && (pin.length !== 4 || isNaN(pin))){ toast('El PIN debe ser de 4 dígitos numéricos','err'); return; }
+
+  var datos = {nombre:nombre, rol:rol, sueldo_semanal:sueldo};
+  if(pin) datos.pin_caja = pin;
 
   if(empEditId) {
-    await supabaseClient.from('empleados').update({nombre:nombre,rol:rol,sueldo_semanal:sueldo}).eq('id',empEditId);
+    await supabaseClient.from('empleados').update(datos).eq('id',empEditId);
     toast('Empleado actualizado ✓');
     closeModal('modal-empleado');
     var res = await supabaseClient.from('empleados').select('*').eq('id',empEditId).single();
     if(res.data){ empActual = res.data; el('emp-detalle-nombre').textContent = empActual.nombre; el('emp-detalle-sueldo').textContent = pesos(empActual.sueldo_semanal)+'/semana'; }
   } else {
-    await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,sueldo_semanal:sueldo,activo:true});
+    await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,sueldo_semanal:sueldo,pin_caja:pin||null,activo:true});
     toast('Empleado agregado ✓');
     closeModal('modal-empleado');
     renderEmpleados();
