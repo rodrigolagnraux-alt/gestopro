@@ -876,6 +876,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><input class="fi" id="p-prov" placeholder="Proveedor principal"></div></div>
+  <div class="fg"><label class="fl">PLU balanza (opcional)</label><input class="fi" id="p-plu" type="number" placeholder="Ej: 100" inputmode="numeric">
+  <div style="font-size:11px;color:var(--mut2);margin-top:4px;">Código que usa la balanza para este producto — permite escanear la etiqueta y cargar el peso automáticamente</div></div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-prod')">Cancelar</button><button class="btn btn-acc" onclick="guardarProd()">Guardar</button></div>
 </div>
 </div>
@@ -2417,6 +2419,7 @@ function abrirEditarProd(id){
   set('p-max','val',p.max||0);
   set('p-pventa','val',p.pventa||'');
   set('p-prov','val',p.prov||'');
+  set('p-plu','val',p.plu||'');
   var t = document.querySelector('#modal-prod .modal-t');
   if(t) t.textContent = '📓 Editar Producto';
   var s = document.querySelector('#modal-prod .modal-s');
@@ -2443,19 +2446,20 @@ function guardarProd(){
       p.min = parseFloat(get('p-min'))||0;
       p.max = parseFloat(get('p-max'))||0;
       p.prov = get('p-prov').trim();
+      p.plu = get('p-plu').trim()||null;
     }
     prodEditId = null;
     var t = document.querySelector('#modal-prod .modal-t'); if(t) t.textContent = '📦 Nuevo Producto';
     var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto o insumo al inventario';
     var btn = document.querySelector('#modal-prod .btn-acc'); if(btn) btn.textContent = 'Guardar';
-    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
+    ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
     closeModal('modal-prod'); saveState(); renderDash(); renderProds();
     toast('📓 Producto actualizado ✓');
     return;
   }
   if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
-  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim()});
-  ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
+  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim(),plu:get('p-plu').trim()||null});
+  ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
   closeModal('modal-prod'); saveState(); renderDash(); renderProds();
   toast('📦 Producto guardado ✓');
 }
@@ -2876,7 +2880,39 @@ function cerrarScanner(){
   closeModal('modal-scanner');
 }
 
+function decodificarCodigoBalanza(codigo){
+  // Formato balanza Systel (prefijo 20): EAN-13 = 20 + PLU(4) + PESO_GRAMOS(6) + DV
+  // Ej: 2001000031351 -> PLU=0100(100), peso=003135(3135g=3.135kg)
+  if(!codigo || codigo.length!==13) return null;
+  if(codigo.slice(0,2)!=='20') return null;
+  if(!/^\d{13}$/.test(codigo)) return null;
+  var plu = parseInt(codigo.slice(2,6),10);
+  var pesoG = parseInt(codigo.slice(6,12),10);
+  if(isNaN(plu)||isNaN(pesoG)) return null;
+  return {plu:plu, pesoKg: pesoG/1000};
+}
+
 function procesarCodigo(codigo){
+  // Primero intentar decodificar como código de balanza (peso variable)
+  var balanza = decodificarCodigoBalanza(codigo);
+  if(balanza){
+    var prodBalanza = productos.find(function(p){ return p.plu && parseInt(p.plu,10)===balanza.plu; });
+    if(prodBalanza){
+      mostrarProductoEncontrado(prodBalanza);
+      set('scanner-cant','val', String(balanza.pesoKg));
+      toast('⚖️ '+prodBalanza.nom+' — '+balanza.pesoKg+' kg detectados automáticamente');
+      return;
+    }
+    // PLU no asociado a ningún producto todavía
+    set('scanner-manual','val',codigo);
+    set('scanner-found','display','none');
+    set('scanner-results','display','none');
+    set('scanner-not-found','display','block');
+    var newNom = el('scanner-new-nom'); if(newNom) newNom.value='';
+    set('scanner-confirm-btn','display','none');
+    toast('⚖️ Etiqueta de balanza detectada (PLU '+balanza.plu+', '+balanza.pesoKg+'kg) — no hay producto con ese PLU. Asignalo en Productos.','err');
+    return;
+  }
   set('scanner-manual','val',codigo);
   buscarProductoScanner();
 }
