@@ -964,6 +964,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Avanzado</div>
     <div class="sb-i" onclick="abrirCarniceria()"><span class="sb-ico">🥩</span>Catálogo Carnicería</div>
     <div class="sb-i" id="sb-pventa" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
+    <div class="sb-i" id="sb-pedidos" onclick="goLocked('pedidos',this,'pro')"><span class="sb-ico">📦</span>Pedidos<span class="sb-lock" id="lock-pedidos">🔒</span></div>
     <div class="sb-i" id="sb-oc" onclick="goLocked('oc',this,'business')"><span class="sb-ico">📋</span>Órd. de Compra<span class="sb-lock" id="lock-oc">🔒</span></div>
   </div>
   <div class="sb-sec">
@@ -1361,6 +1362,49 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
 </div>
 
+<!-- MÓDULO PEDIDOS -->
+<div id="pg-pedidos" class="pg">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+    <div>
+      <div class="ptitle" style="margin-bottom:2px;">📦 Pedidos a proveedores</div>
+      <div style="font-size:12px;color:var(--mut2);">Según tu stock mínimo y máximo, esto es lo que conviene reponer</div>
+    </div>
+    <button class="btn btn-acc btn-sm" onclick="abrirModalGenerarPedido()">📲 Generar pedido</button>
+  </div>
+
+  <div class="fr" style="margin-bottom:14px;">
+    <button class="fb on" id="ped-filtro-urgente" onclick="setFiltroPedidos('urgente',this)">🔴 Urgentes</button>
+    <button class="fb" id="ped-filtro-atencion" onclick="setFiltroPedidos('atencion',this)">🟡 Atención</button>
+    <button class="fb" id="ped-filtro-todos" onclick="setFiltroPedidos('todos',this)">Ver todos</button>
+  </div>
+
+  <div class="kgrid3" id="ped-kpis" style="margin-bottom:14px;"></div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 10px;font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:0.5px;">
+      <span style="flex:0 0 30px;"></span>
+      <span style="flex:1;">Producto</span>
+      <span style="flex:0 0 90px;text-align:center;">Stock</span>
+      <span style="flex:0 0 110px;text-align:center;">Sugerido</span>
+    </div>
+    <div id="ped-lista"></div>
+  </div>
+</div>
+
+<!-- MODAL GENERAR PEDIDO -->
+<div class="ov" id="modal-generar-pedido">
+<div class="modal" style="max-width:560px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">📲 Generar pedido</div>
+  <div class="modal-s">Revisá el texto y mandalo a tu proveedor</div>
+  <textarea class="fi" id="ped-texto-generado" rows="12" style="font-family:DM Mono,monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;resize:vertical;" readonly></textarea>
+  <div class="btn-row" style="margin-top:14px;">
+    <button class="btn btn-ghost" onclick="closeModal('modal-generar-pedido')">Cerrar</button>
+    <button class="btn btn-ghost" onclick="copiarTextoPedido()">📋 Copiar</button>
+    <button class="btn btn-acc" onclick="abrirWhatsappPedido()">💬 Abrir WhatsApp</button>
+  </div>
+</div>
+</div>
 
 <!-- MODAL RESUMEN PRECIOS -->
 <div class="ov" id="modal-precios">
@@ -1557,7 +1601,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business',empleados:'business'};
+const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -2804,6 +2848,7 @@ function renderPage(id){
   else if(id==='resumen') renderResumen();
   else if(id==='finanzas') renderFinanzas();
   else if(id==='empleados') renderEmpleados();
+  else if(id==='pedidos') renderPedidos();
 }
 
 
@@ -4160,11 +4205,139 @@ function actualizarDots() {
 }
 
 // ═══════════════════════════════════════════════
-// MÓDULO EMPLEADOS
+// MÓDULO PEDIDOS
 // ═══════════════════════════════════════════════
-var empActual = null; // empleado seleccionado
-var empEditId = null;
-var empSemanaActual = null; // datos semana en curso
+var pedidosFiltro = 'urgente'; // 'urgente' | 'atencion' | 'todos'
+var pedidosCantidades = {}; // {prodId: cantidadEditada}
+var pedidosIncluidos = {}; // {prodId: true/false}
+
+function estadoPedido(p){
+  // Reusa la misma lógica de semáforo que ya existe en estadoProd()
+  if(p.min>0 && p.stock<=p.min) return 'urgente';
+  if(p.min>0 && p.stock<=p.min*1.3) return 'atencion';
+  return 'ok';
+}
+
+function cantidadSugerida(p){
+  var max = p.max||0;
+  var sug = max - (p.stock||0);
+  return sug>0 ? sug : 0;
+}
+
+function setFiltroPedidos(f,btn){
+  pedidosFiltro = f;
+  document.querySelectorAll('#pg-pedidos .fr .fb').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  renderPedidos();
+}
+
+function renderPedidos(){
+  var todos = productos.map(function(p){
+    return {p:p, estado:estadoPedido(p), sugerido: pedidosCantidades[p.id]!==undefined?pedidosCantidades[p.id]:cantidadSugerida(p)};
+  });
+
+  var urgentes = todos.filter(function(x){return x.estado==='urgente';});
+  var atencion = todos.filter(function(x){return x.estado==='atencion';});
+
+  var kpis = el('ped-kpis');
+  if(kpis) kpis.innerHTML =
+    '<div class="kpi kr"><div class="kl">🔴 URGENTES</div><div class="kn">'+urgentes.length+'</div><div class="kd">bajo el mínimo</div></div>'+
+    '<div class="kpi" style="border-color:var(--yel);"><div class="kl">🟡 ATENCIÓN</div><div class="kn" style="color:var(--yel);">'+atencion.length+'</div><div class="kd">cerca del mínimo</div></div>'+
+    '<div class="kpi kg"><div class="kl">✓ OK</div><div class="kn">'+(todos.length-urgentes.length-atencion.length)+'</div><div class="kd">stock saludable</div></div>';
+
+  var lista;
+  if(pedidosFiltro==='urgente') lista = urgentes;
+  else if(pedidosFiltro==='atencion') lista = urgentes.concat(atencion);
+  else lista = todos;
+
+  // Ordenar: urgentes primero, después atención, después ok
+  var orden = {urgente:0, atencion:1, ok:2};
+  lista = lista.slice().sort(function(a,b){ return orden[a.estado]-orden[b.estado]; });
+
+  var html = '';
+  if(lista.length===0){
+    html = '<div style="text-align:center;padding:32px;color:var(--mut2);">'+
+      '<div style="font-size:36px;margin-bottom:10px;">✅</div>'+
+      '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--txt);">¡Todo en orden!</div>'+
+      '<div style="font-size:12px;margin-top:4px;">No hay productos que necesiten pedido ahora</div></div>';
+  } else {
+    lista.forEach(function(x){
+      var p = x.p;
+      var dotColor = x.estado==='urgente'?'var(--red)':x.estado==='atencion'?'var(--yel)':'var(--grn)';
+      var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (x.estado!=='ok');
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--brd);">'+
+        '<input type="checkbox" '+(incluido?'checked':'')+' onchange="pedidosIncluidos['+p.id+']=this.checked" style="flex:0 0 18px;width:18px;height:18px;accent-color:var(--acc);">'+
+        '<div style="flex:0 0 10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0;"></div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:13px;font-weight:600;">'+p.nom+'</div>'+
+          '<div style="font-size:11px;color:var(--mut2);">'+(p.prov||'Sin proveedor')+'</div>'+
+        '</div>'+
+        '<div style="flex:0 0 90px;text-align:center;font-size:12px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.stock+' / '+p.max+' '+p.um+'</div>'+
+        '<input type="number" value="'+x.sugerido+'" min="0" step="any" style="flex:0 0 90px;text-align:center;padding:6px;font-size:13px;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);" onchange="pedidosCantidades['+p.id+']=parseFloat(this.value)||0">'+
+      '</div>';
+    });
+  }
+  el('ped-lista').innerHTML = html;
+}
+
+function abrirModalGenerarPedido(){
+  var seleccionados = productos.filter(function(p){
+    var estado = estadoPedido(p);
+    var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (estado!=='ok');
+    var cant = pedidosCantidades[p.id]!==undefined ? pedidosCantidades[p.id] : cantidadSugerida(p);
+    return incluido && cant>0;
+  });
+
+  if(seleccionados.length===0){
+    toast('No hay productos seleccionados para pedir','err');
+    return;
+  }
+
+  // Agrupar por proveedor si está cargado
+  var porProveedor = {};
+  seleccionados.forEach(function(p){
+    var prov = p.prov && p.prov.trim() ? p.prov.trim() : 'Sin proveedor asignado';
+    if(!porProveedor[prov]) porProveedor[prov]=[];
+    var cant = pedidosCantidades[p.id]!==undefined ? pedidosCantidades[p.id] : cantidadSugerida(p);
+    porProveedor[prov].push({nom:p.nom, cant:cant, um:p.um});
+  });
+
+  var texto = '🛒 *Pedido — '+(config.nombre||'Mi Negocio')+'*\n';
+  texto += '📅 '+new Date().toLocaleDateString('es-AR')+'\n\n';
+
+  Object.keys(porProveedor).forEach(function(prov){
+    texto += '*'+prov+':*\n';
+    porProveedor[prov].forEach(function(item){
+      texto += '• '+item.nom+' — '+item.cant+' '+item.um+'\n';
+    });
+    texto += '\n';
+  });
+
+  el('ped-texto-generado').value = texto.trim();
+  openModal('modal-generar-pedido');
+}
+
+function copiarTextoPedido(){
+  var texto = el('ped-texto-generado').value;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(function(){
+      toast('📋 Texto copiado ✓');
+    }).catch(function(){
+      var ta = el('ped-texto-generado'); ta.select(); document.execCommand('copy');
+      toast('📋 Texto copiado ✓');
+    });
+  } else {
+    var ta = el('ped-texto-generado'); ta.select(); document.execCommand('copy');
+    toast('📋 Texto copiado ✓');
+  }
+}
+
+function abrirWhatsappPedido(){
+  var texto = el('ped-texto-generado').value;
+  var url = 'https://wa.me/?text='+encodeURIComponent(texto);
+  window.open(url, '_blank');
+}
+
 
 function fechaLocalStr(d) {
   // Evita el corrimiento de día que produce toISOString() en zonas horarias negativas (Argentina UTC-3)
