@@ -1408,7 +1408,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
     <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;">¿La cámara no lo lee? Escribilo manualmente</div>
     <div style="display:flex;gap:8px;">
-      <input class="fi" id="scanner-manual" type="text" placeholder="Código de barras o nombre del producto" style="flex:1;" oninput="buscarProductoScanner()">
+      <input class="fi" id="scanner-manual" type="text" placeholder="Código de barras o nombre del producto" style="flex:1;" oninput="buscarProductoScannerConBalanza()">
       <button class="btn btn-acc btn-sm" onclick="confirmarScannerManual()">Buscar</button>
     </div>
   </div>
@@ -2953,7 +2953,23 @@ function buscarProductoScanner(){
   }
 }
 
+function buscarProductoScannerConBalanza(){
+  var codigo = (get('scanner-manual')||'').trim();
+  var balanza = decodificarCodigoBalanza(codigo);
+  if(balanza && codigo.length===13){
+    procesarCodigo(codigo);
+    return;
+  }
+  buscarProductoScanner();
+}
+
 function confirmarScannerManual(){
+  var codigo = (get('scanner-manual')||'').trim();
+  var balanza = decodificarCodigoBalanza(codigo);
+  if(balanza){
+    procesarCodigo(codigo);
+    return;
+  }
   buscarProductoScanner();
 }
 
