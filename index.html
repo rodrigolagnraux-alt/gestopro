@@ -875,10 +875,20 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
   <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
-  <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><input class="fi" id="p-prov" placeholder="Proveedor principal"></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><select class="fi" id="p-prov" onchange="if(this.value==='__nuevo_prov__'){abrirNuevoProveedorInline();}"><option value="">— Sin proveedor —</option></select></div></div>
   <div class="fg"><label class="fl">PLU balanza (opcional)</label><input class="fi" id="p-plu" type="number" placeholder="Ej: 100" inputmode="numeric">
   <div style="font-size:11px;color:var(--mut2);margin-top:4px;">Código que usa la balanza para este producto — permite escanear la etiqueta y cargar el peso automáticamente</div></div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-prod')">Cancelar</button><button class="btn btn-acc" onclick="guardarProd()">Guardar</button></div>
+</div>
+</div>
+
+<!-- MODAL NUEVO PROVEEDOR (inline desde producto) -->
+<div class="ov" id="modal-nuevo-prov">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🚚 Nuevo Proveedor</div>
+  <div class="fg"><label class="fl">Nombre del proveedor</label><input class="fi" id="prov-nuevo-nombre" placeholder="Ej: Coca-Cola FEMSA"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="cancelarNuevoProveedorInline()">Cancelar</button><button class="btn btn-acc" onclick="confirmarNuevoProveedorInline()">Guardar</button></div>
 </div>
 </div>
 
@@ -1743,7 +1753,11 @@ function goLocked(id,navEl,req){
 }
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
-function openModal(id){ const m=el(id); if(m) m.classList.add('on'); }
+function openModal(id){
+  const m=el(id);
+  if(m) m.classList.add('on');
+  if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
+}
 function closeModal(id){
   const m=el(id); if(m) m.classList.remove('on');
   if(id==='modal-prod' && prodEditId){
@@ -2462,8 +2476,8 @@ function abrirEditarProd(id){
   set('p-min','val',p.min||0);
   set('p-max','val',p.max||0);
   set('p-pventa','val',p.pventa||'');
-  set('p-prov','val',p.prov||'');
   set('p-plu','val',p.plu||'');
+  cargarSelectProveedores(p.prov||'');
   var t = document.querySelector('#modal-prod .modal-t');
   if(t) t.textContent = '📓 Editar Producto';
   var s = document.querySelector('#modal-prod .modal-s');
@@ -2471,6 +2485,48 @@ function abrirEditarProd(id){
   var btn = document.querySelector('#modal-prod .btn-acc');
   if(btn) btn.textContent = 'Guardar cambios';
   openModal('modal-prod');
+}
+
+async function cargarSelectProveedores(seleccionado){
+  var sel = el('p-prov');
+  if(!sel) return;
+  var lista = [];
+  if(currentNegocioId && supabaseClient){
+    try{
+      var res = await supabaseClient.from('proveedores').select('nombre').eq('negocio_id',currentNegocioId).order('nombre');
+      lista = (res.data||[]).map(function(r){return r.nombre;});
+    }catch(e){}
+  }
+  // Si el producto tiene un proveedor cargado que no está en la lista (caso viejo, texto libre), lo agregamos también
+  if(seleccionado && lista.indexOf(seleccionado)===-1) lista.push(seleccionado);
+  var html = '<option value="">— Sin proveedor —</option>';
+  lista.forEach(function(nom){
+    html += '<option value="'+nom+'"'+(nom===seleccionado?' selected':'')+'>'+nom+'</option>';
+  });
+  html += '<option value="__nuevo_prov__">+ Nuevo proveedor...</option>';
+  sel.innerHTML = html;
+}
+
+function abrirNuevoProveedorInline(){
+  el('prov-nuevo-nombre').value = '';
+  openModal('modal-nuevo-prov');
+}
+
+function cancelarNuevoProveedorInline(){
+  // Volver el select a "sin proveedor" ya que se canceló
+  var sel = el('p-prov');
+  if(sel) sel.value = '';
+  closeModal('modal-nuevo-prov');
+}
+
+async function confirmarNuevoProveedorInline(){
+  var nombre = el('prov-nuevo-nombre').value.trim();
+  if(!nombre){ toast('Ingresá el nombre del proveedor','err'); return; }
+  if(!currentNegocioId){ toast('No se pudo identificar el negocio','err'); return; }
+  await supabaseClient.from('proveedores').insert({negocio_id:currentNegocioId, nombre:nombre});
+  await cargarSelectProveedores(nombre);
+  closeModal('modal-nuevo-prov');
+  toast('🚚 Proveedor agregado ✓');
 }
 
 function guardarProd(){
@@ -2489,7 +2545,7 @@ function guardarProd(){
       p.pventa = parseFloat(get('p-pventa'))||0;
       p.min = parseFloat(get('p-min'))||0;
       p.max = parseFloat(get('p-max'))||0;
-      p.prov = get('p-prov').trim();
+      p.prov = get('p-prov')==='__nuevo_prov__' ? '' : get('p-prov').trim();
       p.plu = get('p-plu').trim()||null;
     }
     prodEditId = null;
@@ -2502,7 +2558,7 @@ function guardarProd(){
     return;
   }
   if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
-  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov').trim(),plu:get('p-plu').trim()||null});
+  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov')==='__nuevo_prov__'?'':get('p-prov').trim(),plu:get('p-plu').trim()||null});
   ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
   closeModal('modal-prod'); saveState(); renderDash(); renderProds();
   toast('📦 Producto guardado ✓');
