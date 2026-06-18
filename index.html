@@ -3351,7 +3351,7 @@ function renderFinanzas(){
 
   // Costo de mercaderia comprada
   var ingresos=movsF.filter(function(m){return m.tipo==='ingreso';});
-  var totalCompras=ingresos.reduce(function(s,m){return s+(m.totalLinea||0);},0);
+  var totalCompras=ingresos.reduce(function(s,m){return s+((m.costo||0)*(m.cant||0));},0);
   if(!totalCompras){
     // fallback: facturas pagadas del periodo
     totalCompras=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
@@ -3400,8 +3400,9 @@ function renderFinanzas(){
       if(!gr.items.length) return;
       html+='<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;padding:10px 0 6px;border-top:1px solid var(--brd);">'+gr.ico+' '+gr.lbl+'</div>';
       html+=gr.items.slice(0,8).map(function(m){
-        var monto=m.tipo==='cobro'?(m.monto||0):(m.totalLinea||0);
-        return '<div class="fin-row"><span style="font-size:12px;">'+m.prodNom+(m.desc?' · '+m.desc:'')+'<br><span style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.cant?' · '+m.cant+' un':'')+'</span></span><span style="font-family:DM Mono,monospace;font-size:13px;color:'+gr.color+';">'+fmtM(monto)+'</span></div>';
+        var nombre = m.tipo==='cobro' ? (m.desc||'Venta') : (m.prodNom||m.motivo||'Ingreso');
+        var monto = m.tipo==='cobro' ? (m.monto||0) : ((m.costo||0)*(m.cant||0));
+        return '<div class="fin-row"><span style="font-size:12px;">'+nombre+'<br><span style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.cant?' · '+m.cant+' un':'')+'</span></span><span style="font-family:DM Mono,monospace;font-size:13px;color:'+gr.color+';">'+fmtM(monto)+'</span></div>';
       }).join('');
     });
     dEl.innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin movimientos en este periodo</div></div>';
