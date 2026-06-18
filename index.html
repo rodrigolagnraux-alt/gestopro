@@ -554,13 +554,15 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 
 <div class="ov" id="modal-cobrar">
-<div class="modal" style="max-width:600px;">
+<div class="modal" style="max-width:900px;">
   <div class="modal-drag"></div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
     <div class="modal-t" style="margin-bottom:0;">💚 Cobrar</div>
     <div id="caja-cajero-badge" style="display:none;background:var(--acc-dim);color:var(--acc2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;" onclick="cerrarSesionCaja()">👤 <span id="caja-cajero-nombre"></span> 🔒</div>
   </div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+  <div>
 
   <!-- PRODUCTOS VENDIDOS -->
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
@@ -689,8 +691,21 @@ select.fi{appearance:none;cursor:pointer;}
       <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);margin-top:12px;" id="transf-monto-display">$0</div>
     </div>
   </div>
-  <button class="btn btn-grn btn-full btn-lg" onclick="confirmarCobro()" style="margin-top:12px;">✓ Confirmar cobro</button>
-  <div class="btn-row" style="justify-content:center;margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-cobrar')">Cancelar</button></div>
+  </div><!-- cierre columna izquierda -->
+
+  <!-- COLUMNA DERECHA: resumen y confirmar -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div class="card" style="background:var(--sur2);flex:1;">
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--mut2);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;">Resumen</div>
+      <div style="font-size:12px;color:var(--mut2);margin-bottom:6px;">Subtotal productos</div>
+      <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--acc2);margin-bottom:16px;" id="cobrar-num-right">$0</div>
+      <div style="font-size:11px;color:var(--mut2);margin-bottom:4px;">MONTO A COBRAR</div>
+      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-bottom:8px;" id="cobrar-num-big">$0</div>
+    </div>
+    <button class="btn btn-grn btn-full btn-lg" onclick="confirmarCobro()" style="font-size:18px;padding:16px;">✓ Confirmar cobro</button>
+    <button class="btn btn-ghost btn-full btn-sm" onclick="closeModal('modal-cobrar')">Cancelar</button>
+  </div>
+  </div><!-- cierre grilla -->
 </div>
 </div>
 
@@ -974,7 +989,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="sb-sec">
     <div class="sb-lbl">Avanzado</div>
     <div class="sb-i" id="sb-carniceria" onclick="abrirCarniceria()" style="display:none;"><span class="sb-ico">🥩</span>Catálogo Carnicería</div>
-    <div class="sb-i" id="sb-pventa" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
+    <div class="sb-i" id="sb-pventa" style="display:none;" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
     <div class="sb-i" id="sb-pedidos" onclick="goLocked('pedidos',this,'pro')"><span class="sb-ico">📦</span>Pedidos<span class="sb-lock" id="lock-pedidos">🔒</span></div>
     <div class="sb-i" id="sb-oc" onclick="goLocked('oc',this,'business')"><span class="sb-ico">📋</span>Órd. de Compra<span class="sb-lock" id="lock-oc">🔒</span></div>
   </div>
@@ -1983,11 +1998,13 @@ function actualizarTotalCobro(){
   });
   total = Math.round(total*100)/100;
   set('cobro-subtotal','text',fmtM(total));
+  set('cobrar-num-right','text',fmtM(total));
   if(total>0){ set('cobrar-monto','val',String(total)); updCobrar(); }
 }
 function updCobrar(){
   const v=parseFloat(get('cobrar-monto'))||0;
   set('cobrar-num','text',fmtM(v));
+  set('cobrar-num-big','text',fmtM(v));
   set('ef-total','text',fmtM(v));
   set('qr-monto-display','text',fmtM(v));
   set('transf-monto-display','text',fmtM(v));
