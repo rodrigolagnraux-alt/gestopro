@@ -569,8 +569,8 @@ select.fi{appearance:none;cursor:pointer;}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;">📦 Qué vendiste</span>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm" onclick="abrirScanner('cobro')">📷 Escanear</button>
-        <button class="btn btn-ghost btn-sm" onclick="agregarLineaCobro()">+ Manual</button>
+        <button class="btn btn-ghost" onclick="abrirScanner('cobro')" style="font-size:14px;padding:10px 16px;">📷 Escanear</button>
+        <button class="btn btn-ghost" onclick="agregarLineaCobro()" style="font-size:14px;padding:10px 16px;">+ Manual</button>
       </div>
     </div>
     <div id="cobro-lineas"></div>
@@ -1949,10 +1949,9 @@ function agregarLineaCobro(){
 function renderLineasCobro(){
   var cont=el('cobro-lineas'); if(!cont) return;
   if(!lineasCobro.length){
-    cont.innerHTML='<div style="font-size:11px;color:var(--mut2);text-align:center;padding:8px;">Tocá 📷 Escanear o + Manual para agregar productos</div>';
+    cont.innerHTML='<div style="font-size:14px;color:var(--mut2);text-align:center;padding:24px 8px;">Tocá 📷 Escanear o + Manual para agregar productos</div>';
     set('cobro-subtotal','text','$0'); return;
   }
-  // datalist compartido con todos los productos (una sola vez)
   var datalistHtml = '<datalist id="dl-productos">'+productos.map(function(p){
     return '<option value="'+p.nom.replace(/"/g,'&quot;')+'" data-id="'+p.id+'"></option>';
   }).join('')+'</datalist>';
@@ -1963,18 +1962,12 @@ function renderLineasCobro(){
     var subtotal=pventa*l.cant;
     var um=prod?prod.um:'UN';
     var nomVal = prod ? prod.nom.replace(/"/g,'&quot;') : '';
-    // Row: name | cant input | unit | subtotal | delete
-    html+='<div style="display:grid;grid-template-columns:1fr 70px 50px 70px 24px;gap:5px;margin-bottom:8px;align-items:center;">'
-      // Product search input with datalist autocomplete
-      +'<input class="fi" list="dl-productos" placeholder="Buscar producto..." value="'+nomVal+'" style="font-size:12px;padding:5px 6px;" oninput="selProdCobroNombre('+l.id+',this.value)">'
-      // Cant input
-      +'<input class="fi" type="number" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:13px;padding:5px;text-align:center;font-family:DM Mono,monospace;" oninput="updCantCobro('+l.id+',this.value)">'
-      // Unit
-      +'<div style="font-size:10px;color:var(--mut2);text-align:center;font-family:DM Mono,monospace;">'+um+'</div>'
-      // Subtotal
-      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--yel);text-align:right;">'+(subtotal>0?fmtM(subtotal):'—')+'</div>'
-      // Delete
-      +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;width:24px;height:28px;font-size:11px;" onclick="quitarLineaCobro('+l.id+')">✕</button>'
+    html+='<div style="display:grid;grid-template-columns:1fr 90px 44px 100px 32px;gap:6px;margin-bottom:10px;align-items:center;padding:6px 8px;background:var(--sur2);border-radius:8px;">'
+      +'<input class="fi" list="dl-productos" placeholder="Buscar producto..." value="'+nomVal+'" style="font-size:15px;padding:8px 10px;font-weight:600;" oninput="selProdCobroNombre('+l.id+',this.value)">'
+      +'<input class="fi" type="number" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:16px;padding:8px;text-align:center;font-family:DM Mono,monospace;font-weight:700;" oninput="updCantCobro('+l.id+',this.value)">'
+      +'<div style="font-size:12px;color:var(--mut2);text-align:center;font-family:DM Mono,monospace;">'+um+'</div>'
+      +'<div style="font-family:Syne,monospace;font-size:16px;font-weight:800;color:var(--yel);text-align:right;padding-right:4px;">'+(subtotal>0?fmtM(subtotal):'—')+'</div>'
+      +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;width:32px;height:36px;font-size:14px;" onclick="quitarLineaCobro('+l.id+')">✕</button>'
       +'</div>';
   });
   cont.innerHTML=html;
