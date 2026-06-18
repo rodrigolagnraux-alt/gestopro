@@ -1257,7 +1257,8 @@ select.fi{appearance:none;cursor:pointer;}
 <!-- FLUJO FINANCIERO -->
 <div id="pg-finanzas" class="pg">
   <div class="ptitle">Flujo Financiero</div>
-  <div class="psub">Todo el dinero de tu negocio · <b id="fin-periodo-lbl">Este mes</b></div>
+  <div class="psub">Tu ganancia real, descontando el costo de la mercadería vendida · <b id="fin-periodo-lbl">Este mes</b></div>
+  <div style="font-size:11px;color:var(--mut2);background:var(--sur2);border-radius:8px;padding:8px 12px;margin-bottom:12px;">💡 A diferencia de Resumen (que muestra el efectivo cobrado), aquí se calcula la ganancia real restando el costo de lo vendido.</div>
   <div class="ptabs">
     <button class="ptab on" onclick="setFinPeriod('mes',this)">Este mes</button>
     <button class="ptab" onclick="setFinPeriod('anterior',this)">Mes anterior</button>
@@ -2883,9 +2884,12 @@ function renderResumen(){
   if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div><div class="fin-row"><span>📱 QR / Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div><div class="fin-row"><span>🏦 Transferencia</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'+(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería entregada a empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b> (no entra a caja, se descuenta del sueldo)</div>':'');
   const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
   const factsPag=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
-  const totalEg=totalGF+factsPag;
+  const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
+  const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos' && m.prodId===undefined;}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
   const re=el('res-egresos');
-  if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div><div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
+  if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div><div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'+(totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(totalSueldos)+'</span></div>':'')+(totalOtrosEgresos>0?'<div class="fin-row"><span>📤 Otros egresos</span><span style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(totalOtrosEgresos)+'</span></div>':'')+'<div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
   const balance=totalCobrado-totalEg;
   const balColor=balance>=0?'var(--grn)':'var(--red)';
   const rb=el('res-balance');
@@ -3356,17 +3360,20 @@ function renderFinanzas(){
   // Gastos fijos
   var totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
 
+  // Sueldos de empleados (egresos sueltos con cat Sueldos)
+  var totalSueldos=movsF.filter(function(m){return m.tipo==='egreso' && m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+
   // Facturas pendientes
   var factPend=factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend=factPend.reduce(function(s,f){return s+f.monto;},0);
 
   // Ganancia real
-  var ganancia=totalVentas-totalCompras-totalGF;
+  var ganancia=totalVentas-totalCompras-totalGF-totalSueldos;
 
   // KPIs
   var kEl=el('fin-kpis');
   if(kEl)kEl.innerHTML='<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'
-    +'<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF)+'</div><div class="kd">total egresos</div></div>'
+    +'<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos)+'</div><div class="kd">total egresos</div></div>'
     +'<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
 
   // Resultado
@@ -3374,6 +3381,7 @@ function renderFinanzas(){
   if(rEl)rEl.innerHTML='<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'
     +'<div class="fin-row"><span>📦 Costo mercaderia comprada</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'
     +'<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'
+    +(totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')
     +(totalPend>0?'<div class="fin-row"><span>⏳ Facturas pendientes de pago</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(totalPend)+'</span></div>':'')
     +'<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Perdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>';
 
