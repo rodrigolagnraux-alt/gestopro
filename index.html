@@ -1764,6 +1764,16 @@ function go(id,navEl){
   renderPage(id);
 }
 function goLocked(id,navEl,req){
+  // Si el plan está en gratis pero hay un negocio cargado,
+  // puede ser un problema de timing — recargamos el plan primero
+  if(planActual==='gratis' && currentNegocioId){
+    supabaseClient.from('negocios').select('plan').eq('id',currentNegocioId).single().then(function(r){
+      if(r.data && r.data.plan) planActual = r.data.plan;
+      if(PLAN_N[planActual]>=PLAN_N[req]) go(id,navEl);
+      else{ openModal('modal-plan'); toast('Función disponible en Plan '+req.charAt(0).toUpperCase()+req.slice(1),'err'); }
+    });
+    return;
+  }
   if(PLAN_N[planActual]>=PLAN_N[req]) go(id,navEl);
   else{ openModal('modal-plan'); toast('Función disponible en Plan '+req.charAt(0).toUpperCase()+req.slice(1),'err'); }
 }
@@ -3929,6 +3939,8 @@ function cargarNegocio(){
         currentNegocioId=result.data.id;
         if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
         planActual=result.data.plan||'gratis';
+        // Actualizar íconos de lock en el sidebar inmediatamente
+        Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
       } else {
         return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
       }
@@ -4312,6 +4324,14 @@ var pinNavEl = null;
 var pinSesionDesbloqueada = {};
 
 function goConPin(id, navEl, req) {
+  // Si el plan está en gratis pero hay negocio cargado, puede ser timing — recargamos primero
+  if(planActual==='gratis' && currentNegocioId){
+    supabaseClient.from('negocios').select('plan').eq('id',currentNegocioId).single().then(function(r){
+      if(r.data && r.data.plan) planActual = r.data.plan;
+      goConPin(id, navEl, req);
+    });
+    return;
+  }
   // Si ya tiene el plan necesario
   if(PLAN_N[planActual] < PLAN_N[req]) {
     openModal('modal-plan');
