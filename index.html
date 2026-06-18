@@ -1238,7 +1238,7 @@ select.fi{appearance:none;cursor:pointer;}
 <div id="pg-pventa" class="pg">
   <div class="ptitle">Punto de Venta</div>
   <div class="psub">Escaneá productos para cobrar</div>
-  <div class="locked"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">🛒</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Punto de Venta</div><div style="font-size:12px;">Código de barras · Cobrá · Stock automático</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Pro</div><div class="lock-s">Punto de venta con código de barras, cobro automático y descuento de stock</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
+  <div class="locked" id="pventa-lock-wrap"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">🛒</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Punto de Venta</div><div style="font-size:12px;">Código de barras · Cobrá · Stock automático</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Pro</div><div class="lock-s">Punto de venta con código de barras, cobro automático y descuento de stock</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
 </div>
 
 <!-- MODAL CAMBIO DE PRECIOS -->
@@ -1278,7 +1278,7 @@ select.fi{appearance:none;cursor:pointer;}
 <!-- OC LOCKED -->
 <div id="pg-oc" class="pg">
   <div class="ptitle">Órdenes de Compra</div>
-  <div class="locked"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">📋</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Órdenes de Compra</div><div style="font-size:12px;">Creá pedidos · Seguí el estado · Recepcioná mercadería</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Business</div><div class="lock-s">Gestión completa de pedidos a proveedores con seguimiento de estado</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
+  <div class="locked" id="oc-lock-wrap"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">📋</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Órdenes de Compra</div><div style="font-size:12px;">Creá pedidos · Seguí el estado · Recepcioná mercadería</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Business</div><div class="lock-s">Gestión completa de pedidos a proveedores con seguimiento de estado</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
 </div>
 
 <!-- MÓDULO EMPLEADOS -->
@@ -3907,7 +3907,6 @@ function entrarSinNube(){
 
 function ocultarLogin(){
   var ls=el('login-screen'); if(ls)ls.style.display='none';
-  // New accounts start empty - no demo data
   initAppData();
 }
 
@@ -4270,6 +4269,8 @@ function initAppData(){
         set('plan-name-sb','text',pl2.nombre);
         set('plan-sub-sb','text',pl2.sub);
         Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
+        var lockWraps2 = {pventa:'pro', oc:'business'};
+        Object.keys(lockWraps2).forEach(function(mod){ var wrap=el(mod+'-lock-wrap'); if(wrap) wrap.style.display=PLAN_N[planActual]>=PLAN_N[lockWraps2[mod]]?'none':''; });
       }
     });
   }
@@ -4289,6 +4290,12 @@ function initAppData(){
   if(fpEl) fpEl.checked = true;
   if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
+  // Ocultar overlays internos de secciones bloqueadas según plan
+  var lockWraps = {pventa:'pro', oc:'business'};
+  Object.keys(lockWraps).forEach(function(mod){
+    var wrap = el(mod+'-lock-wrap');
+    if(wrap) wrap.style.display = PLAN_N[planActual]>=PLAN_N[lockWraps[mod]] ? 'none' : '';
+  });
   var uz=el('upload-z');
   if(uz){ uz.addEventListener('dragover',function(e){e.preventDefault();uz.style.borderColor='var(--acc)';}); uz.addEventListener('dragleave',function(){uz.style.borderColor='';}); uz.addEventListener('drop',function(e){e.preventDefault();uz.style.borderColor='';handleFile(e.dataTransfer.files[0]);}); }
   var ep=el('eg-prod'); if(ep) ep.addEventListener('change',updEgresoInfo);
