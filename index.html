@@ -561,7 +561,9 @@ select.fi{appearance:none;cursor:pointer;}
     <div id="caja-cajero-badge" style="display:none;background:var(--acc-dim);color:var(--acc2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;" onclick="cerrarSesionCaja()">👤 <span id="caja-cajero-nombre"></span> 🔒</div>
   </div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+  <!-- Input oculto para pistola lectora — siempre enfocado -->
+  <input id="pistola-input" type="text" autocomplete="off" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;" oninput="onPistolaInput(this)">
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;">
   <div>
 
   <!-- PRODUCTOS VENDIDOS -->
@@ -1532,6 +1534,7 @@ select.fi{appearance:none;cursor:pointer;}
 
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="cerrarScanner()">Cancelar</button>
+    <button class="btn btn-grn" id="scanner-listo-btn" style="display:none;" onclick="cerrarScannerListo()">✓ Listo</button>
     <button class="btn btn-acc" id="scanner-confirm-btn" style="display:none;" onclick="confirmarScanner()">✓ Agregar a la lista</button>
   </div>
 </div>
@@ -1857,6 +1860,7 @@ function abrirCobrar(){
   var nomEl = el('caja-cajero-nombre');
   if(badge && nomEl){ badge.style.display='flex'; nomEl.textContent=cajeroActual.nombre; }
   openModal('modal-cobrar');
+  setTimeout(function(){ var p=el('pistola-input'); if(p) p.focus(); },300);
 }
 
 async function abrirSesionCaja(){
@@ -1933,6 +1937,7 @@ async function confirmarSesionCaja(){
     var nomEl = el('caja-cajero-nombre');
     if(badge && nomEl){ badge.style.display='flex'; nomEl.textContent=cajeroActual.nombre; }
     openModal('modal-cobrar');
+    setTimeout(function(){ var p=el('pistola-input'); if(p) p.focus(); },300);
   }, 200);
 }
 
@@ -2972,6 +2977,8 @@ function abrirScanner(callback){
   set('scanner-not-found','display','none');
   set('scanner-results','display','none');
   set('scanner-confirm-btn','display','none');
+  // Botón Listo solo en cobro (permite terminar de escanear sin cerrar)
+  set('scanner-listo-btn','display', callback==='cobro' ? 'block' : 'none');
   var titulo = callback==='cobro' ? '📷 Escanear — Venta' : '📷 Escanear — Ingreso';
   set('scanner-titulo','text',titulo);
   openModal('modal-scanner');
@@ -3028,6 +3035,56 @@ function detenerCamara(){
 function cerrarScanner(){
   detenerCamara();
   closeModal('modal-scanner');
+}
+
+function cerrarScannerListo(){
+  detenerCamara();
+  closeModal('modal-scanner');
+  // Re-enfocar pistola
+  setTimeout(function(){ var p=el('pistola-input'); if(p) p.focus(); },200);
+}
+
+// ── PISTOLA LECTORA ──
+var _pistolaTimer = null;
+function onPistolaInput(inp){
+  clearTimeout(_pistolaTimer);
+  var val = inp.value.trim();
+  if(!val) return;
+  // La pistola manda Enter al final — esperamos 80ms sin más input
+  _pistolaTimer = setTimeout(function(){
+    inp.value='';
+    procesarCodigoPistola(val);
+  }, 80);
+}
+
+function procesarCodigoPistola(codigo){
+  // Solo actúa si el modal cobrar está abierto
+  var modalCobrar = el('modal-cobrar');
+  if(!modalCobrar || !modalCobrar.classList.contains('on')) return;
+  // Buscar producto por código exacto
+  var prod = productos.find(function(p){ return p.cod && p.cod.toLowerCase()===codigo.toLowerCase(); });
+  if(!prod){
+    // Intentar balanza
+    var bal = decodificarCodigoBalanza(codigo);
+    if(bal) prod = productos.find(function(p){ return p.plu && parseInt(p.plu,10)===bal.plu; });
+    if(prod && bal){
+      var ex = lineasCobro.find(function(l){return l.prodId==prod.id;});
+      if(ex){ ex.cant+=bal.pesoKg; } else { lineasCobro.push({id:Date.now(),prodId:prod.id,cant:bal.pesoKg}); }
+      renderLineasCobro();
+      toast('⚖️ '+prod.nom+' — '+bal.pesoKg+' kg');
+      el('pistola-input').focus();
+      return;
+    }
+    toast('Código no encontrado: '+codigo,'err');
+    el('pistola-input').focus();
+    return;
+  }
+  // Agregar 1 unidad (o sumar si ya existe)
+  var existing = lineasCobro.find(function(l){return l.prodId==prod.id;});
+  if(existing){ existing.cant+=1; } else { lineasCobro.push({id:Date.now(),prodId:prod.id,cant:1}); }
+  renderLineasCobro();
+  toast('✓ '+prod.nom);
+  el('pistola-input').focus();
 }
 
 function decodificarCodigoBalanza(codigo){
@@ -3180,9 +3237,18 @@ function confirmarScanner(){
     var existing2 = lineasCobro.find(function(l){return l.prodId==scannerFoundProd.id;});
     if(existing2){ existing2.cant+=cant; }
     else { lineasCobro.push({id:Date.now(),prodId:scannerFoundProd.id,cant:cant}); }
-    cerrarScanner();
     renderLineasCobro();
     toast('✓ '+cant+' '+um+' de '+scannerFoundProd.nom+' agregado');
+    // Reabrir cámara para el siguiente producto
+    scannerFoundProd = null;
+    set('scanner-manual','val','');
+    set('scanner-cant','val','');
+    set('scanner-found','display','none');
+    set('scanner-not-found','display','none');
+    set('scanner-results','display','none');
+    set('scanner-confirm-btn','display','none');
+    detenerCamara();
+    iniciarCamara();
   }
 }
 
