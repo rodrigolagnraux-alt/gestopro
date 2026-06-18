@@ -2452,6 +2452,7 @@ function confirmarPagoFactura(){
     // Pago parcial — queda saldo pendiente
     f.estado='parcial';
     f.saldoPendiente = diff;
+    f.montoPagado = (f.montoPagado||0) + monto;
     f.fechaPago=hoy(); f.metodoPago=metodo;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
@@ -2460,12 +2461,14 @@ function confirmarPagoFactura(){
   } else if(diff < -0.5){
     // Pagó de más
     f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    f.montoPagado = (f.montoPagado||0) + monto;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
     renderFacts(); renderDash();
     toast('✅ Factura pagada · Pagaste '+fmtM(Math.abs(diff))+' de más');
   } else {
     f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    f.montoPagado = (f.montoPagado||0) + monto;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
     renderFacts(); renderDash();
@@ -2887,7 +2890,7 @@ function renderFacts(){
   const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
   set('fact-sub','text',pend.length+' pendientes · '+fmtM(pend.reduce(function(s,f){return s+f.monto;},0)));
   const tf=el('tbl-facts');
-  if(tf)tf.innerHTML=rows.length?rows.map(function(f){return'<tr><td>'+eFactBdg(f.estado)+'</td><td class="mn">'+f.num+'</td><td style="max-width:130px;">'+f.prov+'</td><td class="mn md">'+fmtF(f.fecha)+'</td><td class="mn" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</td><td class="mn" style="color:var(--yel);">'+fmtM(f.monto)+'</td><td style="font-size:11px;color:var(--mut2);max-width:130px;">'+(f.obs||'—')+'</td><td><div style="display:flex;gap:4px;">'+(f.estado!=='pagada'?'<button class="btn btn-ghost btn-sm" onclick="marcarPagada('+f.id+')">✓</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></td></tr>';}).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div></td></tr>';
+  if(tf)tf.innerHTML=rows.length?rows.map(function(f){var montoDisplay=(f.estado==='parcial'&&f.montoPagado)?'<span style="color:var(--yel);">'+fmtM(f.monto)+'</span><br><span style="font-size:10px;color:var(--mut2);">Pagado: '+fmtM(f.montoPagado)+'</span>':'<span style="color:var(--yel);">'+fmtM(f.montoPagado||f.monto)+'</span>';return'<tr><td>'+eFactBdg(f.estado)+'</td><td class="mn">'+f.num+'</td><td style="max-width:130px;">'+f.prov+'</td><td class="mn md">'+fmtF(f.fecha)+'</td><td class="mn" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</td><td class="mn">'+montoDisplay+'</td><td style="font-size:11px;color:var(--mut2);max-width:130px;">'+(f.obs||'—')+'</td><td><div style="display:flex;gap:4px;">'+(f.estado!=='pagada'?'<button class="btn btn-ghost btn-sm" onclick="marcarPagada('+f.id+')">✓</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></td></tr>';}).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div></td></tr>';
   const mf=el('mc-facts');
   if(mf)mf.innerHTML=rows.length?rows.map(function(f){return'<div class="mci"><div class="mci-top"><div class="mci-name">'+f.prov+'<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--mut2)">'+f.num+'</span></div>'+eFactBdg(f.estado)+'</div><div class="mci-row"><div class="mci-col"><div class="mci-lbl">Monto</div><div class="mci-val" style="color:var(--yel);">'+fmtM(f.monto)+'</div></div><div class="mci-col"><div class="mci-lbl">Vence</div><div class="mci-val" style="color:'+(f.estado==='vencida'?'var(--red)':'var(--mut2)')+';">'+fmtF(f.venc)+'</div></div></div>'+(f.obs?'<div style="font-size:11px;color:var(--mut2);margin-top:6px;">'+f.obs+'</div>':'')+'<div style="display:flex;gap:6px;margin-top:8px;">'+(f.estado!=='pagada'?'<button class="btn btn-grn btn-sm" onclick="marcarPagada('+f.id+')">✓ Pagar</button>':'')+'<button class="btn btn-red btn-sm" onclick="eliminarFact('+f.id+')">✕</button></div></div>';}).join(''):'<div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin facturas</div></div>';
 }
@@ -2933,7 +2936,7 @@ function renderResumen(){
   const ri=el('res-ingresos');
   if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div><div class="fin-row"><span>📱 QR / Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div><div class="fin-row"><span>🏦 Transferencia</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'+(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería entregada a empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b> (no entra a caja, se descuenta del sueldo)</div>':'');
   const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
-  const factsPag=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+  const factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
   const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos' && m.prodId===undefined;}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
@@ -3528,7 +3531,7 @@ function renderFinanzas(){
   var totalCompras=ingresos.reduce(function(s,m){return s+((m.costo||0)*(m.cant||0));},0);
   if(!totalCompras){
     // fallback: facturas pagadas del periodo
-    totalCompras=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+    totalCompras=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   }
 
   // Gastos fijos
@@ -3778,7 +3781,7 @@ function calcFinanciero(period){
   },0);
   
   // Facturas pagadas
-  var factsPag=factsF.filter(function(f){return f.estado==='pagada';}).reduce(function(s,f){return s+f.monto;},0);
+  var factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   
   // Gastos fijos
   var totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
