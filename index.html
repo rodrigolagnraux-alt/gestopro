@@ -973,7 +973,7 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Avanzado</div>
-    <div class="sb-i" onclick="abrirCarniceria()"><span class="sb-ico">🥩</span>Catálogo Carnicería</div>
+    <div class="sb-i" id="sb-carniceria" onclick="abrirCarniceria()" style="display:none;"><span class="sb-ico">🥩</span>Catálogo Carnicería</div>
     <div class="sb-i" id="sb-pventa" onclick="goLocked('pventa',this,'pro')"><span class="sb-ico">🛒</span>Punto de Venta<span class="sb-lock" id="lock-pventa">🔒</span></div>
     <div class="sb-i" id="sb-pedidos" onclick="goLocked('pedidos',this,'pro')"><span class="sb-ico">📦</span>Pedidos<span class="sb-lock" id="lock-pedidos">🔒</span></div>
     <div class="sb-i" id="sb-oc" onclick="goLocked('oc',this,'business')"><span class="sb-ico">📋</span>Órd. de Compra<span class="sb-lock" id="lock-oc">🔒</span></div>
@@ -1526,10 +1526,19 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="ov" id="modal-carniceria">
 <div class="modal" style="max-width:560px;">
   <div class="modal-drag"></div>
-  <div class="modal-t">🥩 Catálogo de Carnicería</div>
-  <div class="modal-s">Todos los cortes organizados por animal · Editá precios y agregá los tuyos</div>
+  <div class="modal-t">📋 Catálogos de productos</div>
+  <div class="modal-s">Importá un catálogo completo o agregá tus propios productos</div>
 
-  <!-- FILTRO ANIMAL -->
+  <!-- TABS DE CATEGORÍA -->
+  <div class="fr" id="carn-tabs" style="margin-bottom:14px;flex-wrap:wrap;">
+    <button class="fb on" onclick="setCarnTab('carniceria',this)">🥩 Carnicería</button>
+    <button class="fb" onclick="setCarnTab('rotiseria',this)">🍕 Rotisería</button>
+    <button class="fb" onclick="setCarnTab('viandas',this)">🍱 Viandas</button>
+    <button class="fb" onclick="setCarnTab('fiambreria',this)">🧀 Fiambrería</button>
+    <button class="fb" onclick="setCarnTab('personalizada',this)">➕ Nueva</button>
+  </div>
+
+  <!-- FILTRO SUBCATEGORÍA (solo carnicería) -->
   <div class="fr" id="carn-filtro" style="margin-bottom:12px;">
     <button class="fb on" onclick="filtrarCarniceria('TODOS',this)">Todos</button>
     <button class="fb" onclick="filtrarCarniceria('Vaca',this)">🐄 Vaca</button>
@@ -1539,21 +1548,21 @@ select.fi{appearance:none;cursor:pointer;}
     <button class="fb" onclick="filtrarCarniceria('Varios',this)">🥚 Varios</button>
   </div>
 
-  <!-- LISTA DE CORTES -->
-  <div id="carn-lista" style="max-height:340px;overflow-y:auto;margin-bottom:14px;"></div>
+  <!-- LISTA DE PRODUCTOS -->
+  <div id="carn-lista" style="max-height:300px;overflow-y:auto;margin-bottom:14px;"></div>
 
-  <!-- AGREGAR NUEVO -->
-  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">+ Agregar corte o producto</div>
+  <!-- AGREGAR NUEVO PRODUCTO -->
+  <div id="carn-agregar-wrap" style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">+ Agregar producto</div>
     <div class="frow">
-      <div class="fg" style="margin-bottom:8px;">
-        <label class="fl">Animal / Tipo</label>
+      <div class="fg" style="margin-bottom:8px;" id="carn-subcategoria-wrap">
+        <label class="fl" id="carn-subcategoria-lbl">Animal / Tipo</label>
         <select class="fi" id="carn-animal">
           <option value="Vaca">🐄 Vaca</option>
           <option value="Cerdo">🐷 Cerdo</option>
           <option value="Pollo">🐔 Pollo</option>
           <option value="Pescado">🐟 Pescado</option>
-          <option value="Varios">🥚 Varios (huevos, grasa, huesos...)</option>
+          <option value="Varios">🥚 Varios</option>
         </select>
       </div>
       <div class="fg" style="margin-bottom:8px;">
@@ -1562,18 +1571,23 @@ select.fi{appearance:none;cursor:pointer;}
           <option value="KG">KG — por kilo</option>
           <option value="UN">UN — por unidad</option>
           <option value="GR">GR — por gramo</option>
+          <option value="L">L — por litro</option>
         </select>
       </div>
     </div>
     <div class="frow">
       <div class="fg" style="margin-bottom:0;">
-        <label class="fl">Nombre del corte</label>
-        <input class="fi" id="carn-nom" placeholder="Ej: Asado, Milanesa, Pechuga...">
+        <label class="fl">Nombre del producto</label>
+        <input class="fi" id="carn-nom" placeholder="Ej: Asado, Empanada, Jamón...">
       </div>
       <div class="fg" style="margin-bottom:0;">
         <label class="fl">Precio costo $</label>
         <input class="fi" id="carn-precio" type="number" placeholder="0" style="font-family:DM Mono,monospace;">
       </div>
+    </div>
+    <div class="fg" id="carn-cat-custom-wrap" style="display:none;margin-top:8px;">
+      <label class="fl">Nombre de la categoría</label>
+      <input class="fi" id="carn-cat-custom" placeholder="Ej: Panadería, Verdulería, Lácteos...">
     </div>
     <button class="btn btn-acc btn-full" onclick="agregarCorte()" style="margin-top:10px;">+ Agregar</button>
   </div>
@@ -2657,6 +2671,7 @@ function cancelImport(){
 
 // ═══ RENDER DASHBOARD ═══
 function renderDash(){
+  actualizarBtnCarniceria();
   const now=new Date();
   const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
   const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
@@ -2762,6 +2777,7 @@ function buildCatFilters(activeCat){
 }
 
 function renderProds(){
+  actualizarBtnCarniceria();
   var srch=(get('prod-srch')||'').toLowerCase();
   var fr=el('prod-fr');
   var activeCat=fr?(fr.dataset.cat||'TODOS'):'TODOS';
@@ -3162,74 +3178,99 @@ function confirmarScanner(){
 
 // ═══ CARNICERÍA ═══
 var carnFilterActual = 'TODOS';
+var carnTabActual = 'carniceria';
 
-// Catálogo precargado
-var CATALOGO_CARNICERIA = [
-  // VACA
-  {animal:'Vaca',nom:'Asado',um:'KG'},
-  {animal:'Vaca',nom:'Vacío',um:'KG'},
-  {animal:'Vaca',nom:'Tapa de asado',um:'KG'},
-  {animal:'Vaca',nom:'Matambre',um:'KG'},
-  {animal:'Vaca',nom:'Peceto',um:'KG'},
-  {animal:'Vaca',nom:'Paleta',um:'KG'},
-  {animal:'Vaca',nom:'Cuadril',um:'KG'},
-  {animal:'Vaca',nom:'Lomo',um:'KG'},
-  {animal:'Vaca',nom:'Bife de chorizo',um:'KG'},
-  {animal:'Vaca',nom:'Carne picada común',um:'KG'},
-  {animal:'Vaca',nom:'Carne picada especial',um:'KG'},
-  {animal:'Vaca',nom:'Milanesa de vaca',um:'KG'},
-  {animal:'Vaca',nom:'Osobuco',um:'KG'},
-  {animal:'Vaca',nom:'Roast beef',um:'KG'},
-  {animal:'Vaca',nom:'Falda',um:'KG'},
-  {animal:'Vaca',nom:'Puchero de vaca',um:'KG'},
-  {animal:'Vaca',nom:'Lengua',um:'KG'},
-  {animal:'Vaca',nom:'Riñón',um:'KG'},
-  {animal:'Vaca',nom:'Mondongo',um:'KG'},
-  {animal:'Vaca',nom:'Grasa de vaca',um:'KG'},
-  {animal:'Vaca',nom:'Huesos de vaca',um:'KG'},
-  // CERDO
-  {animal:'Cerdo',nom:'Bondiola de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Costilla de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Paleta de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Lomo de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Carne picada de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Milanesa de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Patitas de cerdo',um:'UN'},
-  {animal:'Cerdo',nom:'Chinchulín de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Panceta fresca',um:'KG'},
-  {animal:'Cerdo',nom:'Cabeza de cerdo',um:'UN'},
-  {animal:'Cerdo',nom:'Grasa de cerdo',um:'KG'},
-  {animal:'Cerdo',nom:'Cuero de cerdo',um:'KG'},
-  // POLLO
-  {animal:'Pollo',nom:'Pollo entero',um:'KG'},
-  {animal:'Pollo',nom:'Pechuga de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Muslo de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Ala de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Pata muslo',um:'KG'},
-  {animal:'Pollo',nom:'Milanesa de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Carne picada de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Menudencias de pollo',um:'KG'},
-  {animal:'Pollo',nom:'Hígado de pollo',um:'KG'},
-  // PESCADO
-  {animal:'Pescado',nom:'Merluza filet',um:'KG'},
-  {animal:'Pescado',nom:'Merluza entera',um:'KG'},
-  {animal:'Pescado',nom:'Salmón rosado',um:'KG'},
-  {animal:'Pescado',nom:'Atún fresco',um:'KG'},
-  {animal:'Pescado',nom:'Lenguado',um:'KG'},
-  {animal:'Pescado',nom:'Calamares',um:'KG'},
-  {animal:'Pescado',nom:'Mejillones',um:'KG'},
-  // VARIOS
-  {animal:'Varios',nom:'Huevos de gallina',um:'UN'},
-  {animal:'Varios',nom:'Huevos de codorniz',um:'UN'},
-  {animal:'Varios',nom:'Grasa de pella',um:'KG'},
-  {animal:'Varios',nom:'Huesos para caldo',um:'KG'},
-  {animal:'Varios',nom:'Chinchulín',um:'KG'},
-  {animal:'Varios',nom:'Morcilla',um:'UN'},
-  {animal:'Varios',nom:'Chorizo criollo',um:'UN'},
-  {animal:'Varios',nom:'Chorizo parrillero',um:'UN'},
-];
+var CATALOGOS = {
+  carniceria: [
+    {animal:'Vaca',nom:'Asado',um:'KG'},{animal:'Vaca',nom:'Vacío',um:'KG'},
+    {animal:'Vaca',nom:'Tapa de asado',um:'KG'},{animal:'Vaca',nom:'Matambre',um:'KG'},
+    {animal:'Vaca',nom:'Peceto',um:'KG'},{animal:'Vaca',nom:'Paleta',um:'KG'},
+    {animal:'Vaca',nom:'Cuadril',um:'KG'},{animal:'Vaca',nom:'Lomo',um:'KG'},
+    {animal:'Vaca',nom:'Bife de chorizo',um:'KG'},{animal:'Vaca',nom:'Carne picada común',um:'KG'},
+    {animal:'Vaca',nom:'Carne picada especial',um:'KG'},{animal:'Vaca',nom:'Milanesa de vaca',um:'KG'},
+    {animal:'Vaca',nom:'Osobuco',um:'KG'},{animal:'Vaca',nom:'Falda',um:'KG'},
+    {animal:'Vaca',nom:'Lengua',um:'KG'},{animal:'Vaca',nom:'Mondongo',um:'KG'},
+    {animal:'Vaca',nom:'Huesos de vaca',um:'KG'},{animal:'Vaca',nom:'Chinchulín',um:'KG'},
+    {animal:'Cerdo',nom:'Bondiola de cerdo',um:'KG'},{animal:'Cerdo',nom:'Costilla de cerdo',um:'KG'},
+    {animal:'Cerdo',nom:'Paleta de cerdo',um:'KG'},{animal:'Cerdo',nom:'Lomo de cerdo',um:'KG'},
+    {animal:'Cerdo',nom:'Milanesa de cerdo',um:'KG'},{animal:'Cerdo',nom:'Panceta fresca',um:'KG'},
+    {animal:'Cerdo',nom:'Grasa de cerdo',um:'KG'},
+    {animal:'Pollo',nom:'Pollo entero',um:'KG'},{animal:'Pollo',nom:'Pechuga de pollo',um:'KG'},
+    {animal:'Pollo',nom:'Muslo de pollo',um:'KG'},{animal:'Pollo',nom:'Alitas de pollo',um:'KG'},
+    {animal:'Pollo',nom:'Pata muslo',um:'KG'},{animal:'Pollo',nom:'Milanesa de pollo',um:'KG'},
+    {animal:'Pollo',nom:'Hígado de pollo',um:'KG'},
+    {animal:'Pescado',nom:'Merluza filet',um:'KG'},{animal:'Pescado',nom:'Merluza entera',um:'KG'},
+    {animal:'Pescado',nom:'Salmón rosado',um:'KG'},{animal:'Pescado',nom:'Lenguado',um:'KG'},
+    {animal:'Varios',nom:'Huevos de gallina',um:'UN'},{animal:'Varios',nom:'Chorizo criollo',um:'UN'},
+    {animal:'Varios',nom:'Chorizo parrillero',um:'UN'},{animal:'Varios',nom:'Morcilla',um:'UN'},
+    {animal:'Varios',nom:'Huesos para caldo',um:'KG'}
+  ],
+  rotiseria: [
+    {nom:'Empanada de carne',um:'UN'},{nom:'Empanada de jamón y queso',um:'UN'},
+    {nom:'Empanada de humita',um:'UN'},{nom:'Empanada de verdura',um:'UN'},
+    {nom:'Pizza muzzarella (porción)',um:'UN'},{nom:'Pizza napolitana (porción)',um:'UN'},
+    {nom:'Tarta de verdura',um:'UN'},{nom:'Tarta de jamón y queso',um:'UN'},
+    {nom:'Pascualina',um:'UN'},{nom:'Medialuna de manteca',um:'UN'},
+    {nom:'Medialuna de grasa',um:'UN'},{nom:'Sándwich de miga simple',um:'UN'},
+    {nom:'Sándwich de miga doble',um:'UN'},{nom:'Pollo asado entero',um:'UN'},
+    {nom:'Pollo asado medio',um:'UN'},{nom:'Milanesa napolitana',um:'UN'},
+    {nom:'Milanesa a la plancha',um:'UN'},{nom:'Ensalada rusa',um:'KG'},
+    {nom:'Ensalada de papa',um:'KG'},{nom:'Facturas surtidas',um:'UN'}
+  ],
+  viandas: [
+    {nom:'Milanesa con puré',um:'UN'},{nom:'Milanesa con papas fritas',um:'UN'},
+    {nom:'Pollo al horno con papas',um:'UN'},{nom:'Pollo a la plancha',um:'UN'},
+    {nom:'Guiso de lentejas',um:'UN'},{nom:'Guiso de porotos',um:'UN'},
+    {nom:'Estofado de carne',um:'UN'},{nom:'Locro',um:'UN'},
+    {nom:'Fideos con tuco',um:'UN'},{nom:'Fideos con pesto',um:'UN'},
+    {nom:'Arroz con pollo',um:'UN'},{nom:'Arroz con leche',um:'UN'},
+    {nom:'Sopa de verduras',um:'UN'},{nom:'Puré de papa',um:'UN'},
+    {nom:'Tarta de verdura (porción)',um:'UN'},{nom:'Ensalada mixta',um:'UN'},
+    {nom:'Budín de pan',um:'UN'}
+  ],
+  fiambreria: [
+    {nom:'Jamón cocido',um:'KG'},{nom:'Jamón crudo',um:'KG'},
+    {nom:'Salame',um:'KG'},{nom:'Mortadela',um:'KG'},
+    {nom:'Paleta',um:'KG'},{nom:'Bondiola de cerdo',um:'KG'},
+    {nom:'Panceta ahumada',um:'KG'},{nom:'Queso cuartirolo',um:'KG'},
+    {nom:'Queso cremoso',um:'KG'},{nom:'Queso mozzarella',um:'KG'},
+    {nom:'Queso de máquina',um:'KG'},{nom:'Queso pategrás',um:'KG'},
+    {nom:'Queso provolone',um:'KG'},{nom:'Queso sardo',um:'KG'},
+    {nom:'Ricota',um:'KG'},{nom:'Manteca',um:'KG'}
+  ]
+};
 
+var CATALOGO_CARNICERIA = CATALOGOS.carniceria; // alias para compatibilidad
 var ANIMAL_ICONS = {Vaca:'🐄',Cerdo:'🐷',Pollo:'🐔',Pescado:'🐟',Varios:'🥚'};
+var CAT_NOMBRES = {
+  carniceria:{nom:'Carnicería',ico:'🥩'},
+  rotiseria:{nom:'Rotisería',ico:'🍕'},
+  viandas:{nom:'Viandas',ico:'🍱'},
+  fiambreria:{nom:'Fiambrería',ico:'🧀'}
+};
+
+function actualizarBtnCarniceria(){
+  var sb = el('sb-carniceria');
+  if(!sb) return;
+  var cats = ['Carnicería','Rotisería','Viandas','Fiambrería'];
+  var tieneEspecial = productos.some(function(p){ return cats.indexOf(p.cat) !== -1; });
+  var sinProductos = productos.length === 0;
+  sb.style.display = (tieneEspecial || sinProductos) ? 'flex' : 'none';
+}
+
+function setCarnTab(tab, btn){
+  carnTabActual = tab;
+  document.querySelectorAll('#carn-tabs .fb').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  var filtro = el('carn-filtro');
+  if(filtro) filtro.style.display = tab==='carniceria' ? '' : 'none';
+  var customWrap = el('carn-cat-custom-wrap');
+  var subcatWrap = el('carn-subcategoria-wrap');
+  if(customWrap) customWrap.style.display = tab==='personalizada' ? '' : 'none';
+  if(subcatWrap) subcatWrap.style.display = tab==='carniceria' ? '' : 'none';
+  carnFilterActual = 'TODOS';
+  renderCortesLista();
+}
 
 function abrirCarniceria(){
   carnFilterActual='TODOS';
@@ -3240,23 +3281,28 @@ function abrirCarniceria(){
 }
 
 function cargarCatalogoPrecargado(){
-  if(!confirm('Esto agrega '+CATALOGO_CARNICERIA.length+' cortes al inventario. ¿Continuás?')) return;
-  var ya = productos.filter(function(p){return p.subcat==='carniceria';}).map(function(p){return p.nom.toLowerCase();});
+  var tab = carnTabActual;
+  if(tab === 'personalizada') return;
+  var catalogo = CATALOGOS[tab];
+  if(!catalogo) return;
+  var catNom = CAT_NOMBRES[tab] ? CAT_NOMBRES[tab].nom : 'Carnicería';
+  if(!confirm('Esto agrega '+catalogo.length+' productos de '+catNom+' al inventario. ¿Continuás?')) return;
+  var ya = productos.filter(function(p){return p.cat===catNom;}).map(function(p){return p.nom.toLowerCase();});
   var agregados = 0;
-  CATALOGO_CARNICERIA.forEach(function(corte){
-    if(ya.indexOf(corte.nom.toLowerCase())===-1){
+  catalogo.forEach(function(item){
+    if(ya.indexOf(item.nom.toLowerCase())===-1){
       productos.push({
-        id:Date.now()+Math.random(), 
-        cod:'CARN'+String(Math.floor(Math.random()*9999)).padStart(4,'0'),
-        nom:corte.nom, cat:'Carnicería', subcat:'carniceria',
-        animal:corte.animal, stock:0, um:corte.um,
+        id:Date.now()+Math.random(),
+        cod:catNom.substring(0,4).toUpperCase()+String(Math.floor(Math.random()*9999)).padStart(4,'0'),
+        nom:item.nom, cat:catNom, subcat:tab,
+        animal:item.animal||null, stock:0, um:item.um,
         precio:0, pventa:0, min:0, max:0, prov:''
       });
       agregados++;
     }
   });
-  saveState(); renderCortesLista(); renderProds();
-  toast(agregados+' cortes cargados ✓');
+  saveState(); renderCortesLista(); renderProds(); actualizarBtnCarniceria();
+  toast(agregados+' productos cargados ✓');
 }
 
 function filtrarCarniceria(animal, btn){
@@ -3268,66 +3314,99 @@ function filtrarCarniceria(animal, btn){
 
 function agregarCorte(){
   var nom = get('carn-nom').trim();
-  if(!nom){toast('Ingresá el nombre del corte','err');return;}
-  var animalEl=el('carn-animal'), umEl=el('carn-um');
-  var animal = animalEl?animalEl.value:'Vaca';
+  if(!nom){toast('Ingresá el nombre del producto','err');return;}
+  var umEl=el('carn-um');
   var um = umEl?umEl.value:'KG';
   var precio = parseFloat(get('carn-precio'))||0;
+
+  var cat, subcat, animal;
+  if(carnTabActual === 'personalizada'){
+    cat = get('carn-cat-custom').trim();
+    if(!cat){toast('Ingresá el nombre de la categoría','err');return;}
+    subcat = cat.toLowerCase();
+    animal = null;
+  } else if(carnTabActual === 'carniceria'){
+    var animalEl=el('carn-animal');
+    animal = animalEl?animalEl.value:'Vaca';
+    cat = 'Carnicería';
+    subcat = 'carniceria';
+  } else {
+    cat = CAT_NOMBRES[carnTabActual] ? CAT_NOMBRES[carnTabActual].nom : carnTabActual;
+    subcat = carnTabActual;
+    animal = null;
+  }
+
   productos.push({
-    id:Date.now(), 
-    cod:'CARN'+String(Date.now()).slice(-4),
-    nom:nom, cat:'Carnicería', subcat:'carniceria',
+    id:Date.now(),
+    cod:cat.substring(0,4).toUpperCase()+String(Date.now()).slice(-4),
+    nom:nom, cat:cat, subcat:subcat,
     animal:animal, stock:0, um:um,
     precio:precio, pventa:0, min:0, max:0, prov:''
   });
   set('carn-nom','val',''); set('carn-precio','val','');
-  saveState(); renderCortesLista(); renderProds();
-  toast('✓ '+nom+' agregado');
+  saveState(); renderCortesLista(); renderProds(); actualizarBtnCarniceria();
+  toast('✓ '+nom+' agregado a '+cat);
 }
 
 function renderCortesLista(){
   var lista = el('carn-lista');
   if(!lista) return;
-  var todos = productos.filter(function(p){return p.cat==='Carnicería';});
-  var cortes = carnFilterActual==='TODOS'?todos:todos.filter(function(p){return p.animal===carnFilterActual;});
-  
+
+  if(carnTabActual === 'personalizada'){
+    lista.innerHTML = '<div style="text-align:center;padding:20px;color:var(--mut2);font-size:13px;">'+
+      'Usá el formulario de abajo para agregar productos a una categoría nueva o existente.</div>';
+    return;
+  }
+
+  var catNom = CAT_NOMBRES[carnTabActual] ? CAT_NOMBRES[carnTabActual].nom : 'Carnicería';
+  var catalogo = CATALOGOS[carnTabActual] || [];
+  var todos = productos.filter(function(p){return p.cat===catNom;});
+
+  // Filtro por animal (solo carnicería)
+  var items = carnTabActual==='carniceria' && carnFilterActual!=='TODOS'
+    ? todos.filter(function(p){return p.animal===carnFilterActual;})
+    : todos;
+
   if(!todos.length){
+    var ico = CAT_NOMBRES[carnTabActual] ? CAT_NOMBRES[carnTabActual].ico : '📦';
     lista.innerHTML='<div class="empty">'
-      +'<div class="empty-ico">🥩</div>'
-      +'<div class="empty-t">Sin cortes cargados</div>'
+      +'<div class="empty-ico">'+ico+'</div>'
+      +'<div class="empty-t">Sin productos de '+catNom+'</div>'
       +'<div class="empty-s">Cargá el catálogo completo de una vez o agregá los tuyos</div>'
-      +'<button class="btn btn-acc" onclick="cargarCatalogoPrecargado()" style="margin-top:14px;">📋 Cargar catálogo completo ('+CATALOGO_CARNICERIA.length+' cortes)</button>'
+      +'<button class="btn btn-acc" onclick="cargarCatalogoPrecargado()" style="margin-top:14px;">📋 Cargar catálogo ('+catalogo.length+' productos)</button>'
       +'</div>';
     return;
   }
 
-  // Group by animal
-  var animales = [];
-  cortes.forEach(function(p){ if(animales.indexOf(p.animal||'Varios')===-1) animales.push(p.animal||'Varios'); });
-  
-  var html = '';
-  if(todos.length && carnFilterActual==='TODOS'){
-    html += '<div style="margin-bottom:12px;"><button class="btn btn-acc btn-sm btn-full" onclick="cargarCatalogoPrecargado()">📋 Agregar más del catálogo</button></div>';
+  var html = '<div style="margin-bottom:12px;"><button class="btn btn-acc btn-sm btn-full" onclick="cargarCatalogoPrecargado()">📋 Agregar más del catálogo</button></div>';
+
+  if(carnTabActual==='carniceria'){
+    // Agrupar por animal
+    var animales = [];
+    items.forEach(function(p){ if(animales.indexOf(p.animal||'Varios')===-1) animales.push(p.animal||'Varios'); });
+    animales.forEach(function(animal){
+      var grupo = items.filter(function(p){return (p.animal||'Varios')===animal;});
+      html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px;border-top:1px solid var(--brd);">'+(ANIMAL_ICONS[animal]||'🥩')+' '+animal+'</div>';
+      html += grupo.map(function(p){ return renderItemCorte(p); }).join('');
+    });
+  } else {
+    html += items.map(function(p){ return renderItemCorte(p); }).join('');
   }
-  
-  animales.forEach(function(animal){
-    var grupo = cortes.filter(function(p){return (p.animal||'Varios')===animal;});
-    html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px;border-top:1px solid var(--brd);">'+(ANIMAL_ICONS[animal]||'🥩')+' '+animal+'</div>';
-    html += grupo.map(function(p){
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);">'
-        +'<div style="flex:1;">'
-        +'<div style="font-size:13px;">'+p.nom+'</div>'
-        +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Stock: '+p.stock+' '+p.um+(p.precio?' · $'+p.precio.toLocaleString('es-AR')+'/'+p.um:'')+'</div>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:6px;">'
-        +'<input type="number" placeholder="$/'+p.um+'" value="'+(p.pventa||'')+'" style="width:90px;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
-        +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+');renderCortesLista();">✕</button>'
-        +'</div>'
-        +'</div>';
-    }).join('');
-  });
-  
+
   lista.innerHTML = html;
+}
+
+function renderItemCorte(p){
+  return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);">'
+    +'<div style="flex:1;">'
+    +'<div style="font-size:13px;">'+p.nom+'</div>'
+    +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Stock: '+p.stock+' '+p.um+(p.precio?' · $'+p.precio.toLocaleString('es-AR')+'/'+p.um:'')+'</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:6px;">'
+    +'<input type="number" placeholder="$/'+p.um+'" value="'+(p.pventa||'')+'" style="width:90px;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
+    +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+');renderCortesLista();">✕</button>'
+    +'</div>'
+    +'</div>';
 }
 
 function updPrecioCorne(prodId, val){
