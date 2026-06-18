@@ -2905,8 +2905,8 @@ function renderPage(id){
   else if(id==='facturas') renderFacts();
   else if(id==='gastos') renderGastos();
   else if(id==='fiado') renderFiado();
-  else if(id==='resumen') renderResumen();
-  else if(id==='finanzas') renderFinanzas();
+  else if(id==='resumen'){ sincronizarDatos().then(function(){ renderResumen(); }); }
+  else if(id==='finanzas'){ sincronizarDatos().then(function(){ renderFinanzas(); }); }
   else if(id==='empleados') renderEmpleados();
   else if(id==='pedidos') renderPedidos();
 }
@@ -4431,7 +4431,9 @@ function getDomingoActual() {
 
 function fechaCorta(d) {
   if(!d) return '';
-  var f = new Date(d);
+  // Agregar T00:00:00 para que JS la interprete como hora local (no UTC)
+  // Evita el desfase de un día en zonas horarias negativas (Argentina UTC-3)
+  var f = typeof d === 'string' ? new Date(d+'T00:00:00') : new Date(d);
   return f.getDate()+'/'+(f.getMonth()+1);
 }
 
