@@ -742,10 +742,11 @@ select.fi{appearance:none;cursor:pointer;}
       </div>
     </div>
     <!-- HEADERS -->
-    <div style="display:grid;grid-template-columns:2fr 80px 100px 80px 28px;gap:6px;padding:6px 8px;background:var(--sur2);border-radius:6px;margin-bottom:6px;">
+    <div style="display:grid;grid-template-columns:2fr 80px 100px 100px 80px 28px;gap:6px;padding:6px 8px;background:var(--sur2);border-radius:6px;margin-bottom:6px;">
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Producto</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Cant.</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Precio unit.</span>
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--acc2);text-transform:uppercase;letter-spacing:1px;">Total línea $</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Subtotal</span>
       <span></span>
     </div>
@@ -2199,17 +2200,35 @@ function renderLineas(){
     productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>'; });
     opts+='<option value="__nuevo__">+ Producto nuevo...</option>';
     var sub=l.cant&&l.precio?fmtM(l.cant*l.precio):'—';
-    return '<div style="display:grid;grid-template-columns:2fr 80px 100px 80px 28px;gap:6px;margin-bottom:6px;align-items:center;" data-lid="'+l.id+'">'
+    var totalLinea = l.totalLinea || '';
+    return '<div style="display:grid;grid-template-columns:2fr 80px 100px 100px 80px 28px;gap:6px;margin-bottom:6px;align-items:center;" data-lid="'+l.id+'">'
       +'<select class="fi" style="font-size:12px;padding:7px 8px;" onchange="selLinProd('+l.id+',this.value)">'+opts+'</select>'
       +'<input class="fi" type="number" placeholder="0" value="'+(l.cant||'')+'" style="font-size:13px;padding:7px 8px;text-align:center;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="cant" oninput="updLineaEvt(this)">'
       +'<div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--mut2);font-size:12px;">$</span>'
       +'<input class="fi" type="number" placeholder="0" value="'+(l.precio||'')+'" style="font-size:13px;padding:7px 8px 7px 20px;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="precio" oninput="updLineaEvt(this)"></div>'
+      +'<div style="position:relative;" title="Ingresá el total de la factura para esta línea y GestoPro calcula el precio unitario automáticamente">'
+      +'<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--acc2);font-size:12px;">$</span>'
+      +'<input class="fi" type="number" placeholder="total..." value="'+(totalLinea||'')+'" style="font-size:13px;padding:7px 8px 7px 20px;font-family:DM Mono,monospace;border-color:var(--acc);background:var(--acc-dim);" data-lid="'+l.id+'" data-field="totalLinea" oninput="updTotalLinea(this)"></div>'
       +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--yel);text-align:right;padding-right:4px;">'+sub+'</div>'
       +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;padding:6px;font-size:13px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;" onclick="quitarLinea('+l.id+')">✕</button>'
       +'</div>';
   }).join('');
   calcTotal(); calcPreciosVenta();
 }
+function updTotalLinea(inp){
+  var lid = parseInt(inp.dataset.lid);
+  var l = lineasIngreso.find(function(l){return l.id===lid;});
+  if(!l) return;
+  var total = parseFloat(inp.value)||0;
+  l.totalLinea = total;
+  if(total > 0 && l.cant > 0){
+    var precioUnitario = Math.round(total / l.cant * 100) / 100;
+    l.precio = precioUnitario;
+    toast('💡 Precio unitario calculado: '+fmtM(precioUnitario)+' ('+fmtM(total)+' ÷ '+l.cant+' un)');
+  }
+  renderLineas();
+}
+
 function updLineaEvt(inp){
   var lid=parseInt(inp.dataset.lid);
   var field=inp.dataset.field;
