@@ -3826,9 +3826,9 @@ function leerFacturaIA(input){
     }
     fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWV3am52eGx2eXduaWh4a2d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzI0MzUsImV4cCI6MjA5NjI0ODQzNX0.wKsLZopVVAhDV_4RUaLU8Lx8LnorfmE9BGScYWlrW7g','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWV3am52eGx2eXduaWh4a2d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzI0MzUsImV4cCI6MjA5NjI0ODQzNX0.wKsLZopVVAhDV_4RUaLU8Lx8LnorfmE9BGScYWlrW7g'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:1000,
         messages:[{
           role:'user',
