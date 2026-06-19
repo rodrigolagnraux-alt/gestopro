@@ -3815,7 +3815,7 @@ function leerFacturaIA(input){
     var base64 = ev.target.result.split(',')[1];
     var mediaType = file.type||'image/jpeg';
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
-    var apiKey = config.apikey||'';
+    var apiKey = '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' || config.apikey||'';
     if(!apiKey||!apiKey.startsWith('sk-ant-')){
       set('ia-loading','display','none');
       toast('Necesitás configurar tu API Key en ⚙️ Configuración','err');
@@ -3886,12 +3886,6 @@ function cargarDatosFacturaIA(f){
 }
 
 function verificarYFoto(){
-  if(!config.apikey||!config.apikey.startsWith('sk-ant-')){
-    toast('Primero configurá tu API Key en ⚙️ arriba a la derecha','err');
-    closeModal('modal-ingreso');
-    setTimeout(function(){ openModal('modal-config'); },300);
-    return;
-  }
   var fi=el('factura-foto');
   if(fi) fi.click();
 }
