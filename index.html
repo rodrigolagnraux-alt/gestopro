@@ -3824,9 +3824,9 @@ function leerFacturaIA(input){
       openModal('modal-config');
       return;
     }
-    fetch('https://api.anthropic.com/v1/messages',{
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWV3am52eGx2eXduaWh4a2d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxNTY0NzUsImV4cCI6MjA2NDczMjQ3NX0.iQFJJnvPeGPECK2nWKKkVRxlGDFLHCeBWMVFkuVkpyk'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1000,
