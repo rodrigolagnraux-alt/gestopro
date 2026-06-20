@@ -896,7 +896,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><select class="fi" id="p-prov" onchange="if(this.value==='__nuevo_prov__'){abrirNuevoProveedorInline();}"><option value="">— Sin proveedor —</option></select></div></div>
   <div class="fg"><label class="fl">PLU balanza (opcional)</label><input class="fi" id="p-plu" type="number" placeholder="Ej: 100" inputmode="numeric">
   <div style="font-size:11px;color:var(--mut2);margin-top:4px;">Código que usa la balanza para este producto — permite escanear la etiqueta y cargar el peso automáticamente</div></div>
-  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-prod')">Cancelar</button><button class="btn btn-acc" onclick="guardarProd()">Guardar</button></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="prodNuevoDesdeLinea=null;closeModal('modal-prod')">Cancelar</button><button class="btn btn-acc" onclick="guardarProd()">Guardar</button></div>
 </div>
 </div>
 
@@ -2256,7 +2256,12 @@ function updLineaEvt(inp){
 function selLinProd(id,val){
   const l=lineasIngreso.find(function(l){return l.id===id;});
   if(!l)return;
-  if(val==='__nuevo__'){ openModal('modal-prod'); return; }
+  if(val==='__nuevo__'){
+    prodNuevoDesdeLinea = id;
+    openModal('modal-prod');
+    if(l.prodNom) set('p-nom','val',l.prodNom);
+    return;
+  }
   const prod=productos.find(function(p){return p.id==val;});
   if(prod){ l.prodId=prod.id; l.prodNom=prod.nom; if(prod.precio)l.precio=prod.precio; }
   else{ l.prodId=''; l.prodNom=''; }
@@ -2499,6 +2504,7 @@ function eliminarGF(id){
 
 // ═══ PRODUCTO ═══
 var prodEditId = null;
+var prodNuevoDesdeLinea = null;
 function abrirEditarProd(id){
   var p = productos.find(function(p){return p.id===id;});
   if(!p) return;
@@ -2600,7 +2606,14 @@ function guardarProd(){
     return;
   }
   if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
-  productos.push({id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov')==='__nuevo_prov__'?'':get('p-prov').trim(),plu:get('p-plu').trim()||null});
+  var nuevoProd={id:Date.now(),cod:get('p-cod').trim()||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:parseFloat(get('p-stock'))||0,um:pum?pum.value:'UN',precio:parseFloat(get('p-precio'))||0,pventa:parseFloat(get('p-pventa'))||0,min:parseFloat(get('p-min'))||0,max:parseFloat(get('p-max'))||0,prov:get('p-prov')==='__nuevo_prov__'?'':get('p-prov').trim(),plu:get('p-plu').trim()||null};
+  productos.push(nuevoProd);
+  if(prodNuevoDesdeLinea!==null){
+    var lin=lineasIngreso.find(function(l){return l.id===prodNuevoDesdeLinea;});
+    if(lin){ lin.prodId=nuevoProd.id; lin.prodNom=nuevoProd.nom; if(nuevoProd.precio)lin.precio=nuevoProd.precio; }
+    prodNuevoDesdeLinea=null;
+    renderLineas();
+  }
   ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
   closeModal('modal-prod'); saveState(); renderDash(); renderProds();
   toast('📦 Producto guardado ✓');
