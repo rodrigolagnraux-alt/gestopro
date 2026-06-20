@@ -944,16 +944,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Las horas trabajadas el domingo se pagan con recargo sobre el valor hora normal.</div>
   <div class="fg"><label class="fl">Recargo domingo (%)</label><input class="fi" id="cfg-recargo-domingo" type="number" placeholder="50" inputmode="numeric"></div>
 
-  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🤖 IA para leer facturas</div>
-  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">
-    Para usar la IA necesitás tu propia clave de Anthropic.<br>
-    1. Entrá a <b style="color:var(--acc2);">console.anthropic.com</b><br>
-    2. Creá una cuenta gratuita<br>
-    3. Andá a API Keys → Create Key<br>
-    4. Pegá la clave acá abajo (empieza con sk-ant-)
-  </div>
-  <div class="fg"><label class="fl">API Key de Anthropic (Plan Pro)</label><input class="fi" id="cfg-apikey" placeholder="sk-ant-..." type="password"></div>
-  <div id="cfg-apikey-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;"></div>
+
 
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">💾 Guardar</button></div>
 </div>
@@ -1832,7 +1823,6 @@ function guardarConfig(){
     if(pin){ pinStatus.textContent='🔒 PIN activo — se pedirá al entrar a Resumen y Finanzas'; pinStatus.style.color='var(--grn)'; }
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
-  var apikey=get('cfg-apikey'); if(apikey) config.apikey=apikey;
   var rd=parseFloat(get('cfg-recargo-domingo')); config.recargoDomingo = isNaN(rd) ? 50 : rd;
   var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
   config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
@@ -3815,17 +3805,9 @@ function leerFacturaIA(input){
     var base64 = ev.target.result.split(',')[1];
     var mediaType = file.type||'image/jpeg';
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
-    var apiKey = config.apikey||'';
-    if(!apiKey||!apiKey.startsWith('sk-ant-')){
-      set('ia-loading','display','none');
-      toast('Necesitás configurar tu API Key en ⚙️ Configuración','err');
-      closeModal('modal-ingreso');
-      openModal('modal-config');
-      return;
-    }
-    fetch('https://api.anthropic.com/v1/messages',{
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -4361,7 +4343,6 @@ function initAppData(){
   var fpref = config.fiadoPrecio || 'original';
   var fpEl = el('cfg-fiado-precio-'+fpref);
   if(fpEl) fpEl.checked = true;
-  if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   // Ocultar overlays internos de secciones bloqueadas según plan
   var lockWraps = {pventa:'pro', oc:'business'};
