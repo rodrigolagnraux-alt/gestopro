@@ -3815,8 +3815,7 @@ function leerFacturaIA(input){
     var base64 = ev.target.result.split(',')[1];
     var mediaType = file.type||'image/jpeg';
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
-    var _gp_k = localStorage.getItem('gp_anthropic_key')||'';
-    var apiKey = _gp_k || config.apikey||'';
+    var apiKey = config.apikey||'';
     if(!apiKey||!apiKey.startsWith('sk-ant-')){
       set('ia-loading','display','none');
       toast('Necesitás configurar tu API Key en ⚙️ Configuración','err');
@@ -4363,10 +4362,6 @@ function initAppData(){
   var fpEl = el('cfg-fiado-precio-'+fpref);
   if(fpEl) fpEl.checked = true;
   if(config.apikey){ set('cfg-apikey','val',config.apikey); set('cfg-apikey-status','text','IA activada'); var st=el('cfg-apikey-status');if(st)st.style.color='var(--grn)'; }
-  // Guardar key de IA en localStorage si no existe
-  if(!localStorage.getItem('gp_anthropic_key')){
-    localStorage.setItem('gp_anthropic_key','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');
-  }
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   // Ocultar overlays internos de secciones bloqueadas según plan
   var lockWraps = {pventa:'pro', oc:'business'};
