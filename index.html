@@ -2260,6 +2260,7 @@ function selLinProd(id,val){
     prodNuevoDesdeLinea = id;
     openModal('modal-prod');
     if(l.prodNom) set('p-nom','val',l.prodNom);
+    if(l.precio) set('p-precio','val',l.precio);
     return;
   }
   const prod=productos.find(function(p){return p.id==val;});
