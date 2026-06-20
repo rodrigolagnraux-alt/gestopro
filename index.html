@@ -1627,6 +1627,7 @@ let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
 var cajeroActual = null; // {id, nombre, esDueno}
+var cajaPinFallosSeguidos = 0;
 let lineasIngreso=[], lineasCobro=[];
 
 const PLANES={
@@ -1908,8 +1909,14 @@ async function confirmarSesionCaja(){
     el('caja-pin-error').style.display = 'block';
     el('caja-pin-inp').value = '';
     el('caja-pin-inp').focus();
+    cajaPinFallosSeguidos++;
+    if(cajaPinFallosSeguidos >= 2){
+      notificarPinFallido(selVal==='dueno' ? 'sistema' : 'caja');
+      cajaPinFallosSeguidos = 0;
+    }
     return;
   }
+  cajaPinFallosSeguidos = 0;
 
   cajeroActual = { id: selVal, nombre: nombre, esDueno: selVal==='dueno' };
   closeModal('modal-sesion-caja');
@@ -4411,6 +4418,7 @@ function initApp(){
 var pinActual = '';
 var pinDestino = null;
 var pinNavEl = null;
+var pinFallosSeguidos = 0;
 var pinSesionDesbloqueada = {};
 
 function goConPin(id, navEl, req) {
@@ -5109,13 +5117,32 @@ function verificarPin() {
     go(pinDestino, pinNavEl);
     pinActual = '';
     pinDestino = null;
+    pinFallosSeguidos = 0;
   } else {
     document.getElementById('pin-error').textContent = 'PIN incorrecto';
     pinActual = '';
     actualizarDots();
     // Vibrar en mobile
     if(navigator.vibrate) navigator.vibrate(200);
+    pinFallosSeguidos++;
+    if(pinFallosSeguidos >= 2){
+      notificarPinFallido('sistema');
+      pinFallosSeguidos = 0;
+    }
   }
+}
+
+function notificarPinFallido(tipo){
+  if(!currentUser||!currentUser.email) return;
+  fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-pin-fallido',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      negocio_nombre: config.negocioNom||'',
+      negocio_email: currentUser.email,
+      tipo_pin: tipo
+    })
+  }).catch(function(){});
 }
 
 // Run when DOM is ready
