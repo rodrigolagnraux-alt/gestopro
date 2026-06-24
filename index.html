@@ -2266,8 +2266,19 @@ function selLinProd(id,val){
   if(val==='__nuevo__'){
     prodNuevoDesdeLinea = id;
     openModal('modal-prod');
-    if(l.prodNom) set('p-nom','val',l.prodNom);
+    set('p-nom','val','');
     if(l.precio) set('p-precio','val',l.precio);
+    // Si el nombre de la línea parece un código de barras, buscar en Open Food Facts
+    var posibleCod = (l.prodNom||'').trim();
+    if(/^\d{8,14}$/.test(posibleCod)){
+      buscarEnOpenFoodFacts(posibleCod, function(nombreReal){
+        var inp = el('p-nom');
+        if(inp && nombreReal) inp.value = nombreReal;
+        else if(inp && !inp.value) inp.value = posibleCod;
+      });
+    } else if(l.prodNom) {
+      set('p-nom','val',l.prodNom);
+    }
     return;
   }
   const prod=productos.find(function(p){return p.id==val;});
@@ -3102,8 +3113,21 @@ function procesarCodigoPistola(codigo){
       el('pistola-input').focus();
       return;
     }
-    toast('Código no encontrado: '+codigo,'err');
-    el('pistola-input').focus();
+    toast('Código no encontrado — buscando nombre...','err');
+    // Abrir scanner modal para crear el producto, prellenando con Open Food Facts
+    abrirScanner('cobrar');
+    set('scanner-manual','val',codigo);
+    set('scanner-found','display','none');
+    set('scanner-results','display','none');
+    set('scanner-not-found','display','block');
+    set('scanner-confirm-btn','display','none');
+    var newNom = el('scanner-new-nom'); if(newNom) newNom.value='';
+    if(/^\d{8,14}$/.test(codigo)){
+      buscarEnOpenFoodFacts(codigo, function(nombreReal){
+        var inp = el('scanner-new-nom');
+        if(inp) inp.value = nombreReal||'';
+      });
+    }
     return;
   }
   // Agregar 1 unidad (o sumar si ya existe)
