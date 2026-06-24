@@ -533,8 +533,8 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="ov" id="modal-sesion-caja">
 <div class="modal">
   <div class="modal-drag"></div>
-  <div class="modal-t">🏪 ¿Quién está en caja?</div>
-  <div class="modal-s">Elegí tu nombre e ingresá tu PIN para empezar a cobrar</div>
+  <div class="modal-t">🏪 Apertura de caja</div>
+  <div class="modal-s">Identificate e ingresá el fondo inicial</div>
   <div class="fg">
     <label class="fl">Cajero</label>
     <select class="fi" id="caja-cajero-sel" style="font-size:15px;" onchange="onCajeroCambia()">
@@ -546,9 +546,98 @@ select.fi{appearance:none;cursor:pointer;}
     <input class="fi" id="caja-pin-inp" type="password" placeholder="••••" maxlength="4" inputmode="numeric" style="font-size:24px;text-align:center;letter-spacing:8px;" onkeydown="if(event.key==='Enter')confirmarSesionCaja()">
   </div>
   <div id="caja-pin-error" style="display:none;color:var(--red);font-size:12px;text-align:center;margin-bottom:10px;">PIN incorrecto. Intentá de nuevo.</div>
+  <div class="frow">
+    <div class="fg">
+      <label class="fl">Turno</label>
+      <select class="fi" id="caja-turno-sel">
+        <option value="mañana">🌅 Mañana</option>
+        <option value="tarde">🌆 Tarde</option>
+        <option value="noche">🌙 Noche</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Fondo inicial $</label>
+      <input class="fi" id="caja-fondo-inp" type="number" placeholder="0" inputmode="numeric" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;">
+    </div>
+  </div>
+  <div style="background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;">
+    💡 El fondo inicial es el efectivo con el que arrancás el turno. Si no tenés fondo, dejá en 0.
+  </div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="closeModal('modal-sesion-caja')">Cancelar</button>
-    <button class="btn btn-grn" onclick="confirmarSesionCaja()">✓ Entrar a caja</button>
+    <button class="btn btn-grn" onclick="confirmarSesionCaja()">✓ Abrir caja</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL RETIRO DE PLATA -->
+<div class="ov" id="modal-retiro-caja">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">💰 Retiro de plata</div>
+  <div class="modal-s">Registrá la plata que salió de caja</div>
+  <div class="fg">
+    <label class="fl">Monto retirado $</label>
+    <input class="fi" id="retiro-monto" type="number" placeholder="0" inputmode="numeric" style="font-size:22px;text-align:center;font-family:DM Mono,monospace;">
+  </div>
+  <div class="fg">
+    <label class="fl">Motivo</label>
+    <select class="fi" id="retiro-motivo">
+      <option value="retiro_dueño">💼 Retiro del dueño</option>
+      <option value="pago_proveedor_efectivo">📦 Pago proveedor en efectivo</option>
+      <option value="gasto_varios">🧾 Gasto varios</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label class="fl">Nota (opcional)</label>
+    <input class="fi" id="retiro-nota" placeholder="Ej: Pago a Coca-Cola...">
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-retiro-caja')">Cancelar</button>
+    <button class="btn btn-red" onclick="confirmarRetiro()">💰 Registrar retiro</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL CIERRE DE CAJA -->
+<div class="ov" id="modal-cierre-caja">
+<div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🏁 Cierre de caja</div>
+  <div class="modal-s" id="cierre-subtitulo">Turno mañana</div>
+
+  <!-- RESUMEN DEL TURNO -->
+  <div style="background:var(--sur2);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--mut2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">📊 Resumen del turno</div>
+    <div id="cierre-resumen-turno"></div>
+  </div>
+
+  <!-- EFECTIVO ESPERADO VS CONTADO -->
+  <div style="background:var(--sur2);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--mut2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">💵 Arqueo de efectivo</div>
+    <div id="cierre-arqueo"></div>
+    <div class="fg" style="margin-top:12px;margin-bottom:0;">
+      <label class="fl">Efectivo contado en caja $</label>
+      <input class="fi" id="cierre-efectivo-contado" type="number" placeholder="0" inputmode="numeric" style="font-size:22px;text-align:center;font-family:DM Mono,monospace;" oninput="calcDiferenciaCierre()">
+    </div>
+    <div id="cierre-diferencia" style="text-align:center;margin-top:10px;font-size:13px;color:var(--mut2);"></div>
+  </div>
+
+  <!-- DIGITAL -->
+  <div style="background:var(--sur2);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--mut2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">📱 Digital (verificar contra app)</div>
+    <div id="cierre-digital"></div>
+  </div>
+
+  <!-- NOTAS -->
+  <div class="fg">
+    <label class="fl">Notas del cierre (opcional)</label>
+    <input class="fi" id="cierre-notas" placeholder="Ej: Sin novedades, faltante por vuelto...">
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-cierre-caja')">Cancelar</button>
+    <button class="btn btn-acc" onclick="confirmarCierreCaja()">✓ Confirmar cierre</button>
   </div>
 </div>
 </div>
@@ -559,6 +648,10 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
     <div class="modal-t" style="margin-bottom:0;">💚 Cobrar</div>
     <div id="caja-cajero-badge" style="display:none;background:var(--acc-dim);color:var(--acc2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;" onclick="cerrarSesionCaja()">👤 <span id="caja-cajero-nombre"></span> 🔒</div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="abrirRetiro()" style="font-size:11px;">💰 Retiro</button>
+      <button class="btn btn-red btn-sm" onclick="abrirCierreCaja()" style="font-size:11px;">🏁 Cerrar caja</button>
+    </div>
   </div>
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
   <!-- Input oculto para pistola lectora — siempre enfocado -->
@@ -1616,6 +1709,7 @@ let planActual='gratis';
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
 var cajeroActual = null; // {id, nombre, esDueno}
+var cajaActualId = null; // ID de la caja abierta en Supabase
 var cajaPinFallosSeguidos = 0;
 let lineasIngreso=[], lineasCobro=[];
 
@@ -1884,19 +1978,17 @@ async function confirmarSesionCaja(){
   var nombre = '';
 
   if(selVal === 'dueno'){
-    // PIN del dueño = PIN del sistema guardado en config
     var pinSistema = config.pin || '';
     pinValido = pinSistema && pin === pinSistema;
-    nombre = config.negocioNom || 'El dueño';
-    if(!pinSistema){ pinValido = true; nombre = config.negocioNom||'El dueño'; } // si no tiene PIN configurado, acceso libre
+    nombre = config.nombre || 'El dueño';
+    if(!pinSistema){ pinValido = true; nombre = config.nombre||'El dueño'; }
   } else {
-    // PIN del empleado
     var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('id',selVal).single();
     if(res.data){
       nombre = res.data.nombre;
       var pinEmp = res.data.pin_caja||'';
       pinValido = pinEmp && pin === pinEmp;
-      if(!pinEmp) pinValido = true; // sin PIN configurado, acceso libre
+      if(!pinEmp) pinValido = true;
     }
   }
 
@@ -1913,16 +2005,32 @@ async function confirmarSesionCaja(){
   }
   cajaPinFallosSeguidos = 0;
 
+  var fondoInicial = parseFloat(el('caja-fondo-inp').value)||0;
+  var turnoSel = el('caja-turno-sel');
+  var turno = turnoSel ? turnoSel.value : 'mañana';
+
   cajeroActual = { id: selVal, nombre: nombre, esDueno: selVal==='dueno' };
+
+  // Guardar apertura en Supabase
+  if(currentNegocioId && supabaseClient){
+    var resCaja = await supabaseClient.from('cajas').insert({
+      negocio_id: currentNegocioId,
+      cajero_nombre: nombre,
+      cajero_id: selVal,
+      fondo_inicial: fondoInicial,
+      turno: turno,
+      estado: 'abierta',
+      fecha_apertura: new Date().toISOString()
+    }).select().single();
+    if(resCaja.data) cajaActualId = resCaja.data.id;
+  }
+
   closeModal('modal-sesion-caja');
-  // Abrir cobrar directamente
   setTimeout(function(){
     lineasCobro=[];
     set('cobrar-monto','val',''); set('cobrar-num','text','$0');
     set('cobrar-desc','val',''); set('ef-recibido','val','');
     set('ef-vuelto','text','$0'); set('ef-total','text','$0');
-    set('alias-display','text',config.alias||'mi.negocio.mp');
-    set('cvu-display','text',config.cvu||'');
     renderLineasCobro();
     const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
     var badge = el('caja-cajero-badge');
@@ -1936,8 +2044,168 @@ async function confirmarSesionCaja(){
 function cerrarSesionCaja(){
   var nom = cajeroActual ? cajeroActual.nombre : 'Sesión';
   cajeroActual = null;
+  cajaActualId = null;
   closeModal('modal-cobrar');
   toast('🔒 Caja cerrada — '+nom);
+}
+
+function abrirRetiro(){
+  set('retiro-monto','val','');
+  set('retiro-nota','val','');
+  openModal('modal-retiro-caja');
+}
+
+async function confirmarRetiro(){
+  var monto = parseFloat(get('retiro-monto'))||0;
+  if(!monto){ toast('Ingresá el monto','err'); return; }
+  var motivoEl = el('retiro-motivo');
+  var motivo = motivoEl ? motivoEl.value : 'retiro_dueño';
+  var motivoLbl = {retiro_dueño:'Retiro del dueño', pago_proveedor_efectivo:'Pago proveedor efectivo', gasto_varios:'Gasto varios'};
+  var nota = get('retiro-nota').trim();
+
+  // Registrar como movimiento de egreso
+  var _me = {id:Date.now(), tipo:'egreso', desc:(motivoLbl[motivo]||motivo)+(nota?' · '+nota:''), monto:monto, fecha:hoy(), metodo:'efectivo', esCaja:true};
+  movimientos.unshift(_me); saveMovimiento(_me);
+
+  // Actualizar retiros en la caja activa
+  if(cajaActualId && supabaseClient){
+    var cajaRes = await supabaseClient.from('cajas').select('retiros').eq('id',cajaActualId).single();
+    var retirosActuales = cajaRes.data ? (cajaRes.data.retiros||0) : 0;
+    await supabaseClient.from('cajas').update({retiros: retirosActuales + monto}).eq('id',cajaActualId);
+  }
+
+  closeModal('modal-retiro-caja');
+  toast('💰 Retiro de '+fmtM(monto)+' registrado ✓');
+}
+
+async function abrirCierreCaja(){
+  if(!cajeroActual){ toast('No hay caja abierta','err'); return; }
+
+  // Calcular movimientos del turno actual
+  var ahora = new Date();
+  var movHoy = movimientos.filter(function(m){
+    var d = new Date(m.fecha+'T00:00:00');
+    return d.toDateString() === ahora.toDateString();
+  });
+
+  // Si hay cajaActualId, filtrar desde la apertura
+  var cajaData = null;
+  if(cajaActualId && supabaseClient){
+    var cr = await supabaseClient.from('cajas').select('*').eq('id',cajaActualId).single();
+    cajaData = cr.data;
+  }
+
+  var fondoInicial = cajaData ? (cajaData.fondo_inicial||0) : 0;
+  var retiros = cajaData ? (cajaData.retiros||0) : 0;
+  var turno = cajaData ? cajaData.turno : 'turno';
+
+  // Cobros del turno
+  var cobrosEfectivo = movHoy.filter(function(m){return m.tipo==='cobro'&&m.metodo==='efectivo';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var cobrosDni = movHoy.filter(function(m){return m.tipo==='cobro'&&m.metodo==='cuentadni';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var cobrosMp = movHoy.filter(function(m){return m.tipo==='cobro'&&m.metodo==='mercadopago';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var cobrosTotal = cobrosEfectivo + cobrosDni + cobrosMp;
+
+  // Fiados del turno
+  var fiadosTurno = movHoy.filter(function(m){return m.tipo==='fiado';}).reduce(function(s,m){return s+(m.monto||0);},0);
+
+  // Egresos de caja en efectivo (facturas pagadas en efectivo + egresos)
+  var egresosEfectivo = movHoy.filter(function(m){
+    return m.tipo==='egreso' && (m.metodo==='efectivo'||m.esCaja);
+  }).reduce(function(s,m){return s+(m.monto||m.total||0);},0);
+
+  // Efectivo esperado en caja
+  var efectivoEsperado = fondoInicial + cobrosEfectivo - egresosEfectivo - retiros;
+
+  // Guardar datos para el cierre
+  window._cierreDatos = {
+    fondoInicial: fondoInicial,
+    cobrosEfectivo: cobrosEfectivo,
+    cobrosDni: cobrosDni,
+    cobrosMp: cobrosMp,
+    cobrosTotal: cobrosTotal,
+    fiadosTurno: fiadosTurno,
+    egresosEfectivo: egresosEfectivo,
+    retiros: retiros,
+    efectivoEsperado: efectivoEsperado,
+    turno: turno
+  };
+
+  // Renderizar resumen
+  var sub = el('cierre-subtitulo');
+  if(sub) sub.textContent = 'Turno '+turno+' · '+cajeroActual.nombre;
+
+  var resumenEl = el('cierre-resumen-turno');
+  if(resumenEl) resumenEl.innerHTML =
+    '<div class="fin-row"><span>Cobros totales</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(cobrosTotal)+'</span></div>'+
+    '<div class="fin-row"><span style="padding-left:12px;font-size:11px;">💵 Efectivo</span><span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(cobrosEfectivo)+'</span></div>'+
+    '<div class="fin-row"><span style="padding-left:12px;font-size:11px;">🏛️ Cuenta DNI</span><span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(cobrosDni)+'</span></div>'+
+    '<div class="fin-row"><span style="padding-left:12px;font-size:11px;">📱 Mercado Pago</span><span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(cobrosMp)+'</span></div>'+
+    (fiadosTurno>0?'<div class="fin-row"><span>🤝 Fiado (no cobrado)</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(fiadosTurno)+'</span></div>':'')+
+    (egresosEfectivo>0?'<div class="fin-row"><span>📤 Egresos en efectivo</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(egresosEfectivo)+'</span></div>':'')+
+    (retiros>0?'<div class="fin-row"><span>💰 Retiros</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(retiros)+'</span></div>':'');
+
+  var arqueoEl = el('cierre-arqueo');
+  if(arqueoEl) arqueoEl.innerHTML =
+    '<div class="fin-row"><span>Fondo inicial</span><span style="font-family:DM Mono,monospace;">'+fmtM(fondoInicial)+'</span></div>'+
+    '<div class="fin-row"><span>+ Cobros en efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">+'+fmtM(cobrosEfectivo)+'</span></div>'+
+    (egresosEfectivo>0?'<div class="fin-row"><span>- Egresos efectivo</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(egresosEfectivo)+'</span></div>':'')+
+    (retiros>0?'<div class="fin-row"><span>- Retiros</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(retiros)+'</span></div>':'')+
+    '<div style="display:flex;justify-content:space-between;padding:10px 0 0;border-top:2px solid var(--brd2);margin-top:6px;">'+
+    '<span style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;">Debería haber</span>'+
+    '<span style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--acc2);">'+fmtM(efectivoEsperado)+'</span>'+
+    '</div>';
+
+  var digitalEl = el('cierre-digital');
+  if(digitalEl) digitalEl.innerHTML =
+    '<div class="fin-row"><span>🏛️ Cuenta DNI</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(cobrosDni)+'</span></div>'+
+    '<div class="fin-row"><span>📱 Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(cobrosMp)+'</span></div>'+
+    '<div style="font-size:11px;color:var(--mut2);margin-top:8px;">Verificá estos montos contra las apps de cada billetera</div>';
+
+  set('cierre-efectivo-contado','val','');
+  set('cierre-diferencia','html','');
+  set('cierre-notas','val','');
+
+  closeModal('modal-cobrar');
+  openModal('modal-cierre-caja');
+}
+
+function calcDiferenciaCierre(){
+  var contado = parseFloat(get('cierre-efectivo-contado'))||0;
+  var esperado = window._cierreDatos ? window._cierreDatos.efectivoEsperado : 0;
+  var diff = contado - esperado;
+  var el_d = el('cierre-diferencia');
+  if(!el_d) return;
+  if(contado === 0){ el_d.innerHTML=''; return; }
+  var color = diff === 0 ? 'var(--grn)' : diff > 0 ? 'var(--blu)' : 'var(--red)';
+  var texto = diff === 0 ? '✓ Sin diferencia' : diff > 0 ? '↑ Sobrante: '+fmtM(Math.abs(diff)) : '↓ Faltante: '+fmtM(Math.abs(diff));
+  el_d.innerHTML = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+color+';">'+texto+'</div>';
+}
+
+async function confirmarCierreCaja(){
+  var contado = parseFloat(get('cierre-efectivo-contado'));
+  if(isNaN(contado)){ toast('Ingresá el efectivo contado','err'); return; }
+  var notas = get('cierre-notas').trim();
+  var d = window._cierreDatos || {};
+  var diff = contado - (d.efectivoEsperado||0);
+
+  if(cajaActualId && supabaseClient){
+    await supabaseClient.from('cajas').update({
+      estado: 'cerrada',
+      fecha_cierre: new Date().toISOString(),
+      efectivo_contado: contado,
+      diferencia: diff,
+      notas: notas,
+      resumen: JSON.stringify(d)
+    }).eq('id',cajaActualId);
+  }
+
+  cajeroActual = null;
+  cajaActualId = null;
+  closeModal('modal-cierre-caja');
+  renderDash();
+
+  var difTxt = diff === 0 ? 'Sin diferencia' : diff > 0 ? 'Sobrante '+fmtM(Math.abs(diff)) : 'Faltante '+fmtM(Math.abs(diff));
+  toast('🏁 Caja cerrada · '+difTxt);
 }
 function agregarLineaCobro(){
   lineasCobro.push({id:Date.now(),prodId:'',cant:1});
