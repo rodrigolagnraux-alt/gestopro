@@ -3165,8 +3165,16 @@ function buscarProductoScanner(){
     set('scanner-found','display','none');
     set('scanner-results','display','none');
     set('scanner-not-found','display','block');
-    var newNom = el('scanner-new-nom'); if(newNom) newNom.value=get('scanner-manual');
+    var newNom = el('scanner-new-nom');
+    if(newNom) newNom.value = '';
     set('scanner-confirm-btn','display','none');
+    // Intentar obtener nombre real desde Open Food Facts si el query parece un código de barras
+    if(/^\d{8,14}$/.test(query)){
+      buscarEnOpenFoodFacts(query, function(nombreReal){
+        var inp = el('scanner-new-nom');
+        if(inp && nombreReal) inp.value = nombreReal;
+      });
+    }
     return;
   }
   if(byName.length===1){ mostrarProductoEncontrado(byName[0]); return; }
@@ -3225,6 +3233,24 @@ function mostrarProductoEncontrado(prod){
   set('scanner-cant','val','');
   // Focus cant
   setTimeout(function(){ var c=el('scanner-cant');if(c)c.focus(); },100);
+}
+
+function buscarEnOpenFoodFacts(codigo, callback){
+  fetch('https://world.openfoodfacts.org/api/v0/product/'+codigo+'.json')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.status===1 && data.product){
+        var p = data.product;
+        // Intentar obtener el nombre en español primero, luego genérico
+        var nombre = p.product_name_es || p.product_name || p.generic_name_es || p.generic_name || '';
+        // Agregar cantidad si está disponible (ej: "Coca-Cola 1.5L")
+        if(nombre && p.quantity) nombre = nombre + ' ' + p.quantity;
+        callback(nombre.trim() || null);
+      } else {
+        callback(null);
+      }
+    })
+    .catch(function(){ callback(null); });
 }
 
 function crearProductoDesdeScanner(){
