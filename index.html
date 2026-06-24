@@ -889,6 +889,22 @@ select.fi{appearance:none;cursor:pointer;}
     </div>
     <!-- Info pago seleccionado -->
     <div id="fpago-info" style="display:none;background:var(--sur3);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);line-height:1.6;"></div>
+    <!-- Origen del dinero (solo efectivo) -->
+    <div id="fpago-origen-wrap" style="display:none;margin-top:10px;">
+      <label class="fl">¿De dónde sale el dinero?</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+        <div class="pay-method on" onclick="selOrigenPago('caja',this)" id="fpago-origen-caja" style="padding:10px 6px;">
+          <div class="pay-ico" style="font-size:20px;">🏪</div>
+          <div class="pay-lbl" style="font-size:11px;">De la caja</div>
+          <div class="pay-sub" style="font-size:10px;">Afecta el cierre</div>
+        </div>
+        <div class="pay-method" onclick="selOrigenPago('bolsillo',this)" id="fpago-origen-bolsillo" style="padding:10px 6px;">
+          <div class="pay-ico" style="font-size:20px;">💼</div>
+          <div class="pay-lbl" style="font-size:11px;">Del bolsillo</div>
+          <div class="pay-sub" style="font-size:10px;">No afecta la caja</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <button class="btn btn-blu btn-full btn-lg" onclick="confirmarIngresoFactura()" style="margin-bottom:8px;" id="btn-confirmar-ingreso">✓ Confirmar ingreso</button>
@@ -1322,6 +1338,15 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="card"><div class="stitle">📤 Egresos (gastos)</div><div id="res-egresos"></div></div>
   </div>
   <div class="card"><div class="stitle">📊 Balance del período</div><div id="res-balance"></div></div>
+
+  <!-- RESUMEN DIARIO -->
+  <div class="card" style="margin-top:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="stitle" style="margin-bottom:0;">📅 Resumen por día</div>
+      <span style="font-size:11px;color:var(--mut2);" id="res-dias-periodo"></span>
+    </div>
+    <div id="res-dias-lista"></div>
+  </div>
 </div>
 
 <!-- PUNTO DE VENTA LOCKED -->
@@ -2588,9 +2613,17 @@ function updMargenLinea(id,val){
   const l=lineasIngreso.find(function(l){return l.id===id;});
   if(l){l.margen=parseFloat(val)||0;calcPreciosVenta();}
 }
+var origenPagoFact = 'caja'; // 'caja' o 'bolsillo'
+
+function selOrigenPago(origen, selEl){
+  origenPagoFact = origen;
+  document.querySelectorAll('#fpago-origen-wrap .pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl) selEl.classList.add('on');
+}
+
 function selPagoFact(tipo,selEl){
   pagoFactura=tipo;
-  document.querySelectorAll('#modal-ingreso .pay-method').forEach(function(m){m.classList.remove('on');});
+  document.querySelectorAll('#modal-ingreso .pay-method:not(#fpago-origen-caja):not(#fpago-origen-bolsillo)').forEach(function(m){m.classList.remove('on');});
   if(selEl)selEl.classList.add('on');
   const msgs={
     pendiente:'',
@@ -2599,11 +2632,22 @@ function selPagoFact(tipo,selEl){
     cheque:'📄 Pagás con cheque. La factura queda como <b style="color:var(--grn)">PAGADA</b>.',
   };
   const info=el('fpago-info');
+  const origenWrap=el('fpago-origen-wrap');
   if(tipo==='pendiente'){
     if(info)info.style.display='none';
+    if(origenWrap)origenWrap.style.display='none';
     set('btn-confirmar-ingreso','text','✓ Confirmar ingreso — factura pendiente');
+  } else if(tipo==='efectivo'){
+    if(info){info.style.display='block';info.innerHTML=msgs[tipo]||'';}
+    if(origenWrap)origenWrap.style.display='block';
+    // Reset origen a caja por defecto
+    origenPagoFact='caja';
+    var oc=el('fpago-origen-caja'), ob=el('fpago-origen-bolsillo');
+    if(oc)oc.classList.add('on'); if(ob)ob.classList.remove('on');
+    set('btn-confirmar-ingreso','text','✓ Confirmar ingreso — factura pagada');
   } else {
     if(info){info.style.display='block';info.innerHTML=msgs[tipo]||'';}
+    if(origenWrap)origenWrap.style.display='none';
     set('btn-confirmar-ingreso','text','✓ Confirmar ingreso — factura pagada');
   }
 }
@@ -2616,6 +2660,7 @@ function confirmarIngresoFactura(){
   const fecha=get('ing-fecha')||hoy();
   const estadoFact=pagoFactura==='pendiente'?'pendiente':'pagada';
   const metodoLbl={pendiente:'',efectivo:' · Pagada en efectivo',transferencia:' · Pagada por transferencia',cheque:' · Pagada con cheque'};
+  var origenLbl = pagoFactura==='efectivo' ? (origenPagoFact==='bolsillo' ? ' · Del bolsillo' : ' · De la caja') : '';
   var cambiosPrecio = [];
   lineasValidas.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
@@ -2646,7 +2691,7 @@ function confirmarIngresoFactura(){
     },500);
   }
   if(total>0){
-    const _fi={id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]}; facturas.unshift(_fi); saveFactura(_fi);
+    const _fi={id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,origen:pagoFactura==='efectivo'?origenPagoFact:'',obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]+origenLbl}; facturas.unshift(_fi); saveFactura(_fi);
   }
   pagoFactura='pendiente';
   closeModal('modal-ingreso'); saveState(); renderDash(); // ingreso guardado
@@ -3254,8 +3299,85 @@ function renderResumen(){
   const balColor=balance>=0?'var(--grn)':'var(--red)';
   const rb=el('res-balance');
   if(rb)rb.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;padding:16px 0;"><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">COBRADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);">'+fmtM(totalCobrado)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">GASTADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--red);">'+fmtM(totalEg)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div><div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;"><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
+  // Resumen diario
+  renderResumenDiario(movsF, factsF, label);
 }
 function setResPeriod(p,btn){resPeriod=p;document.querySelectorAll('#pg-resumen .ptabs .ptab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderResumen();}
+
+function renderResumenDiario(movsF, factsF, label){
+  var diasEl = el('res-dias-lista');
+  var diasPeriodo = el('res-dias-periodo');
+  if(!diasEl) return;
+  if(diasPeriodo) diasPeriodo.textContent = label;
+
+  // Agrupar movimientos por día
+  var diasMap = {};
+  movsF.forEach(function(m){
+    var fecha = m.fecha ? m.fecha.split('T')[0] : null;
+    if(!fecha) return;
+    if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0}, egresos:0, fiados:0};
+    if(m.tipo==='cobro'){
+      if(m.metodo==='efectivo') diasMap[fecha].cobros.efectivo += m.monto||0;
+      else if(m.metodo==='cuentadni') diasMap[fecha].cobros.cuentadni += m.monto||0;
+      else if(m.metodo==='mercadopago') diasMap[fecha].cobros.mercadopago += m.monto||0;
+      else diasMap[fecha].cobros.otros += m.monto||0;
+    } else if(m.tipo==='egreso' && m.prodId===undefined){
+      diasMap[fecha].egresos += m.monto||0;
+    } else if(m.tipo==='fiado'){
+      diasMap[fecha].fiados += m.monto||0;
+    }
+  });
+  // Agregar egresos de facturas pagadas en efectivo de caja
+  factsF.forEach(function(f){
+    if((f.estado==='pagada'||f.estado==='parcial') && f.origen==='caja'){
+      var fecha = f.fecha ? f.fecha.split('T')[0] : null;
+      if(!fecha) return;
+      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0}, egresos:0, fiados:0};
+      diasMap[fecha].egresos += f.montoPagado||f.monto||0;
+    }
+  });
+
+  var dias = Object.keys(diasMap).sort(function(a,b){return b.localeCompare(a);});
+  if(!dias.length){
+    diasEl.innerHTML = '<div class="empty"><div class="empty-ico">📅</div><div class="empty-t">Sin movimientos en este período</div></div>';
+    return;
+  }
+
+  diasEl.innerHTML = dias.map(function(fecha){
+    var d = diasMap[fecha];
+    var totalCobrado = d.cobros.efectivo + d.cobros.cuentadni + d.cobros.mercadopago + d.cobros.otros;
+    var balance = totalCobrado - d.egresos;
+    var balColor = balance >= 0 ? 'var(--grn)' : 'var(--red)';
+    var fechaObj = new Date(fecha+'T00:00:00');
+    var fechaLbl = fechaObj.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+
+    return '<div style="border-bottom:1px solid var(--brd);padding:12px 0;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;">'+fechaLbl+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
+      +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">💵 EFECT.</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.efectivo)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">🏛️ DNI</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.cuentadni)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">📱 MP</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.mercadopago)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
+      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">📤 EGRES.</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--red);">'+fmtM(d.egresos)+'</div>'
+      +'</div>'
+      +'</div>'
+      +(d.fiados>0?'<div style="font-size:11px;color:var(--yel);margin-top:6px;">🤝 Fiado: '+fmtM(d.fiados)+'</div>':'')
+      +'</div>';
+  }).join('');
+}
 
 // ═══ RENDER PAGE ═══
 function renderPage(id){
