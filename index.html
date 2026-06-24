@@ -595,15 +595,15 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="pay-lbl">Efectivo</div>
       <div class="pay-sub">Calculá el vuelto</div>
     </div>
-    <div class="pay-method" onclick="selPago('qr',this)" id="pm-qr">
-      <div class="pay-ico">📱</div>
-      <div class="pay-lbl">QR / MP</div>
-      <div class="pay-sub">Mercado Pago</div>
+    <div class="pay-method" onclick="selPago('cuentadni',this)" id="pm-cuentadni">
+      <div class="pay-ico">🏛️</div>
+      <div class="pay-lbl">Cuenta DNI</div>
+      <div class="pay-sub">QR o transferencia</div>
     </div>
-    <div class="pay-method" onclick="selPago('transferencia',this)" id="pm-transf">
-      <div class="pay-ico">🏦</div>
-      <div class="pay-lbl">Transferencia</div>
-      <div class="pay-sub">Alias / CVU</div>
+    <div class="pay-method" onclick="selPago('mercadopago',this)" id="pm-mercadopago">
+      <div class="pay-ico">📱</div>
+      <div class="pay-lbl">Mercado Pago</div>
+      <div class="pay-sub">QR o transferencia</div>
     </div>
     <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
       <div class="pay-ico">🤝</div>
@@ -645,52 +645,36 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="efectivo-row" style="margin-top:10px;"><span class="ef-lbl" style="font-weight:600;">Vuelto</span><span class="ef-val vuelto-num" id="ef-vuelto">$0</span></div>
     </div>
   </div>
-  <!-- QR -->
-  <div id="pago-qr" style="display:none;">
+  <!-- CUENTA DNI -->
+  <div id="pago-cuentadni" style="display:none;">
     <div class="qr-display">
-      <div class="qr-box">
-        <svg viewBox="0 0 100 100" width="140" height="140">
-          <rect width="100" height="100" fill="white"/>
-          <rect x="10" y="10" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
-          <rect x="15" y="15" width="20" height="20" fill="#6c63ff"/>
-          <rect x="60" y="10" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
-          <rect x="65" y="15" width="20" height="20" fill="#6c63ff"/>
-          <rect x="10" y="60" width="30" height="30" fill="none" stroke="#6c63ff" stroke-width="3"/>
-          <rect x="15" y="65" width="20" height="20" fill="#6c63ff"/>
-          <rect x="45" y="10" width="5" height="5" fill="#6c63ff"/>
-          <rect x="45" y="20" width="5" height="5" fill="#6c63ff"/>
-          <rect x="45" y="30" width="5" height="5" fill="#6c63ff"/>
-          <rect x="10" y="45" width="5" height="5" fill="#6c63ff"/>
-          <rect x="20" y="45" width="5" height="5" fill="#6c63ff"/>
-          <rect x="30" y="45" width="5" height="5" fill="#6c63ff"/>
-          <rect x="55" y="55" width="5" height="5" fill="#6c63ff"/>
-          <rect x="65" y="55" width="5" height="5" fill="#6c63ff"/>
-          <rect x="75" y="55" width="5" height="5" fill="#6c63ff"/>
-          <rect x="55" y="65" width="5" height="5" fill="#6c63ff"/>
-          <rect x="75" y="65" width="5" height="5" fill="#6c63ff"/>
-          <rect x="55" y="75" width="5" height="5" fill="#6c63ff"/>
-          <rect x="65" y="75" width="5" height="5" fill="#6c63ff"/>
-          <rect x="75" y="75" width="5" height="5" fill="#6c63ff"/>
-          <rect x="45" y="55" width="5" height="35" fill="#6c63ff"/>
-        </svg>
+      <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR impreso de Cuenta DNI o compartí el alias</div>
+      <div class="alias-box">
+        <div class="alias-val" id="alias-dni-display">—</div>
+        <div class="alias-lbl">ALIAS CUENTA DNI</div>
       </div>
-      <div style="font-size:12px;color:var(--mut2);margin-bottom:6px;">Escaneá con Mercado Pago o cualquier billetera</div>
-      <div style="font-family:DM Mono,monospace;font-size:18px;font-weight:700;color:var(--grn)" id="qr-monto-display">$0</div>
+      <div class="alias-box" style="margin-top:8px;">
+        <div class="alias-val" style="font-size:13px;" id="cvu-dni-display">—</div>
+        <div class="alias-lbl">CVU CUENTA DNI</div>
+      </div>
+      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="dni-monto-display">$0</div>
+      <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto en su app</div>
     </div>
   </div>
-  <!-- TRANSFERENCIA -->
-  <div id="pago-transferencia" style="display:none;">
+  <!-- MERCADO PAGO -->
+  <div id="pago-mercadopago" style="display:none;">
     <div class="qr-display">
-      <div style="font-size:13px;color:var(--mut2);margin-bottom:12px;">Compartí tu alias para que te transfieran</div>
+      <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR de Mercado Pago o compartí el alias</div>
       <div class="alias-box">
-        <div class="alias-val" id="alias-display">mi.negocio.mp</div>
+        <div class="alias-val" id="alias-mp-display">—</div>
         <div class="alias-lbl">ALIAS MERCADO PAGO</div>
       </div>
       <div class="alias-box" style="margin-top:8px;">
-        <div class="alias-val" style="font-size:13px;" id="cvu-display">0000003100012345678901</div>
-        <div class="alias-lbl">CVU</div>
+        <div class="alias-val" style="font-size:13px;" id="cvu-mp-display">—</div>
+        <div class="alias-lbl">CVU MERCADO PAGO</div>
       </div>
-      <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);margin-top:12px;" id="transf-monto-display">$0</div>
+      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="mp-monto-display">$0</div>
+      <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto o escanea el QR impreso</div>
     </div>
   </div>
   </div><!-- cierre columna izquierda -->
@@ -919,8 +903,13 @@ select.fi{appearance:none;cursor:pointer;}
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
-  <div class="fg"><label class="fl">Alias Mercado Pago / MODO</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
-  <div class="fg"><label class="fl">CVU (opcional)</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🏛️ Cuenta DNI</div>
+  <div class="fg"><label class="fl">Alias Cuenta DNI</label><input class="fi" id="cfg-alias-dni" placeholder="Ej: mi.negocio.bna"></div>
+  <div class="fg"><label class="fl">CVU Cuenta DNI</label><input class="fi" id="cfg-cvu-dni" placeholder="0000003100012345678901"></div>
+
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">📱 Mercado Pago</div>
+  <div class="fg"><label class="fl">Alias Mercado Pago</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
+  <div class="fg"><label class="fl">CVU Mercado Pago</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
@@ -1818,6 +1807,8 @@ function guardarConfig(){
   if(n) config.nombre=n;
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
+  var aliasDni=get('cfg-alias-dni'); config.aliasDni=aliasDni;
+  var cvuDni=get('cfg-cvu-dni'); config.cvuDni=cvuDni;
   var pin=get('cfg-pin').trim(); config.pin=pin;
   var pinStatus=el('cfg-pin-status');
   if(pinStatus){
@@ -1829,6 +1820,10 @@ function guardarConfig(){
   config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
   set('alias-display','text',config.alias);
   set('cvu-display','text',config.cvu);
+  set('alias-dni-display','text',config.aliasDni||'—');
+  set('cvu-dni-display','text',config.cvuDni||'—');
+  set('alias-mp-display','text',config.alias||'—');
+  set('cvu-mp-display','text',config.cvu||'—');
   closeModal('modal-config'); saveState(); toast('Configuración guardada ✓'); actualizarBotonLock();
 }
 
@@ -2001,8 +1996,8 @@ function updCobrar(){
   set('cobrar-num','text',fmtM(v));
   set('cobrar-num-big','text',fmtM(v));
   set('ef-total','text',fmtM(v));
-  set('qr-monto-display','text',fmtM(v));
-  set('transf-monto-display','text',fmtM(v));
+  set('dni-monto-display','text',fmtM(v));
+  set('mp-monto-display','text',fmtM(v));
   calcVuelto();
   if(pagoActual==='fiado'){
     var fSel=get('fiado-cliente-sel');
@@ -2014,12 +2009,12 @@ function selPago(tipo,selEl){
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
   const needBasico=tipo!=='efectivo' && tipo!=='fiado' && tipo!=='empleado' && PLAN_N[planActual]<PLAN_N['basico'];
-  if(needBasico){ toast('QR y transferencia disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
+  if(needBasico){ toast('Cuenta DNI y Mercado Pago disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   const needPremium=tipo==='empleado' && PLAN_N[planActual]<PLAN_N['business'];
   if(needPremium){ toast('Cargo a empleado disponible en Plan Premium','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
-  set('pago-qr','display',tipo==='qr'?'block':'none');
-  set('pago-transferencia','display',tipo==='transferencia'?'block':'none');
+  set('pago-cuentadni','display',tipo==='cuentadni'?'block':'none');
+  set('pago-mercadopago','display',tipo==='mercadopago'?'block':'none');
   set('pago-fiado','display',tipo==='fiado'?'block':'none');
   set('pago-empleado','display',tipo==='empleado'?'block':'none');
   if(tipo==='fiado') cargarSelectorFiado();
@@ -2127,7 +2122,7 @@ function confirmarCobro(){
   }
 
   const desc=get('cobrar-desc')||'Venta';
-  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia',fiado:'Fiado',empleado:'Empleado'};
+  const metLbl={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',fiado:'Fiado',empleado:'Empleado'};
   var prods=[];
   var detalleFiado=[];
   var detalleEmpleado=[];
@@ -2903,14 +2898,15 @@ function renderMovs(){
   const cobros=filtrados.filter(function(m){return m.tipo==='cobro';});
   const fiados=filtrados.filter(function(m){return m.tipo==='fiado';});
   const empMov=filtrados.filter(function(m){return m.tipo==='empleado';});
-  const ingresos=filtrados.filter(function(m){return m.tipo==='ingreso';});
-  const egresos=filtrados.filter(function(m){return m.tipo==='egreso';});
   const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
+  const totalDni=cobros.filter(function(m){return m.metodo==='cuentadni';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  const totalMp=cobros.filter(function(m){return m.metodo==='mercadopago';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  const totalEfectivo=cobros.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   const totalFiado=fiados.reduce(function(s,m){return s+(m.monto||0);},0);
   const totalEmpMerc=empMov.reduce(function(s,m){return s+(m.monto||0);},0);
   const mk=el('mov-kpis');
   if(mk)mk.innerHTML=
-    '<div class="kpi kg"><div class="kl">COBRADO EN CAJA</div><div class="kn" style="font-size:18px;">'+fmtM(totalCobrado)+'</div><div class="kd">'+cobros.length+' cobros</div></div>'+
+    '<div class="kpi kg"><div class="kl">COBRADO EN CAJA</div><div class="kn" style="font-size:18px;">'+fmtM(totalCobrado)+'</div><div class="kd">💵 '+fmtM(totalEfectivo)+' · 🏛️ '+fmtM(totalDni)+' · 📱 '+fmtM(totalMp)+'</div></div>'+
     '<div class="kpi" style="border-color:var(--yel);"><div class="kl">FIADO (NO COBRADO)</div><div class="kn" style="font-size:18px;color:var(--yel);">'+fmtM(totalFiado)+'</div><div class="kd">'+fiados.length+' operaciones</div></div>'+
     '<div class="kpi" style="border-color:var(--acc);"><div class="kl">MERCADERÍA EMPLEADOS</div><div class="kn" style="font-size:18px;color:var(--acc2);">'+fmtM(totalEmpMerc)+'</div><div class="kd">'+empMov.length+' operaciones</div></div>';
   const ml=el('movs-list');
@@ -2964,12 +2960,20 @@ function renderResumen(){
   const cobros=movsF.filter(function(m){return m.tipo==='cobro';});
   const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
   const ef=cobros.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+m.monto;},0);
+  const dni=cobros.filter(function(m){return m.metodo==='cuentadni';}).reduce(function(s,m){return s+m.monto;},0);
+  const mp=cobros.filter(function(m){return m.metodo==='mercadopago';}).reduce(function(s,m){return s+m.monto;},0);
+  // compatibilidad con registros viejos
   const qr=cobros.filter(function(m){return m.metodo==='qr';}).reduce(function(s,m){return s+m.monto;},0);
   const tr=cobros.filter(function(m){return m.metodo==='transferencia';}).reduce(function(s,m){return s+m.monto;},0);
   const empMovs=movsF.filter(function(m){return m.tipo==='empleado';});
   const totalEmpMerc=empMovs.reduce(function(s,m){return s+(m.monto||0);},0);
   const ri=el('res-ingresos');
-  if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div><div class="fin-row"><span>📱 QR / Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div><div class="fin-row"><span>🏦 Transferencia</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div><div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'+(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería entregada a empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b> (no entra a caja, se descuenta del sueldo)</div>':'');
+  if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div>'
+    +'<div class="fin-row"><span>🏛️ Cuenta DNI</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(dni)+'</span></div>'
+    +'<div class="fin-row"><span>📱 Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(mp)+'</span></div>'
+    +(qr>0?'<div class="fin-row"><span>📱 QR/MP (anterior)</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div>':'')
+    +(tr>0?'<div class="fin-row"><span>🏦 Transferencia (anterior)</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div>':'')
+    +'<div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'+(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería entregada a empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b> (no entra a caja, se descuenta del sueldo)</div>':'');
   const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
   const factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
@@ -4468,11 +4472,17 @@ function initAppData(){
   set('plan-chip','text',pl.nombre);
   set('plan-name-sb','text',pl.nombre);
   set('plan-sub-sb','text',pl.sub);
-  set('alias-display','text',config.alias||'mi.negocio.mp');
-  set('cvu-display','text',config.cvu||'');
+  set('alias-display','text',config.alias||'—');
+  set('cvu-display','text',config.cvu||'—');
   set('cfg-nombre','val',config.nombre||'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
+  set('cfg-alias-dni','val',config.aliasDni||'');
+  set('cfg-cvu-dni','val',config.cvuDni||'');
+  set('alias-dni-display','text',config.aliasDni||'—');
+  set('cvu-dni-display','text',config.cvuDni||'—');
+  set('alias-mp-display','text',config.alias||'—');
+  set('cvu-mp-display','text',config.cvu||'—');
   set('cfg-pin','val',config.pin||'');
   set('cfg-recargo-domingo','val',config.recargoDomingo!==undefined?config.recargoDomingo:50);
   var fpref = config.fiadoPrecio || 'original';
