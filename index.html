@@ -3262,53 +3262,26 @@ function mostrarProductoEncontrado(prod){
 function buscarNombrePorCodigo(codigo){
   if(!codigo || !/^\d{8,14}$/.test(codigo.trim())) return;
   var nomEl = el('p-nom');
-  if(!nomEl || nomEl.value.trim()) return; // solo si el nombre está vacío
-  nomEl.placeholder = 'Buscando nombre...';
-  buscarEnOpenFoodFacts(codigo.trim(), function(nombre){
+  if(!nomEl || nomEl.value.trim()) return;
+  nomEl.placeholder = 'Buscando...';
+  fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/buscar-producto',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({codigo:codigo.trim()})
+  }).then(function(r){return r.json();}).then(function(d){
     nomEl.placeholder = 'Ej: Harina 000 x 25kg';
-    if(nombre) nomEl.value = nombre;
-  });
+    if(d.nombre) nomEl.value = d.nombre;
+  }).catch(function(){ nomEl.placeholder = 'Ej: Harina 000 x 25kg'; });
 }
 
 function buscarEnOpenFoodFacts(codigo, callback){
-  // Primero intentar Cosmos (base de datos argentina, mejor cobertura local)
-  fetch('https://api.cosmos.com.ar/v1/products/'+codigo, {
-    headers: { 'X-Api-Key': 'consumer' }
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data){
-    if(data && data.description){
-      var nombre = data.description;
-      if(data.brand) nombre = data.brand + ' ' + nombre;
-      callback(nombre.trim());
-    } else {
-      // Fallback a Open Food Facts
-      return fetch('https://world.openfoodfacts.org/api/v0/product/'+codigo+'.json')
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if(d.status===1 && d.product){
-            var p = d.product;
-            var nom = p.product_name_es || p.product_name || p.generic_name_es || p.generic_name || '';
-            if(nom && p.quantity) nom = nom + ' ' + p.quantity;
-            callback(nom.trim() || null);
-          } else { callback(null); }
-        });
-    }
-  })
-  .catch(function(){
-    // Si Cosmos falla, intentar Open Food Facts
-    fetch('https://world.openfoodfacts.org/api/v0/product/'+codigo+'.json')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(d.status===1 && d.product){
-          var p = d.product;
-          var nom = p.product_name_es || p.product_name || '';
-          if(nom && p.quantity) nom = nom + ' ' + p.quantity;
-          callback(nom.trim() || null);
-        } else { callback(null); }
-      })
-      .catch(function(){ callback(null); });
-  });
+  fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/buscar-producto',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({codigo:codigo})
+  }).then(function(r){return r.json();}).then(function(d){
+    callback(d.nombre||null);
+  }).catch(function(){ callback(null); });
 }
 
 function crearProductoDesdeScanner(){
