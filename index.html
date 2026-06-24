@@ -889,7 +889,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-drag"></div>
   <div class="modal-t">📦 Nuevo Producto</div>
   <div class="modal-s">Agregá un producto o insumo al inventario</div>
-  <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><input class="fi" id="p-cod" placeholder="PRD001"></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><input class="fi" id="p-cod" placeholder="PRD001" onblur="buscarNombrePorCodigo(this.value)"></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
   <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
@@ -3257,6 +3257,17 @@ function mostrarProductoEncontrado(prod){
   set('scanner-cant','val','');
   // Focus cant
   setTimeout(function(){ var c=el('scanner-cant');if(c)c.focus(); },100);
+}
+
+function buscarNombrePorCodigo(codigo){
+  if(!codigo || !/^\d{8,14}$/.test(codigo.trim())) return;
+  var nomEl = el('p-nom');
+  if(!nomEl || nomEl.value.trim()) return; // solo si el nombre está vacío
+  nomEl.placeholder = 'Buscando nombre...';
+  buscarEnOpenFoodFacts(codigo.trim(), function(nombre){
+    nomEl.placeholder = 'Ej: Harina 000 x 25kg';
+    if(nombre) nomEl.value = nombre;
+  });
 }
 
 function buscarEnOpenFoodFacts(codigo, callback){
