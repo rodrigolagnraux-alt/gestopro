@@ -2345,9 +2345,15 @@ async function selEmpleadoCobro(empId){
     '<div style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(monto)+'</div>'+
     '</div>':'');
 }
-function cargarSelectorFiado(){
+async function cargarSelectorFiado(){
   var sel = el('fiado-cliente-sel');
   if(!sel) return;
+  if(!currentNegocioId){
+    sel.innerHTML = '<option value="">— Sin conexión —</option>';
+    return;
+  }
+  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
+  fiados = res.data || [];
   if(!fiados.length){
     sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
     set('fiado-cliente-info','display','none');
@@ -2368,13 +2374,13 @@ function selFiadoCliente(id){
   if(!c){ info.style.display='none'; return; }
   var limiteTxt = c.limite > 0 ? ' · Límite: '+fmtM(c.limite) : '';
   var monto = parseFloat(get('cobrar-monto'))||0;
-  var nuevaDeuda = c.deuda + monto;
+  var nuevaDeuda = (c.deuda||0) + monto;
   var superaLimite = c.limite > 0 && nuevaDeuda > c.limite;
   info.style.display = 'block';
   info.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">'
     +'<div><b style="color:var(--txt);">'+c.nom+'</b>'+(c.tel?'<br><span style="color:var(--mut2);">📞 '+c.tel+'</span>':'')+'</div>'
     +'<div style="text-align:right;">'
-    +'<div style="color:var(--red);font-family:Syne,sans-serif;font-size:14px;font-weight:800;">Debe: '+fmtM(c.deuda)+'</div>'
+    +'<div style="color:var(--red);font-family:Syne,sans-serif;font-size:14px;font-weight:800;">Debe: '+fmtM(c.deuda||0)+'</div>'
     +(monto>0?'<div style="color:'+(superaLimite?'var(--red)':'var(--yel)')+';font-size:11px;">+ '+fmtM(monto)+' → '+fmtM(nuevaDeuda)+'</div>':'')
     +(superaLimite?'<div style="color:var(--red);font-size:10px;font-weight:700;">⚠️ Supera el límite'+limiteTxt+'</div>':'')
     +'</div>'
@@ -2437,16 +2443,14 @@ function confirmarCobro(){
   // Agregar cajero al registro
   if(cajeroActual) descFinal = descFinal + ' · 👤 '+cajeroActual.nombre;
 
-  // Registrar en fiado
+  // Registrar en fiado (Supabase)
   if(pagoActual==='fiado'){
     var fSel2=get('fiado-cliente-sel');
-    var cf=fiados.find(function(f){return f.id==fSel2;});
-    if(cf){
-      cf.deuda+=monto;
-      if(!cf.movs) cf.movs=[];
-      cf.movs.push({id:Date.now(),tipo:'deuda',monto:monto,desc:descFinal,fecha:hoy(),detalle:detalleFiado});
-      descFinal='🤝 '+cf.nom+' · '+descFinal;
-    }
+    var cfLocal=fiados.find(function(f){return f.id==fSel2;});
+    var nomFiado = cfLocal ? cfLocal.nom : 'cliente';
+    descFinal='🤝 '+nomFiado+' · '+descFinal;
+    // Guardar en Supabase de forma asíncrona
+    registrarFiadoCliente(fSel2, monto, descFinal, detalleFiado);
   }
 
   // Registrar en empleado
@@ -4540,10 +4544,11 @@ function mostrarPantallaEspera(){
 function sincronizarDatos(){
   if(!supabaseClient||!currentNegocioId) return Promise.resolve();
   var promises = [
-    supabaseClient.from('productos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) productos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}). filter(Boolean); }),
+    supabaseClient.from('productos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) productos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
     supabaseClient.from('movimientos').select('*').eq('negocio_id',currentNegocioId).order('created_at',{ascending:false}).limit(200).then(function(r){ if(r.data&&r.data.length) movimientos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
     supabaseClient.from('facturas').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) facturas=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
-    supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); })
+    supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
+    supabaseClient.from('fiados_clientes').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom').then(function(r){ fiados=r.data||[]; })
   ];
   return Promise.all(promises).then(function(){ console.log('Datos sincronizados'); }).catch(function(e){ console.log('Sync error:',e); });
 }
@@ -4564,56 +4569,58 @@ function saveFactura(f){ saveState(); guardarEnNube('facturas',f.id,f); }
 function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
 
 // ═══ FIADO ═══
+// ═══ FIADO — SUPABASE ═══
 var fiadoActualId = null;
+var fiadoActualCliente = null; // objeto completo del cliente actual
 
-function crearConsumoPropio(){
-  var existe = fiados.find(function(f){return f.esConsumoPropio;});
-  if(existe){ abrirDetalleFiado(existe.id); return; }
-  var cliente = {
-    id: Date.now(),
+async function crearConsumoPropio(){
+  if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+  var res = await supabaseClient.from('fiados_clientes').select('id').eq('negocio_id',currentNegocioId).eq('es_consumo_propio',true).maybeSingle();
+  if(res.data){ abrirDetalleFiado(res.data.id); return; }
+  var ins = await supabaseClient.from('fiados_clientes').insert({
+    negocio_id: currentNegocioId,
     nom: '🏠 Consumo propio',
-    tel: '',
-    limite: 0,
     nota: 'Lo que el dueño/familia saca del stock para uso personal.',
-    deuda: 0,
-    movs: [],
-    fecha: hoy(),
-    esConsumoPropio: true
-  };
-  fiados.push(cliente);
-  saveState(); renderFiado();
-  toast('🏠 Cuenta de consumo propio creada. Usá Cobrar → Fiado y elegí esta cuenta.');
-  abrirDetalleFiado(cliente.id);
+    deuda: 0, limite: 0, es_consumo_propio: true
+  }).select().single();
+  if(ins.data){
+    toast('🏠 Cuenta de consumo propio creada. Usá Cobrar → Fiado y elegí esta cuenta.');
+    renderFiado();
+    abrirDetalleFiado(ins.data.id);
+  }
 }
 
-function guardarClienteFiado(){
+async function guardarClienteFiado(){
   var nom = get('fn-nombre').trim();
   if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
-  var cliente = {
-    id: Date.now(),
+  if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+  var ins = await supabaseClient.from('fiados_clientes').insert({
+    negocio_id: currentNegocioId,
     nom: nom,
     tel: get('fn-tel').trim(),
     limite: parseFloat(get('fn-limite'))||0,
     nota: get('fn-nota').trim(),
-    deuda: 0,
-    movs: [],
-    fecha: hoy()
-  };
-  fiados.push(cliente);
+    deuda: 0
+  }).select().single();
+  if(ins.error){ toast('Error al guardar','err'); return; }
   ['fn-nombre','fn-tel','fn-limite','fn-nota'].forEach(function(id){set(id,'val','');});
   closeModal('modal-fiado-nuevo');
-  saveState();
   renderFiado();
   toast('🤝 Cliente '+nom+' agregado ✓');
 }
 
-function abrirDetalleFiado(id){
+async function abrirDetalleFiado(id){
   fiadoActualId = id;
-  var c = fiados.find(function(f){return f.id===id;});
-  if(!c) return;
-  set('fd-monto','val',''); set('fd-desc','val',''); set('fd-pago','val','');
-  renderHeaderFiado(c);
-  renderHistorialFiado(c);
+  set('fd-pago','val',''); set('fd-pago','val','');
+  // Cargar cliente
+  var res = await supabaseClient.from('fiados_clientes').select('*').eq('id',id).single();
+  if(!res.data){ toast('Cliente no encontrado','err'); return; }
+  fiadoActualCliente = res.data;
+  // Cargar movimientos
+  var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',id).order('created_at',{ascending:true});
+  fiadoActualCliente.movs = movRes.data || [];
+  renderHeaderFiado(fiadoActualCliente);
+  renderHistorialFiado(fiadoActualCliente);
   openModal('modal-fiado-detalle');
 }
 
@@ -4651,191 +4658,105 @@ function renderHistorialFiado(c){
     var col = esDeuda||esAjuste ? 'var(--red)' : 'var(--grn)';
     var ico = esDeuda ? '📝' : esAjuste ? '📊' : '💵';
     var signo = esDeuda||esAjuste ? '+' : '-';
-
-    // Comparación de precios actuales vs precio del día
-    var preciosHtml = '';
-    if(esDeuda && m.detalle && m.detalle.length){
-      var hayDiferencia = false;
-      var filasPrecio = m.detalle.map(function(d){
-        var prodActual = productos.find(function(p){return p.id==d.prodId;});
-        var precioActual = prodActual ? (prodActual.precioVenta||0) : 0;
-        var precioViejo = d.precioVenta||0;
-        var subtotalViejo = d.cant * precioViejo;
-        var subtotalActual = d.cant * precioActual;
-        var diff = subtotalActual - subtotalViejo;
-        if(diff !== 0) hayDiferencia = true;
-        var diffHtml = diff > 0
-          ? '<span style="color:var(--red);font-size:10px;font-weight:700;"> ▲ +'+fmtM(diff)+'</span>'
-          : diff < 0
-          ? '<span style="color:var(--grn);font-size:10px;font-weight:700;"> ▼ '+fmtM(diff)+'</span>'
-          : '';
-        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid var(--brd);">'
-          +'<span style="color:var(--mut2);">'+d.cant+' '+d.um+' '+d.nom+'</span>'
-          +'<span style="font-family:DM Mono,monospace;">'+fmtM(subtotalViejo)+(precioActual&&precioActual!==precioViejo?diffHtml:'')+'</span>'
-          +'</div>';
-      }).join('');
-
-      if(hayDiferencia){
-        // Calcular total actualizado
-        var totalActual = m.detalle.reduce(function(s,d){
-          var p = productos.find(function(pr){return pr.id==d.prodId;});
-          return s + d.cant*(p?p.precioVenta||0:d.precioVenta||0);
-        },0);
-        preciosHtml = '<div style="background:var(--sur2);border-radius:6px;padding:8px;margin-top:6px;">'
-          +'<div style="font-size:10px;color:var(--mut2);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">📊 Detalle de precios</div>'
-          +filasPrecio
-          +'<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:4px;">'
-          +'<span style="font-size:11px;color:var(--mut2);">Precio original</span>'
-          +'<span style="font-family:DM Mono,monospace;font-size:11px;">'+fmtM(m.monto)+'</span>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;">'
-          +'<span style="font-size:12px;font-weight:700;color:var(--yel);">💰 Precio actualizado</span>'
-          +'<span style="font-family:Syne,monospace;font-size:13px;font-weight:800;color:var(--yel);">'+fmtM(totalActual)+'</span>'
-          +'</div>'
-          +'<button class="btn btn-yel btn-sm btn-full" style="margin-top:8px;font-size:11px;" onclick="cobrarPrecioActualizado('+c.id+','+m.id+','+totalActual+')">✓ Cobrar precio actualizado</button>'
-          +'</div>';
-      }
-    }
-
+    var fechaM = m.fecha ? fmtF(m.fecha) : '';
     return '<div style="padding:10px 0;border-bottom:1px solid var(--brd);">'
       +'<div style="display:flex;align-items:center;gap:10px;">'
       +'<div style="width:32px;height:32px;border-radius:8px;background:'+(esDeuda?'var(--red-dim)':'var(--grn-dim)')+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">'+ico+'</div>'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:12.5px;font-weight:500;">'+(m.desc||( esDeuda?'Fiado':'Pago'))+'</div>'
-      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fmtF(m.fecha)+(m.metodo?' · '+m.metodo:'')+'</div>'
+      +'<div style="font-size:12.5px;font-weight:500;">'+(m.descripcion||( esDeuda?'Fiado':'Pago'))+'</div>'
+      +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+fechaM+(m.metodo?' · '+m.metodo:'')+'</div>'
       +'</div>'
       +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:'+col+';">'+signo+fmtM(m.monto)+'</div>'
       +'</div>'
-      +preciosHtml
       +'</div>';
   }).join('');
   set('fd-historial','html',html);
 }
 
-function cargarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
+async function pagarFiado(){
+  var c = fiadoActualCliente;
   if(!c) return;
-  var monto = parseFloat(get('fd-monto'))||0;
-  if(!monto){ toast('Ingresá el monto','err'); return; }
-  if(c.limite > 0 && c.deuda + monto > c.limite){
-    toast('⚠️ Supera el límite de crédito de '+fmtM(c.limite),'err'); return;
-  }
-  var desc = get('fd-desc').trim() || 'Fiado';
-  c.deuda += monto;
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'deuda',monto:monto,desc:desc,fecha:hoy()});
-  set('fd-monto','val',''); set('fd-desc','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('📝 Deuda cargada: '+fmtM(monto));
-}
-
-function recalcularDeudaActual(clienteId){
-  var c = fiados.find(function(f){return f.id===clienteId;});
-  if(!c || !c.movs) return {totalActual:c?c.deuda:0, diff:0};
-  var totalActual = 0, totalOriginal = 0;
-  c.movs.filter(function(m){return m.tipo==='deuda';}).forEach(function(m){
-    totalOriginal += m.monto;
-    if(m.detalle && m.detalle.length){
-      var sub = 0;
-      m.detalle.forEach(function(d){
-        var prod = productos.find(function(p){return p.id===d.prodId;});
-        var precio = prod && prod.precioVenta ? prod.precioVenta : d.precioVenta;
-        sub += precio * d.cant;
-      });
-      totalActual += sub;
-    } else {
-      totalActual += m.monto;
-    }
-  });
-  // restar pagos ya hechos
-  var pagado = c.movs.filter(function(m){return m.tipo==='pago';}).reduce(function(s,m){return s+m.monto;},0);
-  var ajustes = c.movs.filter(function(m){return m.tipo==='ajuste';}).reduce(function(s,m){return s+m.monto;},0);
-  totalActual = totalActual + ajustes - pagado;
-  var diff = totalActual - c.deuda;
-  return {totalActual:Math.max(0,totalActual), diff:diff};
-}
-
-function pagarFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
-  if(!c) return;
-  // Si la config dice precio actualizado, recalcular FIFO antes de pagar
-  if((config.fiadoPrecio||'original')==='actual'){
-    var r = recalcularDeudaActual(c.id);
-    if(Math.abs(r.diff) > 0.5){
-      c.deuda = r.totalActual;
-      c.movs.push({id:Date.now(),tipo:'ajuste',monto:r.diff,desc:'Ajuste a precio actual',fecha:hoy()});
-      toast('💰 Deuda actualizada a precios actuales: '+fmtM(r.totalActual));
-    }
-  }
   var pago = parseFloat(get('fd-pago'))||0;
   if(!pago){ toast('Ingresá el monto','err'); return; }
   if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
   var metodoEl = el('fd-pago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',qr:'QR / MP'};
-  c.deuda = Math.max(0, c.deuda - pago);
-  if(!c.movs) c.movs = [];
-  c.movs.push({id:Date.now(),tipo:'pago',monto:pago,desc:'Pago '+metLbl[metodo],fecha:hoy(),metodo:metLbl[metodo]});
+
+  var nuevaDeuda = Math.max(0, c.deuda - pago);
+
+  // Guardar movimiento en Supabase
+  await supabaseClient.from('fiados_movimientos').insert({
+    negocio_id: currentNegocioId,
+    cliente_id: c.id,
+    tipo: 'pago',
+    monto: pago,
+    descripcion: 'Pago '+metLbl[metodo],
+    fecha: hoy(),
+    metodo: metLbl[metodo]
+  });
+
+  // Actualizar deuda del cliente
+  await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',c.id);
+  fiadoActualCliente.deuda = nuevaDeuda;
+
   // Registrar como cobro en movimientos
   var _mc = {id:Date.now(),tipo:'cobro',desc:'Pago fiado - '+c.nom,monto:pago,fecha:hoy(),metodo:metodo};
   movimientos.unshift(_mc); saveMovimiento(_mc);
+
   set('fd-pago','val','');
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado(); renderDash();
+  // Recargar movimientos del cliente
+  var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',c.id).order('created_at',{ascending:true});
+  fiadoActualCliente.movs = movRes.data || [];
+  renderHeaderFiado(fiadoActualCliente);
+  renderHistorialFiado(fiadoActualCliente);
+  renderFiado();
+  renderDash();
   toast('✓ Pago registrado: '+fmtM(pago));
 }
 
-function cobrarPrecioActualizado(clienteId, movId, totalActual){
-  var c = fiados.find(function(f){return f.id===clienteId;});
-  if(!c) return;
-  var mov = c.movs.find(function(m){return m.id===movId;});
-  if(!mov) return;
-  var diff = totalActual - mov.monto;
-  if(diff <= 0){ toast('El precio no cambió','err'); return; }
-  // Actualizar la deuda con la diferencia
-  c.deuda += diff;
-  mov.monto = totalActual;
-  mov.desc = mov.desc + ' (actualizado)';
-  c.movs.push({
-    id:Date.now(),
-    tipo:'ajuste',
-    monto:diff,
-    desc:'Ajuste por aumento de precios',
-    fecha:hoy()
-  });
-  saveState(); renderHeaderFiado(c); renderHistorialFiado(c); renderFiado();
-  toast('💰 Deuda actualizada a '+fmtM(totalActual)+' · Diferencia: +'+fmtM(diff));
-}
-
-function eliminarClienteFiado(){
-  var c = fiados.find(function(f){return f.id===fiadoActualId;});
+async function eliminarClienteFiado(){
+  var c = fiadoActualCliente;
   if(!c) return;
   if(!confirm('¿Eliminar a '+c.nom+'? Se perderá todo el historial.')) return;
-  fiados = fiados.filter(function(f){return f.id!==fiadoActualId;});
+  await supabaseClient.from('fiados_movimientos').delete().eq('cliente_id',c.id);
+  await supabaseClient.from('fiados_clientes').delete().eq('id',c.id);
   fiadoActualId = null;
+  fiadoActualCliente = null;
   closeModal('modal-fiado-detalle');
-  saveState(); renderFiado(); toast('Cliente eliminado');
+  renderFiado();
+  toast('Cliente eliminado');
 }
 
-function renderFiado(){
+async function renderFiado(){
   var q = (get('fiado-srch')||'').toLowerCase();
-  var lista = fiados.filter(function(f){ return !q || f.nom.toLowerCase().includes(q); });
-  // KPIs
-  var totalDeuda = fiados.reduce(function(s,f){return s+(f.deuda||0);},0);
-  var conDeuda = fiados.filter(function(f){return f.deuda>0;}).length;
-  var saldados = fiados.filter(function(f){return f.deuda<=0&&f.movs&&f.movs.length>0;}).length;
+  if(!currentNegocioId){ set('fiado-lista','html','<div class="empty"><div class="empty-ico">🤝</div><div class="empty-t">Sin conexión</div></div>'); return; }
+
+  var res = await supabaseClient.from('fiados_clientes').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
+  var todos = res.data || [];
+  // Actualizar array local para compatibilidad con cobrar/movimientos
+  fiados = todos;
+
+  var lista = q ? todos.filter(function(f){ return f.nom.toLowerCase().includes(q); }) : todos;
+
+  var totalDeuda = todos.reduce(function(s,f){return s+(f.deuda||0);},0);
+  var conDeuda = todos.filter(function(f){return f.deuda>0;}).length;
+  var saldados = todos.filter(function(f){return f.deuda<=0;}).length;
+
   set('fiado-sub','text',fmtM(totalDeuda)+' en '+conDeuda+' cliente'+(conDeuda!==1?'s':''));
   var kpis = el('fiado-kpis');
   if(kpis) kpis.innerHTML = ''
     +'<div class="kpi kr"><div class="kl">DEUDA TOTAL</div><div class="kn" style="font-size:20px;">'+fmtM(totalDeuda)+'</div><div class="kd">'+conDeuda+' clientes activos</div></div>'
-    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+fiados.length+'</div><div class="kd">registrados</div></div>'
+    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+todos.length+'</div><div class="kd">registrados</div></div>'
     +'<div class="kpi kg"><div class="kl">SALDADOS</div><div class="kn">'+saldados+'</div><div class="kd">sin deuda</div></div>';
-  // Badge sidebar
+
   var badge = el('sb-fiado-badge');
   if(badge) badge.style.display = conDeuda > 0 ? '' : 'none';
+
   var cont = el('fiado-lista');
   if(!cont) return;
   if(!lista.length){
-    cont.innerHTML = '<div class="empty"><div class="empty-ico">🤝</div><div class="empty-t">'+(fiados.length?'Sin resultados':'Sin clientes con fiado')+'</div><div class="empty-s">'+(fiados.length?'Probá con otro nombre':'Tocá + Cliente para agregar uno')+'</div></div>';
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🤝</div><div class="empty-t">'+(todos.length?'Sin resultados':'Sin clientes con fiado')+'</div><div class="empty-s">'+(todos.length?'Probá con otro nombre':'Tocá + Cliente para agregar uno')+'</div></div>';
     return;
   }
   var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
@@ -4843,19 +4764,43 @@ function renderFiado(){
     var inicial = c.nom.charAt(0).toUpperCase();
     var col = colors[c.nom.charCodeAt(0) % colors.length];
     var saldado = c.deuda <= 0;
-    var lastMov = c.movs && c.movs.length ? c.movs[c.movs.length-1] : null;
-    return '<div class="fiado-item" onclick="abrirDetalleFiado('+c.id+')">'
-      +'<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';">'+inicial+'</div>'
-      +'<div class="fiado-txt">'
-      +'<div class="fiado-nom">'+c.nom+'</div>'
-      +'<div class="fiado-meta">'+(lastMov?'Último: '+fmtF(lastMov.fecha)+(c.tel?' · '+c.tel:''):'Cliente desde '+fmtF(c.fecha))+'</div>'
-      +'</div>'
-      +'<div class="fiado-right">'
-      +'<div class="fiado-deuda'+(saldado?' saldado':'')+'">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-      +'<div class="fiado-deuda-lbl">'+(saldado?'SIN DEUDA':'DEUDA')+'</div>'
-      +'</div>'
-      +'</div>';
+    return '<div class="fiado-item" onclick="abrirDetalleFiado(\''+c.id+'\')">'+
+      '<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';">'+inicial+'</div>'+
+      '<div class="fiado-txt">'+
+        '<div class="fiado-nom">'+c.nom+'</div>'+
+        '<div class="fiado-meta">'+(c.tel?'📞 '+c.tel:'Cliente')+(c.nota?' · '+c.nota:'')+'</div>'+
+      '</div>'+
+      '<div class="fiado-right">'+
+        '<div class="fiado-deuda'+(saldado?' saldado':'')+'">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'+
+        '<div class="fiado-deuda-lbl">'+(saldado?'SIN DEUDA':'DEUDA')+'</div>'+
+      '</div>'+
+    '</div>';
   }).join('');
+}
+
+// Función para registrar fiado desde cobrar (llamada por confirmarCobro)
+async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
+  if(!clienteId || !currentNegocioId) return;
+  // Cargar deuda actual
+  var res = await supabaseClient.from('fiados_clientes').select('deuda,limite,nom').eq('id',clienteId).single();
+  if(!res.data) return;
+  var c = res.data;
+  var nuevaDeuda = c.deuda + monto;
+  // Guardar movimiento
+  await supabaseClient.from('fiados_movimientos').insert({
+    negocio_id: currentNegocioId,
+    cliente_id: clienteId,
+    tipo: 'deuda',
+    monto: monto,
+    descripcion: descripcion,
+    fecha: hoy(),
+    detalle: detalle ? JSON.stringify(detalle) : null
+  });
+  // Actualizar deuda
+  await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',clienteId);
+  // Actualizar array local
+  var idx = fiados.findIndex(function(f){return f.id===clienteId;});
+  if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
 }
 
 // ═══ INIT DATA ═══
