@@ -3310,29 +3310,32 @@ function renderResumenDiario(movsF, factsF, label){
   if(!diasEl) return;
   if(diasPeriodo) diasPeriodo.textContent = label;
 
-  // Agrupar movimientos por día
   var diasMap = {};
   movsF.forEach(function(m){
     var fecha = m.fecha ? m.fecha.split('T')[0] : null;
     if(!fecha) return;
-    if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0}, egresos:0, fiados:0};
+    if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,fiadoEntregado:0,fiadoCobrado:0};
     if(m.tipo==='cobro'){
-      if(m.metodo==='efectivo') diasMap[fecha].cobros.efectivo += m.monto||0;
-      else if(m.metodo==='cuentadni') diasMap[fecha].cobros.cuentadni += m.monto||0;
-      else if(m.metodo==='mercadopago') diasMap[fecha].cobros.mercadopago += m.monto||0;
-      else diasMap[fecha].cobros.otros += m.monto||0;
+      var esPagoFiado = m.desc && m.desc.toLowerCase().indexOf('pago fiado')!==-1;
+      if(esPagoFiado){
+        diasMap[fecha].fiadoCobrado += m.monto||0;
+      } else {
+        if(m.metodo==='efectivo') diasMap[fecha].cobros.efectivo += m.monto||0;
+        else if(m.metodo==='cuentadni') diasMap[fecha].cobros.cuentadni += m.monto||0;
+        else if(m.metodo==='mercadopago') diasMap[fecha].cobros.mercadopago += m.monto||0;
+        else diasMap[fecha].cobros.otros += m.monto||0;
+      }
     } else if(m.tipo==='egreso' && m.prodId===undefined){
       diasMap[fecha].egresos += m.monto||0;
     } else if(m.tipo==='fiado'){
-      diasMap[fecha].fiados += m.monto||0;
+      diasMap[fecha].fiadoEntregado += m.monto||0;
     }
   });
-  // Agregar egresos de facturas pagadas en efectivo de caja
   factsF.forEach(function(f){
     if((f.estado==='pagada'||f.estado==='parcial') && f.origen==='caja'){
       var fecha = f.fecha ? f.fecha.split('T')[0] : null;
       if(!fecha) return;
-      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0}, egresos:0, fiados:0};
+      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,fiadoEntregado:0,fiadoCobrado:0};
       diasMap[fecha].egresos += f.montoPagado||f.monto||0;
     }
   });
@@ -3345,36 +3348,51 @@ function renderResumenDiario(movsF, factsF, label){
 
   diasEl.innerHTML = dias.map(function(fecha){
     var d = diasMap[fecha];
-    var totalCobrado = d.cobros.efectivo + d.cobros.cuentadni + d.cobros.mercadopago + d.cobros.otros;
-    var balance = totalCobrado - d.egresos;
+    var totalCobradoCaja = d.cobros.efectivo + d.cobros.cuentadni + d.cobros.mercadopago + d.cobros.otros;
+    var balance = totalCobradoCaja - d.egresos;
+    var totalVendido = totalCobradoCaja + d.fiadoEntregado;
     var balColor = balance >= 0 ? 'var(--grn)' : 'var(--red)';
     var fechaObj = new Date(fecha+'T00:00:00');
     var fechaLbl = fechaObj.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
 
+    var fiadoHtml = '';
+    if(d.fiadoEntregado > 0 || d.fiadoCobrado > 0){
+      fiadoHtml = '<div style="background:rgba(255,184,48,.06);border:1px solid rgba(255,184,48,.2);border-radius:8px;padding:10px;margin-top:10px;">'
+        +'<div style="font-size:10px;color:var(--yel);font-family:DM Mono,monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">🤝 Fiado — no entra a caja</div>'
+        +'<div style="display:grid;grid-template-columns:'+(d.fiadoEntregado>0&&d.fiadoCobrado>0?'1fr 1fr':'1fr')+';gap:8px;">'
+        +(d.fiadoEntregado>0?'<div style="text-align:center;"><div style="font-size:10px;color:var(--mut2);margin-bottom:2px;">Entregado hoy</div><div style="font-family:DM Mono,monospace;font-size:13px;color:var(--yel);">'+fmtM(d.fiadoEntregado)+'</div></div>':'')
+        +(d.fiadoCobrado>0?'<div style="text-align:center;"><div style="font-size:10px;color:var(--mut2);margin-bottom:2px;">Cobrado hoy</div><div style="font-family:DM Mono,monospace;font-size:13px;color:var(--grn);">+'+fmtM(d.fiadoCobrado)+'</div></div>':'')
+        +'</div>'
+        +'</div>';
+    }
+
     return '<div style="border-bottom:1px solid var(--brd);padding:12px 0;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;">'+fechaLbl+'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div>'
+      +'<div style="text-align:right;">'
+      +'<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+' <span style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;font-weight:400;">en caja</span></div>'
+      +(d.fiadoEntregado>0?'<div style="font-size:11px;color:var(--mut2);">Total vendido: <b style="color:var(--txt);">'+fmtM(totalVendido)+'</b></div>':'')
+      +'</div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
       +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
       +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">💵 EFECT.</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.efectivo)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:'+(d.cobros.efectivo>0?'var(--grn)':'var(--mut2)')+';">'+fmtM(d.cobros.efectivo)+'</div>'
       +'</div>'
       +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
       +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">🏛️ DNI</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.cuentadni)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:'+(d.cobros.cuentadni>0?'var(--grn)':'var(--mut2)')+';">'+fmtM(d.cobros.cuentadni)+'</div>'
       +'</div>'
       +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
       +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">📱 MP</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--grn);">'+fmtM(d.cobros.mercadopago)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:'+(d.cobros.mercadopago>0?'var(--grn)':'var(--mut2)')+';">'+fmtM(d.cobros.mercadopago)+'</div>'
       +'</div>'
       +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
       +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">📤 EGRES.</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--red);">'+fmtM(d.egresos)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:'+(d.egresos>0?'var(--red)':'var(--mut2)')+';">'+fmtM(d.egresos)+'</div>'
       +'</div>'
       +'</div>'
-      +(d.fiados>0?'<div style="font-size:11px;color:var(--yel);margin-top:6px;">🤝 Fiado: '+fmtM(d.fiados)+'</div>':'')
+      +fiadoHtml
       +'</div>';
   }).join('');
 }
