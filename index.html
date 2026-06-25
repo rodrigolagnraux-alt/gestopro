@@ -5053,7 +5053,7 @@ async function renderFiado(){
 async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   if(!clienteId || !currentNegocioId) return;
   // Cargar deuda actual
-  var res = await supabaseClient.from('fiados_clientes').select('deuda,limite,nom').eq('id',clienteId).single();
+  var res = await supabaseClient.from('fiados_clientes').select('deuda,limite,nom,email,via_libre,tel').eq('id',clienteId).single();
   if(!res.data) return;
   var c = res.data;
   var nuevaDeuda = c.deuda + monto;
