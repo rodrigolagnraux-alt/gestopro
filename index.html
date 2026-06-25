@@ -4778,21 +4778,26 @@ async function editarLimiteFiado(){
   nuevoLimite = parseFloat(nuevoLimite)||0;
   var nuevaFecha = prompt('Fecha de pago (Ej: Viernes, día 15, fin de mes):', c.fecha_pago||'');
   if(nuevaFecha===null) return;
+  var nuevoEmail = prompt('Email del cliente (para alertas automáticas, dejar vacío si no tiene):', c.email||'');
+  if(nuevoEmail===null) return;
   var viaLibre = nuevoLimite===0 ? confirm('¿Este cliente tiene vía libre (sin límite)?') : false;
 
   await supabaseClient.from('fiados_clientes').update({
     limite: nuevoLimite,
     fecha_pago: nuevaFecha.trim(),
-    via_libre: viaLibre
+    via_libre: viaLibre,
+    email: nuevoEmail.trim()
   }).eq('id',c.id);
 
   fiadoActualCliente.limite = nuevoLimite;
   fiadoActualCliente.fecha_pago = nuevaFecha.trim();
   fiadoActualCliente.via_libre = viaLibre;
+  fiadoActualCliente.email = nuevoEmail.trim();
   var fidx = fiados.findIndex(function(f){return f.id===c.id;});
-  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; }
+  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; fiados[fidx].email=nuevoEmail.trim(); }
   renderDeudaResumen(fiadoActualCliente);
-  toast('✓ Límite actualizado');
+  renderHeaderFiado(fiadoActualCliente);
+  toast('✓ Cliente actualizado');
 }
 
 function renderCartillaFiado(c){
@@ -4870,11 +4875,12 @@ function renderHeaderFiado(c){
   var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
   var notaTxt = c.nota ? '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">📝 '+c.nota+'</div>' : '';
   var telTxt = c.tel ? '<div style="font-size:11px;color:var(--mut2);">📞 <a href="tel:'+c.tel+'" style="color:var(--acc2);">'+c.tel+'</a></div>' : '';
+  var emailTxt = c.email ? '<div style="font-size:11px;color:var(--mut2);">✉️ '+c.email+'</div>' : '';
   var html = '<div style="display:flex;align-items:center;gap:14px;">'
     + '<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';width:52px;height:52px;font-size:20px;">'+inicial+'</div>'
     + '<div style="flex:1;">'
     + '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;">'+c.nom+'</div>'
-    + telTxt + notaTxt
+    + telTxt + emailTxt + notaTxt
     + '</div>'
     + '<div style="text-align:right;">'
     + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
