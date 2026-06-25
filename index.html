@@ -1017,6 +1017,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
   <div class="fg"><label class="fl">Teléfono del dueño (WhatsApp)</label><input class="fi" id="cfg-tel-dueno" placeholder="Ej: 2473410437" type="tel" inputmode="numeric"></div>
+  <div class="fg"><label class="fl">Email del dueño (alertas silenciosas)</label><input class="fi" id="cfg-email-dueno" placeholder="Ej: dueño@gmail.com" type="email"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa para alertas automáticas (facturas vencidas, límite de fiado)</div>
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🏛️ Cuenta DNI</div>
   <div class="fg"><label class="fl">Alias Cuenta DNI</label><input class="fi" id="cfg-alias-dni" placeholder="Ej: mi.negocio.bna"></div>
@@ -1270,6 +1271,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-s">Registrá un cliente que compra a crédito</div>
   <div class="fg"><label class="fl">Nombre del cliente</label><input class="fi" id="fn-nombre" placeholder="Ej: Juan García"></div>
   <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" id="fn-tel" placeholder="Ej: 2473 123456" type="tel"></div>
+  <div class="fg"><label class="fl">Email (opcional — para alertas automáticas)</label><input class="fi" id="fn-email" placeholder="Ej: cliente@gmail.com" type="email"></div>
   <div class="fg">
     <label class="fl">Límite de crédito $</label>
     <input class="fi" id="fn-limite" type="number" placeholder="0 = sin límite" style="font-family:DM Mono,monospace;">
@@ -1958,6 +1960,7 @@ function guardarConfig(){
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
   var telDueno=get('cfg-tel-dueno'); config.tel=telDueno;
+  var emailDueno=get('cfg-email-dueno'); config.emailDueno=emailDueno;
   var aliasDni=get('cfg-alias-dni'); config.aliasDni=aliasDni;
   var cvuDni=get('cfg-cvu-dni'); config.cvuDni=cvuDni;
   var pin=get('cfg-pin').trim(); config.pin=pin;
@@ -2449,11 +2452,17 @@ function confirmarCobro(){
     if(!fSel){toast('Seleccioná un cliente para el fiado','err');return;}
     var cFiado=fiados.find(function(f){return f.id==fSel;});
     if(!cFiado){toast('Cliente no encontrado','err');return;}
-    // Si YA superó el límite → bloquear y avisar al dueño
+    // Si YA superó el límite → bloquear y avisar al dueño por email
     if(!cFiado.via_libre && cFiado.limite>0 && cFiado.deuda>=cFiado.limite){
       toast('🚫 '+cFiado.nom+' ya superó el límite ('+fmtM(cFiado.deuda)+'/'+fmtM(cFiado.limite)+'). Debe pagar antes de seguir fiando.','err');
-      var telDB=(config.tel||'').replace(/\D/g,''); if(telDB.length<=10&&telDB.length>0) telDB='549'+telDB;
-      if(telDB){ var msgDB='🚫 GestoPro: Se intentó fiar a '+cFiado.nom+' pero ya superó el límite ('+fmtM(cFiado.deuda)+'/'+fmtM(cFiado.limite)+'). Operación bloqueada.'; var lnkB=document.createElement('a'); lnkB.href='https://wa.me/'+telDB+'?text='+encodeURIComponent(msgDB); lnkB.target='_blank'; lnkB.style.display='none'; document.body.appendChild(lnkB); lnkB.click(); setTimeout(function(){document.body.removeChild(lnkB);},1000); }
+      var emailD = config.emailDueno||'';
+      if(emailD){
+        fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-fiado',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({tipo:'intento_bloqueado',cliente:cFiado.nom,deuda:cFiado.deuda,limite:cFiado.limite,negocio:config.nombre||'el negocio',emailDueno:emailD,emailCliente:''})
+        }).catch(function(){});
+      }
       return;
     }
   }
@@ -4700,6 +4709,7 @@ async function guardarClienteFiado(){
     negocio_id: currentNegocioId,
     nom: nom,
     tel: get('fn-tel').trim(),
+    email: get('fn-email').trim(),
     limite: limite,
     via_libre: viaLibre,
     fecha_pago: get('fn-fecha-pago').trim(),
@@ -4707,7 +4717,7 @@ async function guardarClienteFiado(){
     deuda: 0
   }).select().single();
   if(ins.error){ toast('Error al guardar','err'); return; }
-  ['fn-nombre','fn-tel','fn-limite','fn-nota','fn-fecha-pago'].forEach(function(id){set(id,'val','');});
+  ['fn-nombre','fn-tel','fn-email','fn-limite','fn-nota','fn-fecha-pago'].forEach(function(id){set(id,'val','');});
   var vlEl = el('fn-via-libre'); if(vlEl) vlEl.checked = false;
   closeModal('modal-fiado-nuevo');
   renderFiado();
@@ -5029,29 +5039,26 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   var idx = fiados.findIndex(function(f){return f.id===clienteId;});
   if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
 
-  // Si con esta compra supera el límite → avisar al dueño Y al cliente
+  // Si con esta compra supera el límite → email silencioso al dueño y al cliente
   if(!c.via_libre && c.limite > 0 && nuevaDeuda > c.limite && c.deuda < c.limite){
-    var telDueno = (config.tel||'').replace(/\D/g,'');
-    if(telDueno.length<=10 && telDueno.length>0) telDueno='549'+telDueno;
-    var negocio = config.nombre||'el negocio';
-
-    // WhatsApp al dueño
-    if(telDueno){
-      var msgDueno='⚠️ GestoPro: '+c.nom+' superó el límite de crédito con esta compra ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). La próxima compra será bloqueada.';
-      var lnkD=document.createElement('a'); lnkD.href='https://wa.me/'+telDueno+'?text='+encodeURIComponent(msgDueno); lnkD.target='_blank'; lnkD.style.display='none'; document.body.appendChild(lnkD); lnkD.click(); setTimeout(function(){document.body.removeChild(lnkD);},1000);
+    var emailDueno = config.emailDueno || '';
+    var emailCliente = c.email || '';
+    if(emailDueno || emailCliente){
+      fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-fiado',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          tipo:'limite_superado',
+          cliente: c.nom,
+          deuda: nuevaDeuda,
+          limite: c.limite,
+          negocio: config.nombre||'el negocio',
+          emailDueno: emailDueno,
+          emailCliente: emailCliente
+        })
+      }).catch(function(){});
     }
-
-    // WhatsApp al cliente
-    var telCliente = (c.tel||'').replace(/\D/g,'');
-    if(telCliente.length<=10 && telCliente.length>0) telCliente='549'+telCliente;
-    if(telCliente){
-      var msgCliente='Hola '+c.nom+'! 👋 Te avisamos que superaste el límite de crédito en '+negocio+' ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). Para seguir comprando necesitás abonar parte de tu deuda. ¡Gracias!';
-      setTimeout(function(){
-        var lnkC=document.createElement('a'); lnkC.href='https://wa.me/'+telCliente+'?text='+encodeURIComponent(msgCliente); lnkC.target='_blank'; lnkC.style.display='none'; document.body.appendChild(lnkC); lnkC.click(); setTimeout(function(){document.body.removeChild(lnkC);},1000);
-      }, 2000);
-    }
-
-    toast('⚠️ '+c.nom+' superó el límite de crédito. Se avisó al dueño y al cliente.','err');
+    toast('⚠️ '+c.nom+' superó el límite. Se envió aviso por email.','err');
   }
 }
 
@@ -5083,6 +5090,7 @@ function initAppData(){
   set('cvu-mp-display','text',config.cvu||'—');
   set('cfg-nombre','val',config.nombre||'');
   set('cfg-tel-dueno','val',config.tel||'');
+  set('cfg-email-dueno','val',config.emailDueno||'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-alias-dni','val',config.aliasDni||'');
