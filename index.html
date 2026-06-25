@@ -4784,7 +4784,6 @@ async function editarLimiteFiado(){
   renderDeudaResumen(fiadoActualCliente);
   toast('✓ Límite actualizado');
 }
-}
 
 function renderCartillaFiado(c){
   var el_c = el('fd-cartilla');
@@ -5053,14 +5052,6 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
     }
 
     toast('⚠️ '+c.nom+' superó el límite de crédito. Se avisó al dueño y al cliente.','err');
-  }
-}
-    if(telDueno){
-      var telD = telDueno.replace(/\D/g,'');
-      if(telD.length<=10) telD='549'+telD;
-      window.open('https://wa.me/'+telD+'?text='+encodeURIComponent(msgDueno),'_blank');
-    }
-    toast('⚠️ '+c.nom+' llegó al límite de crédito','err');
   }
 }
 
