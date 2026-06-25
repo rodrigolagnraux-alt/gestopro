@@ -599,7 +599,24 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </div>
 
-<!-- MODAL CIERRE DE CAJA -->
+<!-- MODAL EDITAR CLIENTE FIADO -->
+<div class="ov" id="modal-editar-fiado">
+<div class="modal" style="max-width:440px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">✏️ Editar cliente</div>
+  <div class="fg"><label class="fl">Límite de crédito $ (0 = sin límite)</label><input class="fi" id="ef-limite" type="number" placeholder="0" style="font-family:DM Mono,monospace;"></div>
+  <div class="fg" style="flex-direction:row;align-items:center;gap:10px;">
+    <input type="checkbox" id="ef-via-libre" style="width:18px;height:18px;accent-color:var(--yel);flex-shrink:0;">
+    <label for="ef-via-libre" style="font-size:13px;color:var(--txt);cursor:pointer;">🟡 Vía libre — sin límite de crédito</label>
+  </div>
+  <div class="fg"><label class="fl">Fecha de pago (opcional)</label><input class="fi" id="ef-fecha-pago" placeholder="Ej: Viernes, día 15, fin de mes..."></div>
+  <div class="fg"><label class="fl">Email (para alertas automáticas)</label><input class="fi" id="ef-email" placeholder="Ej: cliente@gmail.com" type="email"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-editar-fiado')">Cancelar</button>
+    <button class="btn btn-yel" onclick="confirmarEditarFiado()">✓ Guardar</button>
+  </div>
+</div>
+</div>
 <div class="ov" id="modal-cierre-caja">
 <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
   <div class="modal-drag"></div>
@@ -4770,35 +4787,45 @@ function renderDeudaResumen(c){
     +'</div>';
 }
 
-async function editarLimiteFiado(){
+function editarLimiteFiado(){
   var c = fiadoActualCliente;
   if(!c) return;
-  var nuevoLimite = prompt('Nuevo límite de crédito (0 = sin límite):', c.limite||0);
-  if(nuevoLimite===null) return;
-  nuevoLimite = parseFloat(nuevoLimite)||0;
-  var nuevaFecha = prompt('Fecha de pago (Ej: Viernes, día 15, fin de mes):', c.fecha_pago||'');
-  if(nuevaFecha===null) return;
-  var nuevoEmail = prompt('Email del cliente (para alertas automáticas, dejar vacío si no tiene):', c.email||'');
-  if(nuevoEmail===null) return;
-  var viaLibre = nuevoLimite===0 ? confirm('¿Este cliente tiene vía libre (sin límite)?') : false;
+  set('ef-limite','val', c.limite||0);
+  set('ef-fecha-pago','val', c.fecha_pago||'');
+  set('ef-email','val', c.email||'');
+  var vlEl = el('ef-via-libre');
+  if(vlEl) vlEl.checked = c.via_libre||false;
+  openModal('modal-editar-fiado');
+}
+
+async function confirmarEditarFiado(){
+  var c = fiadoActualCliente;
+  if(!c) return;
+  var nuevoLimite = parseFloat(get('ef-limite'))||0;
+  var nuevaFecha = get('ef-fecha-pago').trim();
+  var nuevoEmail = get('ef-email').trim();
+  var vlEl = el('ef-via-libre');
+  var viaLibre = vlEl ? vlEl.checked : false;
 
   await supabaseClient.from('fiados_clientes').update({
     limite: nuevoLimite,
-    fecha_pago: nuevaFecha.trim(),
+    fecha_pago: nuevaFecha,
     via_libre: viaLibre,
-    email: nuevoEmail.trim()
+    email: nuevoEmail
   }).eq('id',c.id);
 
   fiadoActualCliente.limite = nuevoLimite;
-  fiadoActualCliente.fecha_pago = nuevaFecha.trim();
+  fiadoActualCliente.fecha_pago = nuevaFecha;
   fiadoActualCliente.via_libre = viaLibre;
-  fiadoActualCliente.email = nuevoEmail.trim();
+  fiadoActualCliente.email = nuevoEmail;
   var fidx = fiados.findIndex(function(f){return f.id===c.id;});
-  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; fiados[fidx].email=nuevoEmail.trim(); }
+  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; fiados[fidx].email=nuevoEmail; }
+  closeModal('modal-editar-fiado');
   renderDeudaResumen(fiadoActualCliente);
   renderHeaderFiado(fiadoActualCliente);
   toast('✓ Cliente actualizado');
 }
+
 
 function renderCartillaFiado(c){
   var el_c = el('fd-cartilla');
