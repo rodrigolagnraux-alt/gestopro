@@ -1012,6 +1012,8 @@ select.fi{appearance:none;cursor:pointer;}
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
+  <div class="fg"><label class="fl">Teléfono del dueño (WhatsApp)</label><input class="fi" id="cfg-tel-dueno" placeholder="Ej: 2473410437" type="tel" inputmode="numeric"></div>
+  <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa para alertas automáticas (facturas vencidas, límite de fiado)</div>
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🏛️ Cuenta DNI</div>
   <div class="fg"><label class="fl">Alias Cuenta DNI</label><input class="fi" id="cfg-alias-dni" placeholder="Ej: mi.negocio.bna"></div>
   <div class="fg"><label class="fl">CVU Cuenta DNI</label><input class="fi" id="cfg-cvu-dni" placeholder="0000003100012345678901"></div>
@@ -1950,6 +1952,7 @@ function guardarConfig(){
   if(n) config.nombre=n;
   if(a) config.alias=a;
   if(cv) config.cvu=cv;
+  var telDueno=get('cfg-tel-dueno'); config.tel=telDueno;
   var aliasDni=get('cfg-alias-dni'); config.aliasDni=aliasDni;
   var cvuDni=get('cfg-cvu-dni'); config.cvuDni=cvuDni;
   var pin=get('cfg-pin').trim(); config.pin=pin;
@@ -4511,6 +4514,53 @@ function entrarSinNube(){
 function ocultarLogin(){
   var ls=el('login-screen'); if(ls)ls.style.display='none';
   initAppData();
+  setTimeout(function(){ alertarFacturasVencidas(); }, 3000);
+}
+
+function alertarFacturasVencidas(){
+  var hoyStr = hoy();
+  var alertaKey = 'gp_fact_alerta_'+hoyStr;
+  if(localStorage.getItem(alertaKey)) return; // ya se mandó hoy
+
+  var vencidas = facturas.filter(function(f){
+    return (f.estado==='pendiente'||f.estado==='parcial') && f.venc && f.venc <= hoyStr;
+  });
+
+  // Marcar como vencidas
+  vencidas.forEach(function(f){
+    if(f.estado!=='vencida'){ f.estado='vencida'; saveFactura(f); }
+  });
+
+  if(!vencidas.length) return;
+
+  // Registrar que ya se mandó hoy
+  try{ localStorage.setItem(alertaKey,'1'); }catch(e){}
+
+  // Mandar WhatsApp al dueño
+  var telDueno = (config.tel||'').replace(/\D/g,'');
+  if(!telDueno) return;
+  if(telDueno.length<=10) telDueno='549'+telDueno;
+
+  var detalle = vencidas.map(function(f){
+    var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
+    return '• '+f.prov+' — '+fmtM(pendiente)+' (vencía '+fmtF(f.venc)+')';
+  }).join('\n');
+
+  var totalPendiente = vencidas.reduce(function(s,f){
+    return s + (f.montoPagado ? f.monto-f.montoPagado : f.monto);
+  },0);
+
+  var msg = '⚠️ *GestoPro — Facturas vencidas*\n\n'
+    +detalle+'\n\n'
+    +'💰 Total pendiente: *'+fmtM(totalPendiente)+'*';
+
+  var link = document.createElement('a');
+  link.href = 'https://wa.me/'+telDueno+'?text='+encodeURIComponent(msg);
+  link.target = '_blank';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(function(){ if(link.parentNode) document.body.removeChild(link); },1000);
 }
 
 function crearNegocio(nombre, email){
@@ -4984,6 +5034,7 @@ function initAppData(){
   set('alias-mp-display','text',config.alias||'—');
   set('cvu-mp-display','text',config.cvu||'—');
   set('cfg-nombre','val',config.nombre||'');
+  set('cfg-tel-dueno','val',config.tel||'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-alias-dni','val',config.aliasDni||'');
