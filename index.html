@@ -1263,21 +1263,34 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-t">🤝 Nuevo cliente con fiado</div>
   <div class="modal-s">Registrá un cliente que compra a crédito</div>
   <div class="fg"><label class="fl">Nombre del cliente</label><input class="fi" id="fn-nombre" placeholder="Ej: Juan García"></div>
-  <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" id="fn-tel" placeholder="Ej: 011 1234-5678" type="tel"></div>
-  <div class="fg"><label class="fl">Límite de crédito $ (0 = sin límite)</label><input class="fi" id="fn-limite" type="number" placeholder="0" style="font-family:DM Mono,monospace;"></div>
-  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="fn-nota" placeholder="Ej: Vecino, paga los viernes..."></div>
+  <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" id="fn-tel" placeholder="Ej: 2473 123456" type="tel"></div>
+  <div class="fg">
+    <label class="fl">Límite de crédito $</label>
+    <input class="fi" id="fn-limite" type="number" placeholder="0 = sin límite" style="font-family:DM Mono,monospace;">
+  </div>
+  <div class="fg" style="flex-direction:row;align-items:center;gap:10px;">
+    <input type="checkbox" id="fn-via-libre" style="width:18px;height:18px;accent-color:var(--yel);flex-shrink:0;">
+    <label for="fn-via-libre" style="font-size:13px;color:var(--txt);cursor:pointer;">🟡 Vía libre — sin límite de crédito</label>
+  </div>
+  <div class="fg">
+    <label class="fl">Fecha de pago (opcional)</label>
+    <input class="fi" id="fn-fecha-pago" placeholder="Ej: Viernes, día 15, fin de mes...">
+  </div>
+  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="fn-nota" placeholder="Ej: Vecino de la esquina..."></div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-fiado-nuevo')">Cancelar</button><button class="btn btn-yel" onclick="guardarClienteFiado()">✓ Guardar cliente</button></div>
 </div>
 </div>
 
 <!-- MODAL DETALLE CLIENTE FIADO -->
 <div class="ov" id="modal-fiado-detalle">
-<div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto;">
+<div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
   <div class="modal-drag"></div>
   <div id="fd-header" style="margin-bottom:16px;"></div>
-  <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--mut2);line-height:1.6;">
-    💡 Para cargar productos fiados a este cliente, usá <b style="color:var(--acc2);">💚 Cobrar</b> y elegí <b style="color:var(--yel);">🤝 Fiado</b> como forma de pago. Así queda registrado el detalle exacto de lo que se llevó.
-  </div>
+
+  <!-- RESUMEN DE DEUDA -->
+  <div id="fd-deuda-resumen" style="margin-bottom:14px;"></div>
+
+  <!-- REGISTRAR PAGO -->
   <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
     <div class="frow">
@@ -1285,19 +1298,29 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="fg" style="margin-bottom:0;"><label class="fl">Forma de pago</label>
         <select class="fi" id="fd-pago-metodo">
           <option value="efectivo">💵 Efectivo</option>
-          <option value="transferencia">🏦 Transferencia</option>
-          <option value="qr">📱 QR / MP</option>
+          <option value="cuentadni">🏛️ Cuenta DNI</option>
+          <option value="mercadopago">📱 Mercado Pago</option>
         </select>
       </div>
     </div>
     <button class="btn btn-grn btn-full" onclick="pagarFiado()" style="margin-top:10px;">✓ Registrar pago</button>
   </div>
+
+  <!-- CARTILLA — PRODUCTOS -->
   <div class="card" style="margin-bottom:14px;">
-    <div class="stitle">📋 Historial</div>
+    <div class="stitle">🛒 Mercadería tomada</div>
+    <div id="fd-cartilla"></div>
+  </div>
+
+  <!-- HISTORIAL DE PAGOS -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="stitle">📋 Historial completo</div>
     <div id="fd-historial"></div>
   </div>
+
   <div class="btn-row">
-    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar cliente</button>
+    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar</button>
+    <button class="btn btn-ghost btn-sm" onclick="enviarRecordatorioWhatsApp()">💬 Recordatorio</button>
     <button class="btn btn-ghost" onclick="closeModal('modal-fiado-detalle')">Cerrar</button>
   </div>
 </div>
@@ -4612,16 +4635,21 @@ async function guardarClienteFiado(){
   var nom = get('fn-nombre').trim();
   if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
   if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+  var viaLibre = el('fn-via-libre') && el('fn-via-libre').checked;
+  var limite = viaLibre ? 0 : (parseFloat(get('fn-limite'))||0);
   var ins = await supabaseClient.from('fiados_clientes').insert({
     negocio_id: currentNegocioId,
     nom: nom,
     tel: get('fn-tel').trim(),
-    limite: parseFloat(get('fn-limite'))||0,
+    limite: limite,
+    via_libre: viaLibre,
+    fecha_pago: get('fn-fecha-pago').trim(),
     nota: get('fn-nota').trim(),
     deuda: 0
   }).select().single();
   if(ins.error){ toast('Error al guardar','err'); return; }
-  ['fn-nombre','fn-tel','fn-limite','fn-nota'].forEach(function(id){set(id,'val','');});
+  ['fn-nombre','fn-tel','fn-limite','fn-nota','fn-fecha-pago'].forEach(function(id){set(id,'val','');});
+  var vlEl = el('fn-via-libre'); if(vlEl) vlEl.checked = false;
   closeModal('modal-fiado-nuevo');
   renderFiado();
   toast('🤝 Cliente '+nom+' agregado ✓');
@@ -4629,17 +4657,113 @@ async function guardarClienteFiado(){
 
 async function abrirDetalleFiado(id){
   fiadoActualId = id;
-  set('fd-pago','val',''); set('fd-pago','val','');
-  // Cargar cliente
+  set('fd-pago','val','');
   var res = await supabaseClient.from('fiados_clientes').select('*').eq('id',id).single();
   if(!res.data){ toast('Cliente no encontrado','err'); return; }
   fiadoActualCliente = res.data;
-  // Cargar movimientos
   var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',id).order('created_at',{ascending:true});
   fiadoActualCliente.movs = movRes.data || [];
   renderHeaderFiado(fiadoActualCliente);
+  renderDeudaResumen(fiadoActualCliente);
+  renderCartillaFiado(fiadoActualCliente);
   renderHistorialFiado(fiadoActualCliente);
   openModal('modal-fiado-detalle');
+}
+
+function renderDeudaResumen(c){
+  var el_d = el('fd-deuda-resumen');
+  if(!el_d) return;
+  var viaLibre = c.via_libre;
+  var limite = c.limite||0;
+  var deuda = c.deuda||0;
+  var superaLimite = !viaLibre && limite > 0 && deuda >= limite;
+  var pctLimite = (!viaLibre && limite > 0) ? Math.min(100, Math.round(deuda/limite*100)) : 0;
+  var limiteHtml = viaLibre
+    ? '<div style="font-size:11px;color:var(--yel);margin-top:6px;">🟡 Vía libre — sin límite de crédito</div>'
+    : limite > 0
+      ? '<div style="margin-top:8px;">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut2);margin-bottom:4px;"><span>Crédito usado</span><span>'+fmtM(deuda)+' / '+fmtM(limite)+'</span></div>'
+        +'<div style="background:var(--brd);border-radius:4px;height:6px;overflow:hidden;">'
+        +'<div style="height:6px;border-radius:4px;background:'+(superaLimite?'var(--red)':pctLimite>75?'var(--yel)':'var(--grn)')+';width:'+pctLimite+'%;"></div>'
+        +'</div>'
+        +(superaLimite?'<div style="color:var(--red);font-size:11px;font-weight:700;margin-top:4px;">⚠️ Límite superado</div>':'')
+        +'</div>'
+      : '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">Sin límite configurado</div>';
+  var fechaPagoHtml = c.fecha_pago
+    ? '<div style="font-size:12px;color:var(--mut2);margin-top:6px;">📅 Fecha de pago: <b style="color:var(--txt);">'+c.fecha_pago+'</b></div>'
+    : '';
+  el_d.innerHTML = '<div style="background:var(--sur2);border-radius:10px;padding:14px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<div style="font-size:12px;color:var(--mut2);">Deuda actual</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:900;color:'+(deuda>0?'var(--red)':'var(--grn)')+';">'+(deuda>0?fmtM(deuda):'✓ Saldado')+'</div>'
+    +'</div>'+limiteHtml+fechaPagoHtml+'</div>';
+}
+
+function renderCartillaFiado(c){
+  var el_c = el('fd-cartilla');
+  if(!el_c) return;
+  var movs = (c.movs||[]).filter(function(m){return m.tipo==='deuda';});
+  if(!movs.length){
+    el_c.innerHTML = '<div style="text-align:center;padding:16px;color:var(--mut2);font-size:12px;">Sin mercadería registrada aún</div>';
+    return;
+  }
+  var productosMap = {};
+  movs.forEach(function(m){
+    var detalle = m.detalle ? (typeof m.detalle==='string'?JSON.parse(m.detalle):m.detalle) : null;
+    if(detalle && Array.isArray(detalle)){
+      detalle.forEach(function(item){
+        var key = item.id||item.nom;
+        if(!productosMap[key]) productosMap[key]={nom:item.nom,cant:0,precioOriginal:item.precioVenta||item.precio||0,id:item.id};
+        productosMap[key].cant += item.cant||1;
+      });
+    }
+  });
+  var items = Object.values(productosMap);
+  if(!items.length){
+    el_c.innerHTML = '<div style="font-size:12px;color:var(--mut2);padding:8px 0;">Los movimientos no tienen detalle de productos. Usá Cobrar → Fiado para registrar con detalle.</div>';
+    return;
+  }
+  el_c.innerHTML = items.map(function(item){
+    var prodActual = productos.find(function(p){return p.id==item.id||p.nom===item.nom;});
+    var precioActual = prodActual ? (prodActual.precio||0) : item.precioOriginal;
+    var totalOriginal = item.cant * item.precioOriginal;
+    var totalActual = item.cant * precioActual;
+    var diff = totalActual - totalOriginal;
+    var hayDiff = Math.abs(diff) > 1;
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--brd);">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+      +'<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+item.nom+'</div>'
+      +'<div style="font-size:11px;color:var(--mut2);">'+item.cant+' × '+fmtM(item.precioOriginal)+'</div></div>'
+      +'<div style="text-align:right;">'
+      +'<div style="font-family:DM Mono,monospace;font-size:13px;">'+fmtM(totalOriginal)+'</div>'
+      +(hayDiff?'<div style="font-size:11px;color:'+(diff>0?'var(--red)':'var(--grn)')+';">Hoy: '+fmtM(totalActual)+' ('+(diff>0?'+':'')+fmtM(diff)+')</div>':'')
+      +'</div></div></div>';
+  }).join('');
+  var totalOriginal = items.reduce(function(s,i){return s+i.cant*i.precioOriginal;},0);
+  var totalActual = items.reduce(function(s,i){
+    var p=productos.find(function(p){return p.id==i.id||p.nom===i.nom;});
+    return s+i.cant*(p?p.precio||0:i.precioOriginal);
+  },0);
+  var diff = totalActual - totalOriginal;
+  el_c.innerHTML += '<div style="padding:10px 0 0;margin-top:4px;">'
+    +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--brd2);">'
+    +'<span style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;">Total precio original</span>'
+    +'<span style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;">'+fmtM(totalOriginal)+'</span>'
+    +'</div>'
+    +(Math.abs(diff)>1?'<div style="display:flex;justify-content:space-between;background:var(--sur3);border-radius:6px;padding:8px;">'
+    +'<span style="font-size:12px;color:var(--mut2);">Total a precio actual</span>'
+    +'<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:'+(diff>0?'var(--red)':'var(--grn)')+';">'+fmtM(totalActual)+' ('+(diff>0?'+':'')+fmtM(diff)+')</span>'
+    +'</div>':'')+'</div>';
+}
+
+function enviarRecordatorioWhatsApp(){
+  var c = fiadoActualCliente;
+  if(!c||!c.tel){ toast('Este cliente no tiene teléfono cargado','err'); return; }
+  var negocio = config.nombre||'el negocio';
+  var msg = 'Hola '+c.nom+'! 👋 Te recordamos que tenés una deuda pendiente en '+negocio+'. Pasate cuando puedas para ponernos al día. ¡Gracias!';
+  var tel = c.tel.replace(/\D/g,'');
+  if(tel.length<=10) tel='549'+tel;
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 function renderHeaderFiado(c){
@@ -4819,6 +4943,18 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   // Actualizar array local
   var idx = fiados.findIndex(function(f){return f.id===clienteId;});
   if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
+
+  // Alerta de límite — avisar al dueño por WhatsApp
+  if(!c.via_libre && c.limite > 0 && nuevaDeuda >= c.limite){
+    var telDueno = config.tel || '';
+    var msgDueno = '⚠️ GestoPro: '+c.nom+' llegó al límite de crédito ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). Necesita autorización para seguir fiando.';
+    if(telDueno){
+      var telD = telDueno.replace(/\D/g,'');
+      if(telD.length<=10) telD='549'+telD;
+      window.open('https://wa.me/'+telD+'?text='+encodeURIComponent(msgDueno),'_blank');
+    }
+    toast('⚠️ '+c.nom+' llegó al límite de crédito','err');
+  }
 }
 
 // ═══ INIT DATA ═══
