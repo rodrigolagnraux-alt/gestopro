@@ -2449,8 +2449,12 @@ function confirmarCobro(){
     if(!fSel){toast('Seleccioná un cliente para el fiado','err');return;}
     var cFiado=fiados.find(function(f){return f.id==fSel;});
     if(!cFiado){toast('Cliente no encontrado','err');return;}
-    if(cFiado.limite>0 && cFiado.deuda+monto>cFiado.limite){
-      toast('⚠️ Supera el límite de crédito de '+fmtM(cFiado.limite),'err');return;
+    // Si YA superó el límite → bloquear y avisar al dueño
+    if(!cFiado.via_libre && cFiado.limite>0 && cFiado.deuda>=cFiado.limite){
+      toast('🚫 '+cFiado.nom+' ya superó el límite ('+fmtM(cFiado.deuda)+'/'+fmtM(cFiado.limite)+'). Debe pagar antes de seguir fiando.','err');
+      var telDB=(config.tel||'').replace(/\D/g,''); if(telDB.length<=10&&telDB.length>0) telDB='549'+telDB;
+      if(telDB){ var msgDB='🚫 GestoPro: Se intentó fiar a '+cFiado.nom+' pero ya superó el límite ('+fmtM(cFiado.deuda)+'/'+fmtM(cFiado.limite)+'). Operación bloqueada.'; var lnkB=document.createElement('a'); lnkB.href='https://wa.me/'+telDB+'?text='+encodeURIComponent(msgDB); lnkB.target='_blank'; lnkB.style.display='none'; document.body.appendChild(lnkB); lnkB.click(); setTimeout(function(){document.body.removeChild(lnkB);},1000); }
+      return;
     }
   }
 
@@ -4751,7 +4755,35 @@ function renderDeudaResumen(c){
     +'<div style="display:flex;justify-content:space-between;align-items:center;">'
     +'<div style="font-size:12px;color:var(--mut2);">Deuda actual</div>'
     +'<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:900;color:'+(deuda>0?'var(--red)':'var(--grn)')+';">'+(deuda>0?fmtM(deuda):'✓ Saldado')+'</div>'
-    +'</div>'+limiteHtml+fechaPagoHtml+'</div>';
+    +'</div>'+limiteHtml+fechaPagoHtml
+    +'<button class="btn btn-ghost btn-sm" onclick="editarLimiteFiado()" style="margin-top:10px;font-size:11px;width:100%;">✏️ Editar límite y fecha de pago</button>'
+    +'</div>';
+}
+
+async function editarLimiteFiado(){
+  var c = fiadoActualCliente;
+  if(!c) return;
+  var nuevoLimite = prompt('Nuevo límite de crédito (0 = sin límite):', c.limite||0);
+  if(nuevoLimite===null) return;
+  nuevoLimite = parseFloat(nuevoLimite)||0;
+  var nuevaFecha = prompt('Fecha de pago (Ej: Viernes, día 15, fin de mes):', c.fecha_pago||'');
+  if(nuevaFecha===null) return;
+  var viaLibre = nuevoLimite===0 ? confirm('¿Este cliente tiene vía libre (sin límite)?') : false;
+
+  await supabaseClient.from('fiados_clientes').update({
+    limite: nuevoLimite,
+    fecha_pago: nuevaFecha.trim(),
+    via_libre: viaLibre
+  }).eq('id',c.id);
+
+  fiadoActualCliente.limite = nuevoLimite;
+  fiadoActualCliente.fecha_pago = nuevaFecha.trim();
+  fiadoActualCliente.via_libre = viaLibre;
+  var fidx = fiados.findIndex(function(f){return f.id===c.id;});
+  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; }
+  renderDeudaResumen(fiadoActualCliente);
+  toast('✓ Límite actualizado');
+}
 }
 
 function renderCartillaFiado(c){
@@ -4995,14 +5027,34 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   });
   // Actualizar deuda
   await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',clienteId);
-  // Actualizar array local
   var idx = fiados.findIndex(function(f){return f.id===clienteId;});
   if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
 
-  // Alerta de límite — avisar al dueño por WhatsApp
-  if(!c.via_libre && c.limite > 0 && nuevaDeuda >= c.limite){
-    var telDueno = config.tel || '';
-    var msgDueno = '⚠️ GestoPro: '+c.nom+' llegó al límite de crédito ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). Necesita autorización para seguir fiando.';
+  // Si con esta compra supera el límite → avisar al dueño Y al cliente
+  if(!c.via_libre && c.limite > 0 && nuevaDeuda > c.limite && c.deuda < c.limite){
+    var telDueno = (config.tel||'').replace(/\D/g,'');
+    if(telDueno.length<=10 && telDueno.length>0) telDueno='549'+telDueno;
+    var negocio = config.nombre||'el negocio';
+
+    // WhatsApp al dueño
+    if(telDueno){
+      var msgDueno='⚠️ GestoPro: '+c.nom+' superó el límite de crédito con esta compra ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). La próxima compra será bloqueada.';
+      var lnkD=document.createElement('a'); lnkD.href='https://wa.me/'+telDueno+'?text='+encodeURIComponent(msgDueno); lnkD.target='_blank'; lnkD.style.display='none'; document.body.appendChild(lnkD); lnkD.click(); setTimeout(function(){document.body.removeChild(lnkD);},1000);
+    }
+
+    // WhatsApp al cliente
+    var telCliente = (c.tel||'').replace(/\D/g,'');
+    if(telCliente.length<=10 && telCliente.length>0) telCliente='549'+telCliente;
+    if(telCliente){
+      var msgCliente='Hola '+c.nom+'! 👋 Te avisamos que superaste el límite de crédito en '+negocio+' ('+fmtM(nuevaDeuda)+' / '+fmtM(c.limite)+'). Para seguir comprando necesitás abonar parte de tu deuda. ¡Gracias!';
+      setTimeout(function(){
+        var lnkC=document.createElement('a'); lnkC.href='https://wa.me/'+telCliente+'?text='+encodeURIComponent(msgCliente); lnkC.target='_blank'; lnkC.style.display='none'; document.body.appendChild(lnkC); lnkC.click(); setTimeout(function(){document.body.removeChild(lnkC);},1000);
+      }, 2000);
+    }
+
+    toast('⚠️ '+c.nom+' superó el límite de crédito. Se avisó al dueño y al cliente.','err');
+  }
+}
     if(telDueno){
       var telD = telDueno.replace(/\D/g,'');
       if(telD.length<=10) telD='549'+telD;
