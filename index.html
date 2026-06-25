@@ -1791,7 +1791,7 @@ function cargarDemo(){
 
 // ═══ STORAGE ═══
 function saveState(){
-  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,fiados,planActual,config})); }catch(e){}
+  try{ localStorage.setItem('gp4',JSON.stringify({productos,movimientos,facturas,gastosFijos,planActual,config})); }catch(e){}
   // Also save config to cloud
   if(supabaseClient&&currentNegocioId){
     supabaseClient.from('negocios').update({config:JSON.stringify(config),plan:planActual}).eq('id',currentNegocioId).then(function(){});
@@ -1824,7 +1824,7 @@ function loadState(){
       movimientos= Array.isArray(s.movimientos) ? s.movimientos : [];
       facturas   = Array.isArray(s.facturas)    ? s.facturas    : [];
       gastosFijos= Array.isArray(s.gastosFijos) ? s.gastosFijos : [];
-      fiados     = Array.isArray(s.fiados)      ? s.fiados      : [];
+      // fiados se carga desde Supabase en sincronizarDatos(), no del localStorage
       planActual = PLANES[s.planActual] ? s.planActual : 'gratis';
       config     = (s.config && typeof s.config==='object') ? s.config : config;
       if(!productos.length) cargarDemo();
@@ -1938,8 +1938,6 @@ function guardarConfig(){
   var rd=parseFloat(get('cfg-recargo-domingo')); config.recargoDomingo = isNaN(rd) ? 50 : rd;
   var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
   config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
-  set('alias-display','text',config.alias);
-  set('cvu-display','text',config.cvu);
   set('alias-dni-display','text',config.aliasDni||'—');
   set('cvu-dni-display','text',config.cvuDni||'—');
   set('alias-mp-display','text',config.alias||'—');
@@ -1953,12 +1951,22 @@ function abrirCobrar(){
     abrirSesionCaja();
     return;
   }
+  // Limpiar todo completamente
   lineasCobro=[];
-  set('cobrar-monto','val',''); set('cobrar-num','text','$0');
-  set('cobrar-desc','val',''); set('ef-recibido','val','');
-  set('ef-vuelto','text','$0'); set('ef-total','text','$0');
-  set('alias-display','text',config.alias||'mi.negocio.mp');
-  set('cvu-display','text',config.cvu||'');
+  set('cobrar-monto','val','0');
+  set('cobrar-num','text','$0');
+  set('cobrar-num-big','text','$0');
+  set('cobrar-desc','val','');
+  set('ef-recibido','val','');
+  set('ef-vuelto','text','$0');
+  set('ef-total','text','$0');
+  set('dni-monto-display','text','$0');
+  set('mp-monto-display','text','$0');
+  set('alias-dni-display','text',config.aliasDni||'—');
+  set('cvu-dni-display','text',config.cvuDni||'—');
+  set('alias-mp-display','text',config.alias||'—');
+  set('cvu-mp-display','text',config.cvu||'—');
+  renderLineasCobrar();
   renderLineasCobro();
   const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
   // Mostrar badge cajero
@@ -2483,7 +2491,8 @@ function confirmarCobro(){
   lineasCobro=[];
   closeModal('modal-cobrar'); saveMovimiento(_mc); saveState(); renderDash();
   if(pagoActual==='fiado'){
-    var cf2=fiados.find(function(f){return f.id==get('fiado-cliente-sel');});
+    var fSel3 = get('fiado-cliente-sel');
+    var cf2 = fiados.find(function(f){return f.id==fSel3;});
     toast('🤝 Fiado cargado a '+(cf2?cf2.nom:'cliente')+' · '+fmtM(monto));
   } else if(pagoActual==='empleado'){
     var empNomFinal = el('cobro-empleado-sel');
@@ -4826,8 +4835,10 @@ function initAppData(){
   set('plan-chip','text',pl.nombre);
   set('plan-name-sb','text',pl.nombre);
   set('plan-sub-sb','text',pl.sub);
-  set('alias-display','text',config.alias||'—');
-  set('cvu-display','text',config.cvu||'—');
+  set('alias-dni-display','text',config.aliasDni||'—');
+  set('cvu-dni-display','text',config.cvuDni||'—');
+  set('alias-mp-display','text',config.alias||'—');
+  set('cvu-mp-display','text',config.cvu||'—');
   set('cfg-nombre','val',config.nombre||'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
