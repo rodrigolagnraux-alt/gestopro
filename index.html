@@ -878,9 +878,13 @@ select.fi{appearance:none;cursor:pointer;}
         <div class="pay-ico" style="font-size:20px;">💵</div>
         <div class="pay-lbl" style="font-size:11px;">Efectivo</div>
       </div>
-      <div class="pay-method" onclick="selPagoFact('transferencia',this)" id="fpago-transferencia" style="padding:10px 6px;">
-        <div class="pay-ico" style="font-size:20px;">🏦</div>
-        <div class="pay-lbl" style="font-size:11px;">Transferencia</div>
+      <div class="pay-method" onclick="selPagoFact('cuentadni',this)" id="fpago-cuentadni" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">🏛️</div>
+        <div class="pay-lbl" style="font-size:11px;">Cuenta DNI</div>
+      </div>
+      <div class="pay-method" onclick="selPagoFact('mercadopago',this)" id="fpago-mercadopago" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">📱</div>
+        <div class="pay-lbl" style="font-size:11px;">Mercado Pago</div>
       </div>
       <div class="pay-method" onclick="selPagoFact('cheque',this)" id="fpago-cheque" style="padding:10px 6px;">
         <div class="pay-ico" style="font-size:20px;">📄</div>
@@ -1338,7 +1342,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Forma de pago</label>
     <select class="fi" id="fpago-metodo">
       <option value="efectivo">💵 Efectivo</option>
-      <option value="transferencia">🏦 Transferencia</option>
+      <option value="cuentadni">🏛️ Cuenta DNI</option>
+      <option value="mercadopago">📱 Mercado Pago</option>
       <option value="cheque">📝 Cheque</option>
     </select>
   </div>
@@ -2539,7 +2544,7 @@ function abrirIngreso(){
   set('fpago-info','display','none');
   set('btn-confirmar-ingreso','text','✓ Confirmar ingreso');
   const fpd=el('fpago-pendiente'); if(fpd) fpd.classList.add('on');
-  ['fpago-efectivo','fpago-transferencia','fpago-cheque'].forEach(function(id){ const e=el(id);if(e)e.classList.remove('on'); });
+  ['fpago-efectivo','fpago-cuentadni','fpago-mercadopago','fpago-cheque'].forEach(function(id){ const e=el(id);if(e)e.classList.remove('on'); });
   agregarLineaIngreso();
   openModal('modal-ingreso');
 }
@@ -2668,7 +2673,8 @@ function selPagoFact(tipo,selEl){
   const msgs={
     pendiente:'',
     efectivo:'💵 Pagás en efectivo. La factura queda como <b style="color:var(--grn)">PAGADA</b>.',
-    transferencia:'🏦 Transferís al proveedor. La factura queda como <b style="color:var(--grn)">PAGADA</b>.<br>Tu alias: <b style="color:var(--acc2)">'+config.alias+'</b>',
+    cuentadni:'🏛️ Pagás por Cuenta DNI. La factura queda como <b style="color:var(--grn)">PAGADA</b>.<br>Alias: <b style="color:var(--acc2)">'+( config.aliasDni||'—')+'</b>',
+    mercadopago:'📱 Pagás por Mercado Pago. La factura queda como <b style="color:var(--grn)">PAGADA</b>.<br>Alias: <b style="color:var(--acc2)">'+(config.alias||'—')+'</b>',
     cheque:'📄 Pagás con cheque. La factura queda como <b style="color:var(--grn)">PAGADA</b>.',
   };
   const info=el('fpago-info');
@@ -2680,7 +2686,6 @@ function selPagoFact(tipo,selEl){
   } else if(tipo==='efectivo'){
     if(info){info.style.display='block';info.innerHTML=msgs[tipo]||'';}
     if(origenWrap)origenWrap.style.display='block';
-    // Reset origen a caja por defecto
     origenPagoFact='caja';
     var oc=el('fpago-origen-caja'), ob=el('fpago-origen-bolsillo');
     if(oc)oc.classList.add('on'); if(ob)ob.classList.remove('on');
@@ -2803,7 +2808,7 @@ function confirmarPagoFactura(){
   var monto = parseFloat(el('fpago-monto').value)||f.monto;
   var metodoEl = el('fpago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
-  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
+  var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque'};
   var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
   var diff = saldoOriginal - monto;
   // Registrar egreso automático por el monto realmente pagado
@@ -3137,7 +3142,7 @@ function renderMovItem(m){
   }
   if(m.tipo==='cobro'){
     var icoM2={efectivo:'💵',qr:'📱',transferencia:'🏦'};
-    var metLbl2={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+    var metLbl2={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP',transferencia:'Transferencia'};
     return '<div class="mov-item"><div class="mov-ico mi-cobro">'+(icoM2[m.metodo]||'💚')+'</div>'
       +'<div class="mov-txt">'
       +'<div class="mov-name">'+(m.desc||'Cobro')+'</div>'
@@ -3154,7 +3159,7 @@ function renderMovItem(m){
   if(m.tipo==='egreso'){
     if(m.prodId===undefined && m.prodNom===undefined){
       var icoM3={efectivo:'💵',transferencia:'🏦',cheque:'📝'};
-      var metLbl3={efectivo:'Efectivo',transferencia:'Transferencia',cheque:'Cheque'};
+      var metLbl3={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque',transferencia:'Transferencia'};
       return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+(m.desc||'Egreso')+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
     }
     const prod=productos.find(function(p){return p.id===m.prodId;});
@@ -4873,7 +4878,7 @@ async function pagarFiado(){
   if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
   var metodoEl = el('fd-pago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
-  var metLbl = {efectivo:'Efectivo',transferencia:'Transferencia',qr:'QR / MP'};
+  var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP'};
 
   var nuevaDeuda = Math.max(0, c.deuda - pago);
 
