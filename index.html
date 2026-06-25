@@ -3081,15 +3081,23 @@ function renderDash(){
 }
 
 function renderMovItem(m){
-  const icoM={efectivo:'💵',qr:'📱',transferencia:'🏦'};
-  const metLbl={efectivo:'Efectivo',qr:'QR / MP',transferencia:'Transferencia'};
+  const icoM={efectivo:'💵',cuentadni:'🏛️',mercadopago:'📱',qr:'📱',transferencia:'🏦'};
+  const metLbl={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP',transferencia:'Transferencia'};
   if(m.tipo==='fiado'){
-    return '<div class="mov-item"><div class="mov-ico" style="background:var(--yel-dim);color:var(--yel);">🤝</div>'
+    // Verificar si el cliente existe en fiados de Supabase
+    var nombreFiado = m.desc||'Fiado';
+    // Extraer nombre del cliente del desc (formato: "🤝 NombreCliente · productos...")
+    var clienteEncontrado = fiados.some(function(f){
+      return m.desc && m.desc.indexOf(f.nom) !== -1;
+    });
+    var estadoLbl = clienteEncontrado ? 'Fiado · No cobrado aún' : 'Fiado · Cuenta eliminada';
+    var color = clienteEncontrado ? 'var(--yel)' : 'var(--mut2)';
+    return '<div class="mov-item"><div class="mov-ico" style="background:var(--yel-dim);color:'+color+';">🤝</div>'
       +'<div class="mov-txt">'
-      +'<div class="mov-name">'+(m.desc||'Fiado')+'</div>'
-      +'<div class="mov-meta">'+fmtF(m.fecha)+' · Fiado · No cobrado aún</div>'
+      +'<div class="mov-name">'+nombreFiado+'</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' · '+estadoLbl+'</div>'
       +'</div>'
-      +'<div class="mov-right"><div class="mov-monto" style="color:var(--yel);">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">FIADO</div></div>'
+      +'<div class="mov-right"><div class="mov-monto" style="color:'+color+';">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">FIADO</div></div>'
       +'</div>';
   }
   if(m.tipo==='empleado'){
@@ -4957,8 +4965,15 @@ function actualizarDots() {
 // MÓDULO PEDIDOS
 // ═══════════════════════════════════════════════
 var pedidosFiltro = 'urgente'; // 'urgente' | 'atencion' | 'todos'
-var pedidosCantidades = {}; // {prodId: cantidadEditada}
-var pedidosIncluidos = {}; // {prodId: true/false}
+var pedidosCantidades = JSON.parse(localStorage.getItem('gp_ped_cant')||'{}'); // {prodId: cantidadEditada}
+var pedidosIncluidos = JSON.parse(localStorage.getItem('gp_ped_inc')||'{}'); // {prodId: true/false}
+
+function savePedidosState(){
+  try{
+    localStorage.setItem('gp_ped_cant', JSON.stringify(pedidosCantidades));
+    localStorage.setItem('gp_ped_inc', JSON.stringify(pedidosIncluidos));
+  }catch(e){}
+}
 
 function estadoPedido(p){
   // Reusa la misma lógica de semáforo que ya existe en estadoProd()
@@ -5015,14 +5030,14 @@ function renderPedidos(){
       var dotColor = x.estado==='urgente'?'var(--red)':x.estado==='atencion'?'var(--yel)':'var(--grn)';
       var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (x.estado!=='ok');
       html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--brd);">'+
-        '<input type="checkbox" '+(incluido?'checked':'')+' onchange="pedidosIncluidos['+p.id+']=this.checked" style="flex:0 0 18px;width:18px;height:18px;accent-color:var(--acc);">'+
+        '<input type="checkbox" '+(incluido?'checked':'')+' onchange="pedidosIncluidos['+p.id+']=this.checked;savePedidosState();" style="flex:0 0 18px;width:18px;height:18px;accent-color:var(--acc);">'+
         '<div style="flex:0 0 10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0;"></div>'+
         '<div style="flex:1;min-width:0;">'+
           '<div style="font-size:13px;font-weight:600;">'+p.nom+'</div>'+
           '<div style="font-size:11px;color:var(--mut2);">'+(p.prov||'Sin proveedor')+'</div>'+
         '</div>'+
         '<div style="flex:0 0 90px;text-align:center;font-size:12px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.stock+' / '+p.max+' '+p.um+'</div>'+
-        '<input type="number" value="'+x.sugerido+'" min="0" step="any" style="flex:0 0 90px;text-align:center;padding:6px;font-size:13px;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);" onchange="pedidosCantidades['+p.id+']=parseFloat(this.value)||0">'+
+        '<input type="number" value="'+x.sugerido+'" min="0" step="any" style="flex:0 0 90px;text-align:center;padding:6px;font-size:13px;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);" onchange="pedidosCantidades['+p.id+']=parseFloat(this.value)||0;savePedidosState();">'+
       '</div>';
     });
   }
