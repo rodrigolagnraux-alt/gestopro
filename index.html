@@ -786,6 +786,12 @@ select.fi{appearance:none;cursor:pointer;}
       </div>
       <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="mp-monto-display">$0</div>
       <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto o escanea el QR impreso</div>
+      <button class="btn btn-acc btn-full" onclick="generarQRDinamico()" id="btn-qr-dinamico" style="margin-top:12px;">📱 Generar QR con monto exacto</button>
+      <div id="qr-dinamico-wrap" style="display:none;margin-top:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;">Mostrá este QR al cliente para que escanee</div>
+        <img id="qr-dinamico-img" src="" style="width:200px;height:200px;border-radius:10px;background:#fff;padding:8px;" alt="QR">
+        <div style="font-size:11px;color:var(--mut2);margin-top:8px;">El monto ya viene cargado — el cliente solo confirma</div>
+      </div>
     </div>
   </div>
   </div><!-- cierre columna izquierda -->
@@ -1044,6 +1050,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">📱 Mercado Pago</div>
   <div class="fg"><label class="fl">Alias Mercado Pago</label><input class="fi" id="cfg-alias" placeholder="Ej: mi.negocio.mp"></div>
   <div class="fg"><label class="fl">CVU Mercado Pago</label><input class="fi" id="cfg-cvu" placeholder="0000003100012345678901"></div>
+  <div class="fg"><label class="fl">Access Token MP (para QR dinámico)</label><input class="fi" id="cfg-mp-token" placeholder="APP_USR-..." type="password"><div style="font-size:11px;color:var(--mut2);margin-top:4px;">Obtené el token en <b>mercadopago.com/developers</b> → Tus integraciones → Credenciales de producción</div></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
@@ -1988,6 +1995,7 @@ function guardarConfig(){
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
   var rd=parseFloat(get('cfg-recargo-domingo')); config.recargoDomingo = isNaN(rd) ? 50 : rd;
+  var mpToken=get('cfg-mp-token').trim(); if(mpToken) config.mpToken=mpToken;
   var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
   config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
   set('alias-dni-display','text',config.aliasDni||'—');
@@ -5135,6 +5143,7 @@ function initAppData(){
   set('cvu-mp-display','text',config.cvu||'—');
   set('cfg-pin','val',config.pin||'');
   set('cfg-recargo-domingo','val',config.recargoDomingo!==undefined?config.recargoDomingo:50);
+  if(config.mpToken) set('cfg-mp-token','val',config.mpToken);
   var fpref = config.fiadoPrecio || 'original';
   var fpEl = el('cfg-fiado-precio-'+fpref);
   if(fpEl) fpEl.checked = true;
@@ -5914,6 +5923,37 @@ function notificarPinFallido(tipo){
 }
 
 // Run when DOM is ready
+
+// ═══ QR DINÁMICO MERCADO PAGO ═══
+async function generarQRDinamico(){
+  var monto = parseFloat(get('cobrar-monto'))||0;
+  if(!monto){ toast('Ingresá el monto primero','err'); return; }
+  var token = config.mpToken||'';
+  if(!token){ toast('Configurá el Access Token de MP en ⚙️ Configuración','err'); return; }
+  var btn = el('btn-qr-dinamico');
+  if(btn){ btn.textContent='⏳ Generando QR...'; btn.disabled=true; }
+  try{
+    var res = await fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-qr',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({monto:monto, token:token, descripcion:'Venta — '+(config.nombre||'GestoPro')})
+    });
+    var data = await res.json();
+    if(data.qr_data){
+      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data.qr_data);
+      var img = el('qr-dinamico-img');
+      if(img) img.src = qrUrl;
+      set('qr-dinamico-wrap','display','block');
+      toast('✓ QR generado — mostráselo al cliente');
+    } else {
+      toast('Error al generar QR: '+(data.error||'reintentá'),'err');
+    }
+  }catch(e){
+    toast('Error de conexión con MP','err');
+  }
+  if(btn){ btn.textContent='📱 Generar QR con monto exacto'; btn.disabled=false; }
+}
+
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
