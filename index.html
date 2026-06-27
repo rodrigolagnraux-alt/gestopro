@@ -5935,7 +5935,7 @@ async function generarQRDinamico(){
   try{
     var res = await fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-qr',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWV3am52eGx2eXduaWh4a2d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMjg0NTcsImV4cCI6MjA2MTgwNDQ1N30.sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW'},
       body:JSON.stringify({monto:monto, token:token, descripcion:'Venta — '+(config.nombre||'GestoPro')})
     });
     var data = await res.json();
