@@ -3025,7 +3025,7 @@ function guardarProd(){
     var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto o insumo al inventario';
     var btn = document.querySelector('#modal-prod .btn-acc'); if(btn) btn.textContent = 'Guardar';
     ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
-    closeModal('modal-prod'); saveState(); renderDash(); renderProds();
+    closeModal('modal-prod'); saveProducto(p); renderDash(); renderProds();
     toast('📓 Producto actualizado ✓');
     return;
   }
