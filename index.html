@@ -3630,6 +3630,16 @@ function abrirScanner(callback){
   set('scanner-titulo','text',titulo);
   openModal('modal-scanner');
   iniciarCamara();
+  // Sincronizar productos para tener PLU actualizado
+  if(supabaseClient && currentNegocioId){
+    supabaseClient.from('productos_v2').select('*').eq('negocio_id',currentNegocioId).then(function(r){
+      if(r.data&&r.data.length) productos = r.data.map(function(p){
+        return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
+          stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+      });
+    });
+  }
 }
 
 function iniciarCamara(){
