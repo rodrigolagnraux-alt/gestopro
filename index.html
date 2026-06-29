@@ -3042,12 +3042,13 @@ function guardarProd(){
     renderLineas();
   }
   ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-prod'); saveState(); renderDash(); renderProds();
+  closeModal('modal-prod'); saveProducto(nuevoProd); renderDash(); renderProds();
   toast('📦 Producto guardado ✓');
 }
 function eliminarProd(id){
   if(!confirm('¿Eliminar?'))return;
   productos=productos.filter(function(p){return p.id!==id;});
+  eliminarDeNube('productos',id);
   saveState();renderProds();renderDash();toast('Eliminado');
 }
 
@@ -3109,6 +3110,7 @@ function confirmarImport(){
   });
   pendingImport=[];
   set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
+  productos.forEach(function(p){ guardarEnNube('productos',p.id,p); });
   saveState(); renderDash(); renderProds();
   toast(nuevos+' nuevos · '+actualizados+' actualizados ✓');
 }
@@ -3969,6 +3971,7 @@ function cargarCatalogoPrecargado(){
     }
   });
   saveState(); renderCortesLista(); renderProds(); actualizarBtnCarniceria();
+  productos.filter(function(p){return p.cat===catNom;}).forEach(function(p){ guardarEnNube('productos',p.id,p); });
   toast(agregados+' productos cargados ✓');
 }
 
@@ -4011,6 +4014,8 @@ function agregarCorte(){
     precio:precio, pventa:0, min:0, max:0, prov:''
   });
   set('carn-nom','val',''); set('carn-precio','val','');
+  var ultimoProd = productos[productos.length-1];
+  if(ultimoProd) guardarEnNube('productos',ultimoProd.id,ultimoProd);
   saveState(); renderCortesLista(); renderProds(); actualizarBtnCarniceria();
   toast('✓ '+nom+' agregado a '+cat);
 }
@@ -4078,7 +4083,7 @@ function renderItemCorte(p){
 
 function updPrecioCorne(prodId, val){
   var p = productos.find(function(p){return p.id===prodId;});
-  if(p){ p.pventa=parseFloat(val)||0; saveState(); }
+  if(p){ p.pventa=parseFloat(val)||0; guardarEnNube('productos',p.id,p); saveState(); }
 }
 
 // === FLUJO FINANCIERO ===
@@ -4334,7 +4339,7 @@ function aplicarMargenSimulado(){
   if(!margenSimuladoAplicar) return;
   cambiosPrecioActuales.forEach(function(cc){
     var prod = productos.find(function(p){return p.nom===cc.nom;});
-    if(prod){ prod.pventa = Math.ceil(prod.precio*(1+margenSimuladoAplicar/100)); }
+    if(prod){ prod.pventa = Math.ceil(prod.precio*(1+margenSimuladoAplicar/100)); guardarEnNube('productos',prod.id,prod); }
   });
   saveState(); renderDash(); closeModal('modal-precios');
   toast('Margen del '+margenSimuladoAplicar+'% aplicado a '+cambiosPrecioActuales.length+' productos');
