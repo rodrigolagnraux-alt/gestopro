@@ -2350,7 +2350,21 @@ function renderLineasCobro(){
 function selProdCobroNombre(id,nombre){
   const l=lineasCobro.find(function(l){return l.id===id;});
   if(!l) return;
-  const prod=productos.find(function(p){return p.nom.toLowerCase()===nombre.trim().toLowerCase();});
+  // Intentar decodificar como barcode de balanza
+  var codigo = nombre.trim();
+  var balanza = decodificarCodigoBalanza(codigo);
+  if(balanza){
+    var prodBal = productos.find(function(p){return p.plu && parseInt(p.plu,10)===balanza.plu;});
+    if(prodBal){
+      l.prodId = prodBal.id;
+      l.cant = balanza.pesoKg;
+      renderLineasCobro();
+      toast('⚖️ '+prodBal.nom+' — '+balanza.pesoKg+' kg');
+      return;
+    }
+  }
+  // Buscar por nombre normal
+  const prod=productos.find(function(p){return p.nom.toLowerCase()===codigo.toLowerCase();});
   if(prod){ l.prodId=prod.id; actualizarTotalCobro(); }
   else { l.prodId=null; actualizarTotalCobro(); }
 }
