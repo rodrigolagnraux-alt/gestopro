@@ -2508,6 +2508,7 @@ function confirmarCobro(){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
       prod.stock=Math.max(0,prod.stock-l.cant);
+      guardarEnNube('productos',prod.id,prod);
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
       if(pagoActual==='fiado'){
@@ -2766,6 +2767,7 @@ function confirmarIngresoFactura(){
     } else if(l.margen>0){
       prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100));
     }
+    guardarEnNube('productos',prod.id,prod);
     const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:fecha,motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
@@ -2810,6 +2812,7 @@ function guardarEgreso(){
   if(!prod)return;
   if(cant>prod.stock){toast('Stock insuficiente. Disponible: '+prod.stock+' '+prod.um,'err');return;}
   prod.stock-=cant;
+  guardarEnNube('productos',prod.id,prod);
   const mot=el('eg-motivo'); const motivo=mot?mot.value:'Egreso';
   const _me={id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo}; movimientos.unshift(_me);
   set('eg-cant','val','');
