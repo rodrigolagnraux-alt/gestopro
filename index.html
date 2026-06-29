@@ -4268,13 +4268,15 @@ async function renderFinanzas(){
   if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   var totalGF = gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
   var totalSueldos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
   var ganancia = totalVentas - totalCompras - totalGF - totalSueldos;
+  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados;
 
   if(kEl) kEl.innerHTML =
     '<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'+
-    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos)+'</div><div class="kd">total egresos</div></div>'+
+    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados)+'</div><div class="kd">total egresos</div></div>'+
     '<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
 
   var rEl = el('fin-resultado');
@@ -4283,10 +4285,10 @@ async function renderFinanzas(){
     '<div class="fin-row"><span>📦 Costo mercadería comprada</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
     '<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
+    (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
     (totalPend>0?'<div class="fin-row"><span>⏳ Facturas pendientes</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(totalPend)+'</span></div>':'')+
     '<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Pérdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>';
 
-  renderSimulador();
 
   var dEl = el('fin-detalle');
   if(dEl){
