@@ -2902,7 +2902,7 @@ function confirmarPagoFactura(){
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
   const _df=facturas.find(function(f){return f.id===id;}); facturas=facturas.filter(function(f){return f.id!==id;});
-  if(_df){saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('facturas').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});} renderFacts();renderDash();toast('Eliminada');
+  if(_df){saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('facturas_v2').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});} renderFacts();renderDash();toast('Eliminada');
 }
 function fFact(f,btn){
   factFilter=f;
@@ -3145,13 +3145,11 @@ async function renderDash(){
   var totalHoy = 0;
   var hoyStr = now.toISOString().slice(0,10);
   if(supabaseClient && currentNegocioId){
-    var rh = await supabaseClient.from('movimientos').select('data').eq('negocio_id',currentNegocioId);
+    var rh = await supabaseClient.from('movimientos_v2').select('monto').eq('negocio_id',currentNegocioId).eq('tipo','cobro').eq('fecha',hoyStr);
     if(rh.data){
-      totalHoy = rh.data
-        .map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}})
-        .filter(function(m){return m&&m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;})
-        .reduce(function(s,m){return s+(m.monto||0);},0);
+      totalHoy = rh.data.reduce(function(s,m){return s+(m.monto||0);},0);
     }
+    if(rh.error) console.log('Dashboard hoy error:',rh.error);
   } else {
     totalHoy = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
   }
@@ -3360,8 +3358,8 @@ async function renderMovs(){
 
   var allMovs = [];
   if(supabaseClient && currentNegocioId){
-    var rm = await supabaseClient.from('movimientos').select('data').eq('negocio_id',currentNegocioId);
-    if(rm.data) allMovs = rm.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(function(m){if(!m)return false;var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
+    var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr).order('fecha',{ascending:false});
+    if(rm.data) allMovs = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero};});
   } else {
     allMovs = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
   }
@@ -3452,17 +3450,13 @@ async function renderResumen(){
   if(ri) ri.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
   var movsF = [], factsF = [];
   if(supabaseClient && currentNegocioId){
-    var resMovs = await supabaseClient.from('movimientos').select('data').eq('negocio_id', currentNegocioId);
+    var resMovs = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resMovs.data){
-      movsF = resMovs.data
-        .map(function(x){ try{ return JSON.parse(x.data); }catch(e){ return null; } })
-        .filter(function(m){ if(!m) return false; var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
+      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat};});
     }
-    var resFacts = await supabaseClient.from('facturas').select('data').eq('negocio_id', currentNegocioId);
+    var resFacts = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resFacts.data){
-      factsF = resFacts.data
-        .map(function(x){ try{ return JSON.parse(x.data); }catch(e){ return null; } })
-        .filter(function(f){ if(!f) return false; var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
+      factsF = resFacts.data.map(function(f){return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,origen:f.origen,obs:f.obs};});
     }
   } else {
     movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
@@ -4231,10 +4225,10 @@ async function renderFinanzas(){
 
   var movsF = [], factsF = [];
   if(supabaseClient && currentNegocioId){
-    var rm = await supabaseClient.from('movimientos').select('data').eq('negocio_id',currentNegocioId);
-    if(rm.data) movsF = rm.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(function(m){if(!m)return false;var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
-    var rf = await supabaseClient.from('facturas').select('data').eq('negocio_id',currentNegocioId);
-    if(rf.data) factsF = rf.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(function(f){if(!f)return false;var fd=(f.fecha||'').slice(0,10);return fd>=desdeStr&&fd<=hastaStr;});
+    var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
+    if(rm.data) movsF = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat};});
+    var rf = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
+    if(rf.data) factsF = rf.data.map(function(f){return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,origen:f.origen,obs:f.obs};});
   } else {
     movsF = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
     factsF = facturas.filter(function(f){var fd=(f.fecha||'').slice(0,10);return fd>=desdeStr&&fd<=hastaStr;});
@@ -4789,31 +4783,109 @@ function mostrarPantallaEspera(){
     +'</div>';
 }
 
+// ═══ SUPABASE v2 — COLUMNAS REALES ═══
+
 function sincronizarDatos(){
   if(!supabaseClient||!currentNegocioId) return Promise.resolve();
   var promises = [
-    supabaseClient.from('productos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) productos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
-    supabaseClient.from('movimientos').select('*').eq('negocio_id',currentNegocioId).order('created_at',{ascending:false}).limit(200).then(function(r){ if(r.data&&r.data.length) movimientos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
-    supabaseClient.from('facturas').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) facturas=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
-    supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){ if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean); }),
+    // productos_v2 — columnas reales
+    supabaseClient.from('productos_v2').select('*').eq('negocio_id',currentNegocioId).then(function(r){
+      if(r.data&&r.data.length) productos = r.data.map(function(p){
+        return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
+          stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+      });
+    }),
+    // movimientos_v2 — solo los últimos 30 días para el array local (dashboard/renders locales)
+    supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId)
+      .gte('fecha', new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10))
+      .order('fecha',{ascending:false}).then(function(r){
+      if(r.data) movimientos = r.data.map(function(m){
+        return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,
+          desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,
+          cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero};
+      });
+    }),
+    // facturas_v2
+    supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId)
+      .order('fecha',{ascending:false}).then(function(r){
+      if(r.data) facturas = r.data.map(function(f){
+        return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,
+          monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,
+          origen:f.origen,obs:f.obs};
+      });
+    }),
+    // gastos_fijos — sin cambios
+    supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){
+      if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean);
+    }),
+    // fiados — sin cambios
     supabaseClient.from('fiados_clientes').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom').then(function(r){ fiados=r.data||[]; })
   ];
   return Promise.all(promises).then(function(){ console.log('Datos sincronizados'); }).catch(function(e){ console.log('Sync error:',e); });
 }
 
+function guardarProductoNube(p){
+  if(!supabaseClient||!currentNegocioId) return;
+  supabaseClient.from('productos_v2').upsert({
+    id:String(p.id), negocio_id:currentNegocioId,
+    cod:p.cod||null, nom:p.nom||'Sin nombre', cat:p.cat||'Otro',
+    subcat:p.subcat||null, animal:p.animal||null,
+    stock:p.stock||0, um:p.um||'UN',
+    precio:p.precio||0, pventa:p.pventa||0,
+    plu:p.plu?String(p.plu):null,
+    min:p.min||0, max:p.max||0, prov:p.prov||null,
+    updated_at:new Date().toISOString()
+  }).then(function(){}).catch(function(e){console.log('Save producto error:',e);});
+}
+
+function guardarMovimientoNube(m){
+  if(!supabaseClient||!currentNegocioId) return;
+  var fecha = (m.fecha||'').slice(0,10) || new Date().toISOString().slice(0,10);
+  supabaseClient.from('movimientos_v2').upsert({
+    id:String(m.id), negocio_id:currentNegocioId,
+    tipo:m.tipo||'cobro', fecha:fecha,
+    monto:m.monto||0, metodo:m.metodo||null,
+    descripcion:m.desc||m.descripcion||null,
+    prod_id:m.prodId?String(m.prodId):null,
+    prod_nom:m.prodNom||null,
+    cant:m.cant||null, costo:m.costo||null,
+    cat:m.cat||null, cajero:m.cajero||null
+  }).then(function(){}).catch(function(e){console.log('Save movimiento error:',e);});
+}
+
+function guardarFacturaNube(f){
+  if(!supabaseClient||!currentNegocioId) return;
+  supabaseClient.from('facturas_v2').upsert({
+    id:String(f.id), negocio_id:currentNegocioId,
+    num:f.num||null, prov:f.prov||null,
+    fecha:(f.fecha||'').slice(0,10)||null,
+    venc:(f.venc||'').slice(0,10)||null,
+    monto:f.monto||0, monto_pagado:f.montoPagado||0,
+    estado:f.estado||'pendiente',
+    origen:f.origen||null, obs:f.obs||null,
+    updated_at:new Date().toISOString()
+  }).then(function(){}).catch(function(e){console.log('Save factura error:',e);});
+}
+
+// guardarEnNube — mantiene compatibilidad para gastos_fijos y otros
 function guardarEnNube(tabla, id, data){
   if(!supabaseClient||!currentNegocioId) return;
+  if(tabla==='productos'){ guardarProductoNube(data); return; }
+  if(tabla==='movimientos'){ guardarMovimientoNube(data); return; }
+  if(tabla==='facturas'){ guardarFacturaNube(data); return; }
   supabaseClient.from(tabla).upsert({id:String(id),negocio_id:currentNegocioId,data:JSON.stringify(data),updated_at:new Date().toISOString()}).then(function(){}).catch(function(e){console.log('Save error:',e);});
 }
 
 function eliminarDeNube(tabla, id){
   if(!supabaseClient||!currentNegocioId) return;
-  supabaseClient.from(tabla).delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){}).catch(function(){});
+  var tablaReal = tabla==='productos'?'productos_v2':tabla==='movimientos'?'movimientos_v2':tabla==='facturas'?'facturas_v2':tabla;
+  supabaseClient.from(tablaReal).delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){}).catch(function(){});
 }
 
-function saveProducto(p){ saveState(); guardarEnNube('productos',p.id,p); }
-function saveMovimiento(m){ saveState(); guardarEnNube('movimientos',m.id,m); }
-function saveFactura(f){ saveState(); guardarEnNube('facturas',f.id,f); }
+function saveProducto(p){ saveState(); guardarProductoNube(p); }
+function saveMovimiento(m){ saveState(); guardarMovimientoNube(m); }
+function saveFactura(f){ saveState(); guardarFacturaNube(f); }
 function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
 
 // ═══ FIADO ═══
