@@ -1759,6 +1759,11 @@ select.fi{appearance:none;cursor:pointer;}
         <input class="fi" id="carn-precio" type="number" placeholder="0" style="font-family:DM Mono,monospace;">
       </div>
     </div>
+    <div class="fg" style="margin-top:8px;">
+      <label class="fl">PLU balanza (opcional)</label>
+      <input class="fi" id="carn-plu" type="number" placeholder="Ej: 100" inputmode="numeric">
+      <div style="font-size:11px;color:var(--mut2);margin-top:4px;">Código que usa la balanza para este producto</div>
+    </div>
     <div class="fg" id="carn-cat-custom-wrap" style="display:none;margin-top:8px;">
       <label class="fl">Nombre de la categoría</label>
       <input class="fi" id="carn-cat-custom" placeholder="Ej: Panadería, Verdulería, Lácteos...">
@@ -4011,9 +4016,10 @@ function agregarCorte(){
     cod:cat.substring(0,4).toUpperCase()+String(Date.now()).slice(-4),
     nom:nom, cat:cat, subcat:subcat,
     animal:animal, stock:0, um:um,
-    precio:precio, pventa:0, min:0, max:0, prov:''
+    precio:precio, pventa:0, min:0, max:0, prov:'',
+    plu:get('carn-plu').trim()||null
   });
-  set('carn-nom','val',''); set('carn-precio','val','');
+  set('carn-nom','val',''); set('carn-precio','val',''); set('carn-plu','val','');
   var ultimoProd = productos[productos.length-1];
   if(ultimoProd) guardarEnNube('productos',ultimoProd.id,ultimoProd);
   saveState(); renderCortesLista(); renderProds(); actualizarBtnCarniceria();
