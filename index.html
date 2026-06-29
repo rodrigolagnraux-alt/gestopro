@@ -3187,7 +3187,10 @@ async function renderDash(){
   if(da)da.innerHTML=alertas.length?alertas.slice(0,5).map(function(p){const e=estadoProd(p);return'<div class="mov-item"><div class="mov-ico mi-egreso">⚑</div><div class="mov-txt"><div class="mov-name">'+p.nom+'</div><div class="mov-meta">'+p.cat+' · Stock: '+p.stock+' '+p.um+' · Mín: '+p.min+'</div></div>'+bdg(e.cls,e.lbl)+'</div>';}).join(''):'<div class="empty"><div class="empty-ico">✓</div><div class="empty-t">¡Todo en orden!</div></div>';
   // Movimientos recientes
   const dm=el('dash-movs');
-  if(dm)dm.innerHTML=movimientos.length?movimientos.slice(0,5).map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos</div></div>';
+  if(dm){
+    var movsOrdenados = movimientos.slice().sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+    dm.innerHTML=movsOrdenados.length?movsOrdenados.slice(0,5).map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos</div></div>';
+  }
 }
 
 function renderMovItem(m){
@@ -4823,7 +4826,7 @@ function sincronizarDatos(){
     // movimientos_v2 — solo los últimos 30 días para el array local (dashboard/renders locales)
     supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId)
       .gte('fecha', new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10))
-      .order('fecha',{ascending:false}).then(function(r){
+      .order('fecha',{ascending:false}).order('created_at',{ascending:false}).then(function(r){
       if(r.data) movimientos = r.data.map(function(m){
         return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,
           desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,
