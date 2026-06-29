@@ -3372,7 +3372,7 @@ async function renderMovs(){
 
   var allMovs = [];
   if(supabaseClient && currentNegocioId){
-    var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr).order('fecha',{ascending:false});
+    var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr).order('fecha',{ascending:false}).order('created_at',{ascending:false});
     if(rm.data) allMovs = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero};});
   } else {
     allMovs = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
