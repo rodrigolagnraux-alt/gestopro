@@ -1386,10 +1386,15 @@ select.fi{appearance:none;cursor:pointer;}
 <div id="pg-resumen" class="pg">
   <div class="ptitle">Resumen Financiero</div>
   <div class="psub">Lo que entra y lo que sale · <b id="res-periodo">Este mes</b></div>
-  <div class="ptabs">
-    <button class="ptab on" onclick="setResPeriod('mes',this)">Este mes</button>
-    <button class="ptab" onclick="setResPeriod('anterior',this)">Mes anterior</button>
-    <button class="ptab" onclick="setResPeriod('anio',this)">Este año</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;">
+    <button class="btn btn-ghost btn-sm" onclick="resumenNavMes(-1)">&#8592;</button>
+    <div style="text-align:center;flex:1;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--txt);" id="res-nav-label">—</div>
+      <div style="font-size:11px;color:var(--mut2);">
+        <span id="res-nav-mes-actual" style="cursor:pointer;text-decoration:underline;color:var(--acc);" onclick="resumenIrHoy()">Ir a hoy</span>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="resumenNavMes(1)" id="res-nav-next">&#8594;</button>
   </div>
   <div class="two">
     <div class="card"><div class="stitle">💰 Ingresos (cobros)</div><div id="res-ingresos"></div></div>
@@ -3354,57 +3359,99 @@ function renderGastos(){
 }
 
 // ═══ RENDER RESUMEN ═══
-function renderResumen(){
-  const now=new Date();
-  let label,movsF,factsF,gfMult=1;
-  if(resPeriod==='mes'){
-    label=now.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    movsF=movimientos.filter(function(m){const d=new Date(m.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
-    factsF=facturas.filter(function(f){const d=new Date(f.fecha+'T00:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
-  } else if(resPeriod==='anterior'){
-    const ant=new Date(now.getFullYear(),now.getMonth()-1,1);
-    label=ant.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    movsF=movimientos.filter(function(m){const d=new Date(m.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
-    factsF=facturas.filter(function(f){const d=new Date(f.fecha+'T00:00:00');return d.getMonth()===ant.getMonth()&&d.getFullYear()===ant.getFullYear();});
+// ═══ RESUMEN HISTÓRICO ═══
+var resumenMesActual = new Date().getMonth();
+var resumenAnioActual = new Date().getFullYear();
+
+function resumenNavMes(delta){
+  resumenMesActual += delta;
+  if(resumenMesActual > 11){ resumenMesActual = 0; resumenAnioActual++; }
+  if(resumenMesActual < 0){ resumenMesActual = 11; resumenAnioActual--; }
+  var hoy = new Date();
+  var nextBtn = el('res-nav-next');
+  if(nextBtn) nextBtn.disabled = (resumenAnioActual === hoy.getFullYear() && resumenMesActual === hoy.getMonth());
+  renderResumen();
+}
+function resumenIrHoy(){
+  var hoy = new Date();
+  resumenMesActual = hoy.getMonth();
+  resumenAnioActual = hoy.getFullYear();
+  var nextBtn = el('res-nav-next');
+  if(nextBtn) nextBtn.disabled = true;
+  renderResumen();
+}
+async function renderResumen(){
+  var desde = new Date(resumenAnioActual, resumenMesActual, 1);
+  var hasta = new Date(resumenAnioActual, resumenMesActual + 1, 0);
+  var desdeStr = desde.toISOString().slice(0,10);
+  var hastaStr = hasta.toISOString().slice(0,10);
+  var label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+  var hoy = new Date();
+  var esHoy = (resumenAnioActual === hoy.getFullYear() && resumenMesActual === hoy.getMonth());
+  var navLabel = el('res-nav-label');
+  if(navLabel) navLabel.textContent = label;
+  var nextBtn = el('res-nav-next');
+  if(nextBtn) nextBtn.disabled = esHoy;
+  set('res-periodo','text', label);
+  var ri = el('res-ingresos'); var re = el('res-egresos'); var rb = el('res-balance');
+  if(ri) ri.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
+  var movsF = [], factsF = [];
+  if(supabaseClient && currentNegocioId){
+    var resMovs = await supabaseClient.from('movimientos').select('data').eq('negocio_id', currentNegocioId);
+    if(resMovs.data){
+      movsF = resMovs.data
+        .map(function(x){ try{ return JSON.parse(x.data); }catch(e){ return null; } })
+        .filter(function(m){ if(!m) return false; var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
+    }
+    var resFacts = await supabaseClient.from('facturas').select('data').eq('negocio_id', currentNegocioId);
+    if(resFacts.data){
+      factsF = resFacts.data
+        .map(function(x){ try{ return JSON.parse(x.data); }catch(e){ return null; } })
+        .filter(function(f){ if(!f) return false; var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
+    }
   } else {
-    label='Año '+now.getFullYear(); gfMult=12;
-    movsF=movimientos.filter(function(m){return new Date(m.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
-    factsF=facturas.filter(function(f){return new Date(f.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
+    movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
+    factsF = facturas.filter(function(f){ var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
   }
-  set('res-periodo','text',label);
   const cobros=movsF.filter(function(m){return m.tipo==='cobro';});
   const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
   const ef=cobros.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+m.monto;},0);
   const dni=cobros.filter(function(m){return m.metodo==='cuentadni';}).reduce(function(s,m){return s+m.monto;},0);
   const mp=cobros.filter(function(m){return m.metodo==='mercadopago';}).reduce(function(s,m){return s+m.monto;},0);
-  // compatibilidad con registros viejos
   const qr=cobros.filter(function(m){return m.metodo==='qr';}).reduce(function(s,m){return s+m.monto;},0);
   const tr=cobros.filter(function(m){return m.metodo==='transferencia';}).reduce(function(s,m){return s+m.monto;},0);
   const empMovs=movsF.filter(function(m){return m.tipo==='empleado';});
   const totalEmpMerc=empMovs.reduce(function(s,m){return s+(m.monto||0);},0);
-  const ri=el('res-ingresos');
   if(ri)ri.innerHTML='<div class="fin-row"><span>💵 Efectivo</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(ef)+'</span></div>'
     +'<div class="fin-row"><span>🏛️ Cuenta DNI</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(dni)+'</span></div>'
     +'<div class="fin-row"><span>📱 Mercado Pago</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(mp)+'</span></div>'
     +(qr>0?'<div class="fin-row"><span>📱 QR/MP (anterior)</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(qr)+'</span></div>':'')
     +(tr>0?'<div class="fin-row"><span>🏦 Transferencia (anterior)</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div>':'')
-    +'<div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'+(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería entregada a empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b> (no entra a caja, se descuenta del sueldo)</div>':'');
-  const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
+    +'<div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'
+    +(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b></div>':'');
+  const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
   const factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
   const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
-  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos' && m.prodId===undefined;}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&m.prodId===undefined;}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
-  const re=el('res-egresos');
-  if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div><div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'+(totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(totalSueldos)+'</span></div>':'')+(totalOtrosEgresos>0?'<div class="fin-row"><span>📤 Otros egresos</span><span style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(totalOtrosEgresos)+'</span></div>':'')+'<div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
+  if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div>'
+    +'<div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'
+    +(totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(totalSueldos)+'</span></div>':'')
+    +(totalOtrosEgresos>0?'<div class="fin-row"><span>📤 Otros egresos</span><span style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(totalOtrosEgresos)+'</span></div>':'')
+    +'<div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
   const balance=totalCobrado-totalEg;
   const balColor=balance>=0?'var(--grn)':'var(--red)';
-  const rb=el('res-balance');
-  if(rb)rb.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;padding:16px 0;"><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">COBRADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);">'+fmtM(totalCobrado)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">GASTADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--red);">'+fmtM(totalEg)+'</div></div><div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div><div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;"><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
-  // Resumen diario
+  if(rb)rb.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;padding:16px 0;">'
+    +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">COBRADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);">'+fmtM(totalCobrado)+'</div></div>'
+    +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">GASTADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--red);">'+fmtM(totalEg)+'</div></div>'
+    +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div>'
+    +'<div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
   renderResumenDiario(movsF, factsF, label);
 }
-function setResPeriod(p,btn){resPeriod=p;document.querySelectorAll('#pg-resumen .ptabs .ptab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');renderResumen();}
+function setResPeriod(p,btn){ /* legacy - no-op */ }
 
 function renderResumenDiario(movsF, factsF, label){
   var diasEl = el('res-dias-lista');
@@ -3808,7 +3855,7 @@ function crearProductoDesdeScanner(){
     um:umEl?umEl.value:'UN', precio:0, pventa:0, min:0, max:0, prov:''
   };
   productos.push(nuevoProd);
-  saveState();
+  saveProducto(nuevoProd);
   mostrarProductoEncontrado(nuevoProd);
   toast('Producto creado ✓');
 }
@@ -5827,8 +5874,9 @@ async function guardarAnticipo() {
     });
   }
   // Egreso en movimientos
-  movimientos.unshift({id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Anticipo — '+empActual.nombre,cant:1,precio:monto,total:monto,fecha:new Date().toISOString()});
-  saveState();
+  var _mAnticipo = {id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Anticipo — '+empActual.nombre,cant:1,precio:monto,total:monto,fecha:new Date().toISOString()};
+  movimientos.unshift(_mAnticipo);
+  saveMovimiento(_mAnticipo);
   toast('Anticipo de '+pesos(monto)+' registrado ✓');
   closeModal('modal-emp-anticipo');
   await cargarSemanaActual();
@@ -5879,8 +5927,9 @@ async function confirmarLiquidacion() {
 
   // Egreso automático en movimientos
   if(total > 0) {
-    movimientos.unshift({id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Sueldo semanal — '+empActual.nombre,cant:1,precio:total,total:total,fecha:new Date().toISOString()});
-    saveState();
+    var _mSueldo = {id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Sueldo semanal — '+empActual.nombre,cant:1,precio:total,total:total,fecha:new Date().toISOString()};
+    movimientos.unshift(_mSueldo);
+    saveMovimiento(_mSueldo);
   }
 
   toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
