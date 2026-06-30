@@ -1910,7 +1910,7 @@ function loadState(){
 }
 
 // ═══ HELPERS ═══
-function hoy(){ return new Date().toISOString().split('T')[0]; }
+function hoy(){ return fechaLocalStr(new Date()); }
 function fmtM(v){ return '$'+(parseFloat(v)||0).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtF(d){ if(!d)return'—'; const[y,m,day]=d.split('-'); return day+'/'+m+'/'+y; }
 function estadoProd(p){
@@ -3162,7 +3162,7 @@ async function renderDash(){
   const gfPend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
   // Cobrado hoy — consulta Supabase directo para no depender del array local
   var totalHoy = 0;
-  var hoyStr = now.toISOString().slice(0,10);
+  var hoyStr = fechaLocalStr(now);
   if(supabaseClient && currentNegocioId){
     var rh = await supabaseClient.from('movimientos_v2').select('monto').eq('negocio_id',currentNegocioId).eq('tipo','cobro').eq('fecha',hoyStr);
     if(rh.data){
@@ -3388,7 +3388,7 @@ async function renderMovs(){
   var desdeStr, hastaStr, label;
 
   if(movsVista==='hoy'){
-    desdeStr = hoy.toISOString().slice(0,10);
+    desdeStr = fechaLocalStr(hoy);
     hastaStr = desdeStr;
     label = 'Hoy — ' + hoy.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
     label = label.charAt(0).toUpperCase() + label.slice(1);
@@ -3396,15 +3396,15 @@ async function renderMovs(){
     var lun = new Date(hoy);
     lun.setDate(hoy.getDate() - ((hoy.getDay()||7) - 1));
     var dom = new Date(lun); dom.setDate(lun.getDate()+6);
-    desdeStr = lun.toISOString().slice(0,10);
-    hastaStr = dom.toISOString().slice(0,10);
+    desdeStr = fechaLocalStr(lun);
+    hastaStr = fechaLocalStr(dom);
     label = 'Semana ' + lun.toLocaleDateString('es-AR',{day:'numeric',month:'short'}) + ' al ' + dom.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
   } else {
     // mes — usa navegador
     var desde = new Date(movsAnioActual, movsMesActual, 1);
     var hasta = new Date(movsAnioActual, movsMesActual + 1, 0);
-    desdeStr = desde.toISOString().slice(0,10);
-    hastaStr = hasta.toISOString().slice(0,10);
+    desdeStr = fechaLocalStr(desde);
+    hastaStr = fechaLocalStr(hasta);
     label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
     label = label.charAt(0).toUpperCase() + label.slice(1);
     var esHoy = (movsAnioActual===hoy.getFullYear()&&movsMesActual===hoy.getMonth());
