@@ -1230,7 +1230,12 @@ select.fi{appearance:none;cursor:pointer;}
       <button class="btn btn-red btn-sm" onclick="abrirEgreso()">📤 Egreso</button>
     </div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
+  <div class="ptabs" style="margin-bottom:8px;">
+    <button class="ptab on" id="movs-tab-hoy" onclick="movsSetVista('hoy',this)">Hoy</button>
+    <button class="ptab" id="movs-tab-semana" onclick="movsSetVista('semana',this)">Semana</button>
+    <button class="ptab" id="movs-tab-mes" onclick="movsSetVista('mes',this)">Mes</button>
+  </div>
+  <div id="movs-nav-wrap" style="display:none;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
     <button class="btn btn-ghost btn-sm" onclick="movsNavMes(-1)">&#8592;</button>
     <div style="text-align:center;flex:1;">
       <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--txt);" id="movs-nav-label">—</div>
@@ -3343,6 +3348,24 @@ function abrirEgresoProd(prodId){
 // ═══ MOVIMIENTOS HISTÓRICO ═══
 var movsMesActual = new Date().getMonth();
 var movsAnioActual = new Date().getFullYear();
+var movsVista = 'hoy'; // 'hoy', 'semana', 'mes'
+
+function movsSetVista(vista, btn){
+  movsVista = vista;
+  document.querySelectorAll('#pg-movimientos .ptabs .ptab').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  // Mostrar/ocultar navegador de meses
+  var wrap = el('movs-nav-wrap');
+  if(wrap) wrap.style.display = vista==='mes' ? 'flex' : 'none';
+  // Si cambia a mes, resetear al mes actual
+  if(vista==='mes'){
+    var hoy = new Date();
+    movsMesActual = hoy.getMonth();
+    movsAnioActual = hoy.getFullYear();
+    var nb = el('movs-nav-next'); if(nb) nb.disabled = true;
+  }
+  renderMovs();
+}
 
 function movsNavMes(delta){
   movsMesActual += delta;
@@ -3355,22 +3378,40 @@ function movsNavMes(delta){
 function movsIrHoy(){
   var hoy = new Date(); movsMesActual = hoy.getMonth(); movsAnioActual = hoy.getFullYear();
   var nb = el('movs-nav-next'); if(nb) nb.disabled = true;
-  renderMovs();
+  movsSetVista('hoy', el('movs-tab-hoy'));
 }
 function setPeriod(p,btn){ /* legacy no-op */ }
 function fMov(f,btn){ movFilter=f; document.querySelectorAll('#pg-movimientos .fr .fb').forEach(function(b){b.classList.remove('on');}); if(btn)btn.classList.add('on'); renderMovs(); }
 
 async function renderMovs(){
-  var desde = new Date(movsAnioActual, movsMesActual, 1);
-  var hasta = new Date(movsAnioActual, movsMesActual + 1, 0);
-  var desdeStr = desde.toISOString().slice(0,10);
-  var hastaStr = hasta.toISOString().slice(0,10);
-  var label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-  label = label.charAt(0).toUpperCase() + label.slice(1);
   var hoy = new Date();
-  var esHoy = (movsAnioActual===hoy.getFullYear()&&movsMesActual===hoy.getMonth());
-  var nl = el('movs-nav-label'); if(nl) nl.textContent = label;
-  var nb = el('movs-nav-next'); if(nb) nb.disabled = esHoy;
+  var desdeStr, hastaStr, label;
+
+  if(movsVista==='hoy'){
+    desdeStr = hoy.toISOString().slice(0,10);
+    hastaStr = desdeStr;
+    label = 'Hoy — ' + hoy.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+  } else if(movsVista==='semana'){
+    var lun = new Date(hoy);
+    lun.setDate(hoy.getDate() - ((hoy.getDay()||7) - 1));
+    var dom = new Date(lun); dom.setDate(lun.getDate()+6);
+    desdeStr = lun.toISOString().slice(0,10);
+    hastaStr = dom.toISOString().slice(0,10);
+    label = 'Semana ' + lun.toLocaleDateString('es-AR',{day:'numeric',month:'short'}) + ' al ' + dom.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+  } else {
+    // mes — usa navegador
+    var desde = new Date(movsAnioActual, movsMesActual, 1);
+    var hasta = new Date(movsAnioActual, movsMesActual + 1, 0);
+    desdeStr = desde.toISOString().slice(0,10);
+    hastaStr = hasta.toISOString().slice(0,10);
+    label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    var esHoy = (movsAnioActual===hoy.getFullYear()&&movsMesActual===hoy.getMonth());
+    var nl = el('movs-nav-label'); if(nl) nl.textContent = label;
+    var nb = el('movs-nav-next'); if(nb) nb.disabled = esHoy;
+  }
+
   var ml = el('movs-list'); if(ml) ml.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:16px;text-align:center;">Cargando...</div>';
 
   var allMovs = [];
@@ -3615,7 +3656,7 @@ function renderResumenDiario(movsF, factsF, label){
 function renderPage(id){
   if(id==='dash') renderDash();
   else if(id==='productos') renderProds();
-  else if(id==='movimientos'){ sincronizarDatos().then(function(){ renderMovs(); }); }
+  else if(id==='movimientos'){ sincronizarDatos().then(function(){ movsSetVista('hoy', el('movs-tab-hoy')); }); }
   else if(id==='facturas') renderFacts();
   else if(id==='gastos') renderGastos();
   else if(id==='fiado') renderFiado();
