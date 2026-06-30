@@ -5957,6 +5957,12 @@ async function cargarSemanaActual() {
     .select('*').eq('empleado_id', empActual.id)
     .eq('semana_inicio', lunesStr).eq('pagado', false).maybeSingle();
 
+  // Verificar si esta semana ya fue liquidada (pagado=true)
+  var swPagada = await supabaseClient.from('empleados_semanas')
+    .select('id,total_pagado').eq('empleado_id', empActual.id)
+    .eq('semana_inicio', lunesStr).eq('pagado', true).maybeSingle();
+  var yaLiquidada = !!swPagada.data;
+
   var anticipos = sw.data ? (sw.data.anticipos||0) : 0;
   var total = Math.max(0, totalHorasMonto - anticipos - totalMerc);
 
@@ -5973,7 +5979,9 @@ async function cargarSemanaActual() {
     anticipos: anticipos,
     mercaderia: totalMerc,
     mercaderiaIds: mercItems.map(function(m){ return m.id; }),
-    total: total
+    total: total,
+    yaLiquidada: yaLiquidada,
+    totalYaPagado: yaLiquidada ? (swPagada.data.total_pagado||0) : 0
   };
 
   el('emp-semana-actual-resumen').textContent = 'Semana '+fechaCorta(lunesStr)+' al '+fechaCorta(domingo);
@@ -5984,7 +5992,18 @@ async function cargarSemanaActual() {
   el('emp-sw-extra').textContent = horasDomingo > 0 ? horasDomingo+'hs +'+pesos(montoDomingo) : '$0';
   el('emp-sw-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
   el('emp-sw-merc').textContent = totalMerc > 0 ? '-'+pesos(totalMerc) : '$0';
-  el('emp-sw-total').textContent = pesos(total);
+
+  var liquidarBtn = document.querySelector('button[onclick="abrirModalLiquidar()"]');
+  var anticipoBtn = document.querySelector('button[onclick="abrirModalAnticipo()"]');
+  if(yaLiquidada){
+    el('emp-sw-total').textContent = '✓ Ya liquidada — '+pesos(empSemanaActual.totalYaPagado);
+    if(liquidarBtn){ liquidarBtn.disabled = true; liquidarBtn.textContent = '✅ Semana liquidada'; liquidarBtn.style.opacity = '0.5'; }
+    if(anticipoBtn){ anticipoBtn.disabled = true; anticipoBtn.style.opacity = '0.5'; }
+  } else {
+    el('emp-sw-total').textContent = pesos(total);
+    if(liquidarBtn){ liquidarBtn.disabled = false; liquidarBtn.textContent = '✅ Liquidar semana'; liquidarBtn.style.opacity = '1'; }
+    if(anticipoBtn){ anticipoBtn.disabled = false; anticipoBtn.style.opacity = '1'; }
+  }
 }
 
 var empHistMesActual = new Date().getMonth();
@@ -6206,6 +6225,7 @@ async function guardarAnticipo() {
 
 function abrirModalLiquidar() {
   if(!empActual || !empSemanaActual) return;
+  if(empSemanaActual.yaLiquidada){ toast('Esta semana ya fue liquidada ✓'); return; }
   el('modal-liq-emp-nombre').textContent = empActual.nombre;
   el('liq-base').textContent = pesos(empSemanaActual.montoNormal);
   var domTxt = empSemanaActual.horasDomingo > 0 ? empSemanaActual.horasDomingo+'hs +'+pesos(empSemanaActual.montoDomingo) : '$0';
@@ -6218,6 +6238,7 @@ function abrirModalLiquidar() {
 
 async function confirmarLiquidacion() {
   if(!empActual || !empSemanaActual) return;
+  if(empSemanaActual.yaLiquidada){ toast('Esta semana ya fue liquidada ✓'); closeModal('modal-emp-liquidar'); return; }
   var total = empSemanaActual.total;
   var lunes = empSemanaActual.lunes;
   var domingo = empSemanaActual.domingo;
