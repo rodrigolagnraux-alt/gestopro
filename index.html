@@ -2496,14 +2496,13 @@ async function cargarSelectorEmpleadoCobro(){
 async function selEmpleadoCobro(empId){
   var info = el('cobro-empleado-info');
   if(!empId||!info){ if(info) info.style.display='none'; return; }
-  // Calcular mercadería acumulada esta semana
-  var lunes = getLunesActual ? fechaLocalStr(getLunesActual()) : fechaLocalStr(new Date());
-  var mr = await supabaseClient.from('empleados_mercaderia').select('total').eq('empleado_id',empId).gte('fecha',lunes);
+  // Calcular mercadería pendiente de descontar (sin liquidar)
+  var mr = await supabaseClient.from('empleados_mercaderia').select('total').eq('empleado_id',empId).eq('descontado',false);
   var acum = (mr.data||[]).reduce(function(a,m){return a+(m.total||0);},0);
   var monto = parseFloat(get('cobrar-monto'))||0;
   info.style.display='block';
   info.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;">'+
-    '<div style="color:var(--mut2);">Mercadería llevada esta semana</div>'+
+    '<div style="color:var(--mut2);">Mercadería pendiente de descuento</div>'+
     '<div style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(acum)+'</div>'+
     '</div>'+
     (monto>0?'<div style="display:flex;justify-content:space-between;margin-top:4px;">'+
@@ -5933,11 +5932,12 @@ async function cargarSemanaActual() {
   var totalHoras = horasNormales + horasDomingo;
   var totalHorasMonto = montoNormal + montoDomingo;
 
-  // Mercadería de esta semana
+  // Mercadería pendiente de descontar (sin importar la semana en que se retiró)
   var mr = await supabaseClient.from('empleados_mercaderia')
-    .select('total').eq('empleado_id', empActual.id)
-    .gte('fecha', lunesStr).lte('fecha', domingo+'T23:59:59');
-  var totalMerc = (mr.data||[]).reduce(function(a,m){ return a+(m.total||0); }, 0);
+    .select('id,total').eq('empleado_id', empActual.id)
+    .eq('descontado', false);
+  var mercItems = mr.data || [];
+  var totalMerc = mercItems.reduce(function(a,m){ return a+(m.total||0); }, 0);
 
   // Semana en curso (no pagada) — para anticipos
   var sw = await supabaseClient.from('empleados_semanas')
@@ -5959,6 +5959,7 @@ async function cargarSemanaActual() {
     totalHorasMonto: totalHorasMonto,
     anticipos: anticipos,
     mercaderia: totalMerc,
+    mercaderiaIds: mercItems.map(function(m){ return m.id; }),
     total: total
   };
 
@@ -6195,6 +6196,13 @@ async function confirmarLiquidacion() {
       pagado: true,
       fecha_pago: new Date().toISOString()
     });
+  }
+
+  // Marcar la mercadería pendiente como descontada
+  if(empSemanaActual.mercaderiaIds && empSemanaActual.mercaderiaIds.length){
+    await supabaseClient.from('empleados_mercaderia')
+      .update({descontado:true})
+      .in('id', empSemanaActual.mercaderiaIds);
   }
 
   // Egreso automático en movimientos
