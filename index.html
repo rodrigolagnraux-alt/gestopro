@@ -1613,7 +1613,15 @@ select.fi{appearance:none;cursor:pointer;}
 
     <!-- Historial de semanas -->
     <div class="card">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;">📋 Historial de semanas</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="empHistNavMes(-1)">&#8592;</button>
+        <div style="text-align:center;flex:1;">
+          <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--txt);" id="emp-hist-nav-label">📋 Historial</div>
+          <div style="font-size:11px;color:var(--mut2);"><span style="cursor:pointer;text-decoration:underline;color:var(--acc);" onclick="empHistIrHoy()">Ir a hoy</span></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="empHistNavMes(1)" id="emp-hist-nav-next">&#8594;</button>
+      </div>
+      <div id="emp-hist-mes-total" style="font-size:12px;color:var(--mut2);margin-bottom:8px;"></div>
       <div id="emp-historial-semanas"></div>
     </div>
 
@@ -5846,6 +5854,11 @@ async function abrirDetalleEmpleado(empId) {
   el('emp-detalle-nombre').textContent = empActual.nombre;
   el('emp-detalle-sueldo').textContent = pesos(empActual.valor_hora)+'/hora';
 
+  // Reset historial al mes actual al cambiar de empleado
+  var hoyReset = new Date();
+  empHistMesActual = hoyReset.getMonth();
+  empHistAnioActual = hoyReset.getFullYear();
+
   await cargarHorasDias();
   await cargarSemanaActual();
   await cargarHistorialSemanas();
@@ -5974,13 +5987,49 @@ async function cargarSemanaActual() {
   el('emp-sw-total').textContent = pesos(total);
 }
 
+var empHistMesActual = new Date().getMonth();
+var empHistAnioActual = new Date().getFullYear();
+
+function empHistNavMes(delta){
+  empHistMesActual += delta;
+  if(empHistMesActual > 11){ empHistMesActual = 0; empHistAnioActual++; }
+  if(empHistMesActual < 0){ empHistMesActual = 11; empHistAnioActual--; }
+  var hoy = new Date();
+  var nb = el('emp-hist-nav-next'); if(nb) nb.disabled = (empHistAnioActual===hoy.getFullYear()&&empHistMesActual===hoy.getMonth());
+  cargarHistorialSemanas();
+}
+function empHistIrHoy(){
+  var hoy = new Date(); empHistMesActual = hoy.getMonth(); empHistAnioActual = hoy.getFullYear();
+  var nb = el('emp-hist-nav-next'); if(nb) nb.disabled = true;
+  cargarHistorialSemanas();
+}
+
 async function cargarHistorialSemanas() {
+  if(!empActual) return;
+  var desde = new Date(empHistAnioActual, empHistMesActual, 1);
+  var hasta = new Date(empHistAnioActual, empHistMesActual + 1, 0);
+  var desdeStr = fechaLocalStr(desde);
+  var hastaStr = fechaLocalStr(hasta);
+  var label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+  var hoy = new Date();
+  var esHoy = (empHistAnioActual===hoy.getFullYear()&&empHistMesActual===hoy.getMonth());
+  var nl = el('emp-hist-nav-label'); if(nl) nl.textContent = '📋 '+label;
+  var nb = el('emp-hist-nav-next'); if(nb) nb.disabled = esHoy;
+
   var res = await supabaseClient.from('empleados_semanas')
     .select('*').eq('empleado_id', empActual.id)
-    .eq('pagado', true).order('semana_inicio', {ascending:false}).limit(10);
+    .eq('pagado', true)
+    .gte('semana_inicio', desdeStr).lte('semana_inicio', hastaStr)
+    .order('semana_inicio', {ascending:false});
   var semanas = res.data || [];
+
+  var totalMes = semanas.reduce(function(a,s){ return a+(s.total_pagado||0); }, 0);
+  var totMesEl = el('emp-hist-mes-total');
+  if(totMesEl) totMesEl.innerHTML = semanas.length ? 'Total pagado en el mes: <b style="color:var(--grn);">'+pesos(totalMes)+'</b>' : '';
+
   if(semanas.length === 0) {
-    el('emp-historial-semanas').innerHTML = '<div style="font-size:12px;color:var(--mut2);">Sin semanas liquidadas aún</div>';
+    el('emp-historial-semanas').innerHTML = '<div style="font-size:12px;color:var(--mut2);">Sin semanas liquidadas en este período</div>';
     return;
   }
   var html = '';
