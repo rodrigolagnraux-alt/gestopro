@@ -330,6 +330,62 @@ select.fi{appearance:none;cursor:pointer;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<!-- SPLASH SCREEN -->
+<div id="splash-screen" style="
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0f0f1a 0%,#1a1035 50%,#0f0f1a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.5s ease;
+">
+  <div id="splash-content" style="text-align:center;animation:splashIn 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;">
+    <!-- Logo icon -->
+    <div style="margin-bottom:20px;position:relative;display:inline-block;">
+      <div style="
+        width:96px;height:96px;border-radius:24px;
+        background:linear-gradient(135deg,#2d1f6e,#1a1035);
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 40px rgba(108,99,255,0.5),0 0 80px rgba(108,99,255,0.2);
+        position:relative;overflow:hidden;
+      ">
+        <!-- Caja principal emoji -->
+        <div style="font-size:42px;line-height:1;margin-top:6px;">📦</div>
+        <!-- Carpeta arriba derecha -->
+        <div style="position:absolute;top:6px;right:6px;font-size:22px;line-height:1;">📋</div>
+        <!-- Lapicera abajo izquierda -->
+        <div style="position:absolute;bottom:6px;left:8px;font-size:18px;line-height:1;transform:rotate(-20deg);">✏️</div>
+      </div>
+    </div>
+    <!-- Nombre -->
+    <div style="
+      font-family:Syne,sans-serif;font-size:36px;font-weight:800;
+      color:#fff;letter-spacing:-1px;margin-bottom:8px;
+    ">GestoPro</div>
+    <!-- Tagline -->
+    <div style="
+      font-size:13px;color:rgba(255,255,255,0.45);
+      font-family:DM Mono,monospace;letter-spacing:2px;text-transform:uppercase;
+    ">Tu negocio, bajo control</div>
+    <!-- Loader -->
+    <div style="margin-top:48px;">
+      <div style="
+        width:48px;height:3px;background:rgba(255,255,255,0.1);
+        border-radius:2px;margin:0 auto;overflow:hidden;
+      ">
+        <div id="splash-bar" style="
+          height:100%;width:0%;
+          background:linear-gradient(90deg,#6c63ff,#a855f7);
+          border-radius:2px;transition:width 1.8s ease;
+        "></div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes splashIn {
+  from { opacity:0; transform:scale(0.85) translateY(20px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+</style>
 <div id="toast"></div>
 
 <!-- MODAL PIN -->
@@ -5417,7 +5473,20 @@ function initAppData(){
 }
 
 // ═══ INIT ═══
+function ocultarSplash(){
+  var splash = document.getElementById('splash-screen');
+  if(!splash) return;
+  splash.style.opacity = '0';
+  setTimeout(function(){ splash.style.display = 'none'; }, 500);
+}
+
 function initApp(){
+  // Arrancar barra de carga del splash
+  setTimeout(function(){
+    var bar = document.getElementById('splash-bar');
+    if(bar) bar.style.width = '100%';
+  }, 50);
+
   window.onerror=function(msg,src,line){ console.log('Error linea '+line+': '+msg); return true; };
   // Register service worker for PWA
   if('serviceWorker' in navigator){
@@ -5430,11 +5499,13 @@ function initApp(){
     supabaseClient.auth.getSession().then(function(result){
       if(result.data&&result.data.session&&result.data.session.user){
         currentUser=result.data.session.user;
-        cargarNegocio().then(function(){ ocultarLogin(); });
+        cargarNegocio().then(function(){ ocultarLogin(); setTimeout(ocultarSplash, 300); });
+      } else {
+        setTimeout(ocultarSplash, 1800);
       }
-    }).catch(function(){ loadState(); initAppData(); });
+    }).catch(function(){ loadState(); initAppData(); setTimeout(ocultarSplash, 1800); });
   } else {
-    loadState(); initAppData();
+    loadState(); initAppData(); setTimeout(ocultarSplash, 1800);
   }
 }
 
