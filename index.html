@@ -2942,7 +2942,7 @@ function guardarFact(){
 var factPagarId = null;
 function marcarPagada(id){
   factPagarId = id;
-  var f = facturas.find(function(f){return f.id===id;});
+  var f = facturas.find(function(f){return String(f.id)===String(id);});
   if(!f) return;
   var saldo = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
   var mh = el('modal-pagar-fact-header');
@@ -2954,7 +2954,7 @@ function marcarPagada(id){
   openModal('modal-pagar-fact');
 }
 function confirmarPagoFactura(){
-  var f = facturas.find(function(f){return f.id===factPagarId;});
+  var f = facturas.find(function(f){return String(f.id)===String(factPagarId);});
   if(!f) return;
   var monto = parseFloat(el('fpago-monto').value)||f.monto;
   var metodoEl = el('fpago-metodo');
@@ -2995,7 +2995,7 @@ function confirmarPagoFactura(){
 }
 function eliminarFact(id){
   if(!confirm('¿Eliminar?'))return;
-  const _df=facturas.find(function(f){return f.id===id;}); facturas=facturas.filter(function(f){return f.id!==id;});
+  const _df=facturas.find(function(f){return String(f.id)===String(id);}); facturas=facturas.filter(function(f){return String(f.id)!==String(id);});
   if(_df){saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('facturas_v2').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});} renderFacts();renderDash();toast('Eliminada');
 }
 function fFact(f,btn){
