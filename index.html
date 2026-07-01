@@ -307,7 +307,10 @@ select.fi{appearance:none;cursor:pointer;}
   .pay-methods{gap:8px;}
   .pay-ico{font-size:22px;}
   .pay-lbl{font-size:11px;}
+  .cobrar-btn-desktop{display:none;}
+  .cobrar-sticky-footer{display:block !important;position:sticky;bottom:-32px;background:var(--sur);border-top:1px solid var(--brd2);margin:14px -20px -32px;padding:12px 20px calc(32px + env(safe-area-inset-bottom,0px));z-index:5;}
 }
+.cobrar-sticky-footer{display:none;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
 
 /* FIADO */
@@ -869,10 +872,17 @@ select.fi{appearance:none;cursor:pointer;}
       <div style="font-size:11px;color:var(--mut2);margin-bottom:4px;">MONTO A COBRAR</div>
       <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-bottom:8px;" id="cobrar-num-big">$0</div>
     </div>
-    <button class="btn btn-grn btn-full btn-lg" onclick="confirmarCobro()" style="font-size:18px;padding:16px;">✓ Confirmar cobro</button>
-    <button class="btn btn-ghost btn-full btn-sm" onclick="closeModal('modal-cobrar')">Cancelar</button>
+    <button class="btn btn-grn btn-full btn-lg cobrar-btn-desktop" onclick="confirmarCobro()" style="font-size:18px;padding:16px;">✓ Confirmar cobro</button>
+    <button class="btn btn-ghost btn-full btn-sm cobrar-btn-desktop" onclick="closeModal('modal-cobrar')">Cancelar</button>
   </div>
   </div><!-- cierre grilla -->
+  <div class="cobrar-sticky-footer">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Monto a cobrar</span>
+      <span id="cobrar-num-sticky" style="font-family:Syne,sans-serif;font-size:22px;font-weight:900;color:var(--grn);">$0</span>
+    </div>
+    <button class="btn btn-grn btn-full btn-lg" onclick="confirmarCobro()" style="font-size:17px;padding:14px;">✓ Confirmar cobro</button>
+  </div>
 </div>
 </div>
 
@@ -2229,6 +2239,7 @@ async function confirmarSesionCaja(){
     }).select().single();
     if(resCaja.data) cajaActualId = resCaja.data.id;
   }
+  guardarSesionCajaLocal();
 
   closeModal('modal-sesion-caja');
   setTimeout(function(){
@@ -2246,10 +2257,31 @@ async function confirmarSesionCaja(){
   }, 200);
 }
 
+function guardarSesionCajaLocal(){
+  try{
+    if(cajeroActual && cajaActualId){
+      localStorage.setItem('gp_sesion_caja', JSON.stringify({cajero:cajeroActual, cajaId:cajaActualId, negocioId:currentNegocioId}));
+    } else {
+      localStorage.removeItem('gp_sesion_caja');
+    }
+  }catch(e){}
+}
+function restaurarSesionCajaLocal(){
+  try{
+    var raw = localStorage.getItem('gp_sesion_caja');
+    if(!raw) return;
+    var data = JSON.parse(raw);
+    if(data && data.negocioId===currentNegocioId && data.cajero && data.cajaId){
+      cajeroActual = data.cajero;
+      cajaActualId = data.cajaId;
+    }
+  }catch(e){}
+}
 function cerrarSesionCaja(){
   var nom = cajeroActual ? cajeroActual.nombre : 'Sesión';
   cajeroActual = null;
   cajaActualId = null;
+  guardarSesionCajaLocal();
   closeModal('modal-cobrar');
   toast('🔒 Caja cerrada — '+nom);
 }
@@ -2406,6 +2438,7 @@ async function confirmarCierreCaja(){
 
   cajeroActual = null;
   cajaActualId = null;
+  guardarSesionCajaLocal();
   closeModal('modal-cierre-caja');
   renderDash();
 
@@ -2454,15 +2487,29 @@ function selProdCobroNombre(id,nombre){
     if(prodBal){
       l.prodId = prodBal.id;
       l.cant = balanza.pesoKg;
-      renderLineasCobro();
       toast('⚖️ '+prodBal.nom+' — '+balanza.pesoKg+' kg');
+      agregarLineaSiCorresponde(l.id);
       return;
     }
   }
   // Buscar por nombre normal
   const prod=productos.find(function(p){return p.nom.toLowerCase()===codigo.toLowerCase();});
-  if(prod){ l.prodId=prod.id; actualizarTotalCobro(); }
+  if(prod){ l.prodId=prod.id; agregarLineaSiCorresponde(l.id); }
   else { l.prodId=null; actualizarTotalCobro(); }
+}
+function agregarLineaSiCorresponde(idLineaCompletada){
+  var esUltima = lineasCobro.length && lineasCobro[lineasCobro.length-1].id===idLineaCompletada;
+  if(esUltima){
+    lineasCobro.push({id:Date.now(),prodId:'',cant:1});
+  }
+  renderLineasCobro();
+  if(esUltima){
+    setTimeout(function(){
+      var inputs = document.querySelectorAll('#cobro-lineas input[list="dl-productos"]');
+      var last = inputs[inputs.length-1];
+      if(last) last.focus();
+    },50);
+  }
 }
 function selProdCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.prodId=val;renderLineasCobro();} }
 function updCantCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.cant=parseFloat(val)||1;actualizarTotalCobro();} }
@@ -2482,6 +2529,7 @@ function updCobrar(){
   const v=parseFloat(get('cobrar-monto'))||0;
   set('cobrar-num','text',fmtM(v));
   set('cobrar-num-big','text',fmtM(v));
+  set('cobrar-num-sticky','text',fmtM(v));
   set('ef-total','text',fmtM(v));
   set('dni-monto-display','text',fmtM(v));
   set('mp-monto-display','text',fmtM(v));
@@ -4952,6 +5000,7 @@ function cargarNegocio(){
         if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
         planActual=result.data.plan||'gratis';
         if(verificarAccesoNegocio(result.data)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
+        restaurarSesionCajaLocal();
       } else {
         return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
       }
