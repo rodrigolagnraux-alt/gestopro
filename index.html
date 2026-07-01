@@ -3315,17 +3315,22 @@ function renderMovItem(m){
   if(m.tipo==='ingreso'){
     const prod=productos.find(function(p){return p.id===m.prodId;});
     const importe=prod&&prod.precio?m.cant*prod.precio:null;
-    return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
+    var nomIngreso = m.prodNom||m.desc||'Ingreso de mercadería';
+    var motivoIngreso = m.motivo||m.desc||'Compra';
+    return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+nomIngreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+motivoIngreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
   }
   if(m.tipo==='egreso'){
-    if(m.prodId===undefined && m.prodNom===undefined){
+    if(m.prodId===undefined||m.prodId===null){
       var icoM3={efectivo:'💵',transferencia:'🏦',cheque:'📝'};
       var metLbl3={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque',transferencia:'Transferencia'};
-      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+(m.desc||'Egreso')+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
+      var descEgreso = m.desc||m.descripcion||m.prod||'Egreso';
+      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+descEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto||m.total||0)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
     }
     const prod=productos.find(function(p){return p.id===m.prodId;});
     const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
-    return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+m.prodNom+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+m.motivo+' · '+m.cant+' '+(prod?prod.um:'')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):m.cant+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
+    var nomEgreso = m.prodNom||m.desc||'Egreso';
+    var motivoEgreso = m.motivo||m.desc||'Salida';
+    return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+nomEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+motivoEgreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
   }
   return'';
 }
