@@ -1438,12 +1438,27 @@ select.fi{appearance:none;cursor:pointer;}
   <div id="modal-pagar-fact-header" style="margin-bottom:16px;"></div>
   <div class="fg"><label class="fl">Monto pagado $</label><input class="fi" id="fpago-monto" type="number" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
   <div class="fg"><label class="fl">Forma de pago</label>
-    <select class="fi" id="fpago-metodo">
+    <select class="fi" id="fpago-metodo" onchange="toggleOrigenPagoFactExist()">
       <option value="efectivo">💵 Efectivo</option>
       <option value="cuentadni">🏛️ Cuenta DNI</option>
       <option value="mercadopago">📱 Mercado Pago</option>
       <option value="cheque">📝 Cheque</option>
     </select>
+  </div>
+  <div id="fpagoex-origen-wrap" style="display:block;margin-top:10px;">
+    <label class="fl">¿De dónde sale el dinero?</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+      <div class="pay-method on" onclick="selOrigenPagoFactExist('caja',this)" id="fpagoex-origen-caja" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">🏪</div>
+        <div class="pay-lbl" style="font-size:11px;">De la caja</div>
+        <div class="pay-sub" style="font-size:10px;">Afecta el cierre</div>
+      </div>
+      <div class="pay-method" onclick="selOrigenPagoFactExist('bolsillo',this)" id="fpagoex-origen-bolsillo" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">💼</div>
+        <div class="pay-lbl" style="font-size:11px;">Del bolsillo</div>
+        <div class="pay-sub" style="font-size:10px;">No afecta la caja</div>
+      </div>
+    </div>
   </div>
   <div style="font-size:12px;color:var(--mut2);margin-bottom:14px;">Se registrará automáticamente como egreso en Movimientos.</div>
   <div class="btn-row">
@@ -2298,9 +2313,9 @@ async function abrirCierreCaja(){
   // Fiados del turno
   var fiadosTurno = movHoy.filter(function(m){return m.tipo==='fiado';}).reduce(function(s,m){return s+(m.monto||0);},0);
 
-  // Egresos de caja en efectivo (facturas pagadas en efectivo + egresos)
+  // Egresos de caja en efectivo (facturas pagadas en efectivo + egresos) — excluye lo pagado del bolsillo
   var egresosEfectivo = movHoy.filter(function(m){
-    return m.tipo==='egreso' && (m.metodo==='efectivo'||m.esCaja);
+    return m.tipo==='egreso' && ((m.metodo==='efectivo' && m.origen!=='bolsillo') || m.esCaja);
   }).reduce(function(s,m){return s+(m.monto||m.total||0);},0);
 
   // Efectivo esperado en caja
@@ -2940,6 +2955,17 @@ function guardarFact(){
   toast('🧾 Factura guardada ✓');
 }
 var factPagarId = null;
+var origenPagoFactExist = 'caja'; // 'caja' o 'bolsillo' — origen del pago de una factura pendiente
+function selOrigenPagoFactExist(origen, selEl){
+  origenPagoFactExist = origen;
+  document.querySelectorAll('#fpagoex-origen-wrap .pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl) selEl.classList.add('on');
+}
+function toggleOrigenPagoFactExist(){
+  var m = el('fpago-metodo');
+  var wrap = el('fpagoex-origen-wrap');
+  if(m && wrap) wrap.style.display = (m.value==='efectivo') ? 'block' : 'none';
+}
 function marcarPagada(id){
   factPagarId = id;
   var f = facturas.find(function(f){return String(f.id)===String(id);});
@@ -2951,6 +2977,10 @@ function marcarPagada(id){
     +(f.estado==='parcial'?'<div style="font-size:11px;color:var(--red);margin-top:4px;">Saldo pendiente de pago parcial anterior</div>':'');
   var montoEl = el('fpago-monto');
   if(montoEl) montoEl.value = saldo;
+  origenPagoFactExist = 'caja';
+  var oc2=el('fpagoex-origen-caja'), ob2=el('fpagoex-origen-bolsillo');
+  if(oc2)oc2.classList.add('on'); if(ob2)ob2.classList.remove('on');
+  toggleOrigenPagoFactExist();
   openModal('modal-pagar-fact');
 }
 function confirmarPagoFactura(){
@@ -2962,8 +2992,9 @@ function confirmarPagoFactura(){
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque'};
   var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
   var diff = saldoOriginal - monto;
+  var origenFact = (metodo==='efectivo') ? origenPagoFactExist : '';
   // Registrar egreso automático por el monto realmente pagado
-  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov,monto:monto,fecha:hoy(),metodo:metodo};
+  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov+(origenFact==='bolsillo'?' · Del bolsillo':''),monto:monto,fecha:hoy(),metodo:metodo,origen:origenFact};
   movimientos.unshift(egreso); saveMovimiento(egreso);
 
   if(diff > 0.5){
@@ -4990,7 +5021,7 @@ function sincronizarDatos(){
       if(r.data) movimientos = r.data.map(function(m){
         return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,
           desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,
-          cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero};
+          cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero,origen:m.origen};
       });
     }),
     // facturas_v2
@@ -5037,7 +5068,8 @@ function guardarMovimientoNube(m){
     prod_id:m.prodId?String(m.prodId):null,
     prod_nom:m.prodNom||null,
     cant:m.cant||null, costo:m.costo||null,
-    cat:m.cat||null, cajero:m.cajero||null
+    cat:m.cat||null, cajero:m.cajero||null,
+    origen:m.origen||null
   }).then(function(){}).catch(function(e){console.log('Save movimiento error:',e);});
 }
 
