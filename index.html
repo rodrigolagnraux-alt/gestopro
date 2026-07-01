@@ -4870,29 +4870,33 @@ function alertarFacturasVencidas(){
       var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
       return '<li><b>'+f.prov+'</b> — '+fmtM(pendiente)+' (vencía '+fmtF(f.venc)+')</li>';
     }).join('')+'</ul>';
-    if(porVencer.length) detalleHtml += '<h3 style="color:#d97706;">🟡 Vencen mañana</h3><ul>'+porVencer.map(function(f){
-      var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
-      return '<li><b>'+f.prov+'</b> — '+fmtM(pendiente)+' (vence '+fmtF(f.venc)+')</li>';
-    }).join('')+'</ul>';
-    var subjectEmail = vencidas.length
-      ? '⚠️ GestoPro — '+vencidas.length+' factura'+(vencidas.length>1?'s':'')+' vencida'+(vencidas.length>1?'s':'')
-      : '🟡 GestoPro — Factura por vencer mañana';
+  // Email al dueño via notificar-fiado (formato compatible con la Edge Function)
+  if(emailDueno){
+    var detalleTexto = '';
+    if(vencidas.length) detalleTexto += 'VENCIDAS: '+vencidas.map(function(f){
+      var p=f.montoPagado?(f.monto-f.montoPagado):f.monto;
+      return f.prov+' '+fmtM(p)+' (vencía '+fmtF(f.venc)+')';
+    }).join(' | ');
+    if(porVencer.length) detalleTexto += (detalleTexto?' | ':'')+'VENCEN MAÑANA: '+porVencer.map(function(f){
+      var p=f.montoPagado?(f.monto-f.montoPagado):f.monto;
+      return f.prov+' '+fmtM(p)+' (vence '+fmtF(f.venc)+')';
+    }).join(' | ');
     fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-fiado',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+supabaseAnonKey},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        to: emailDueno,
-        subject: subjectEmail,
-        html: '<div style="font-family:sans-serif;max-width:500px;">'
-          +'<h2 style="color:#e53e3e;">⚠️ Facturas vencidas</h2>'
-          +'<p>Las siguientes facturas están vencidas y pendientes de pago:</p>'
-          +'<ul>'+detalleHtml+'</ul>'
-          +'<p><b>Total pendiente: <span style="color:#e53e3e;">'+fmtM(totalPendiente)+'</span></b></p>'
-          +'<p style="color:#666;font-size:12px;">GestoPro — Sistema de gestión de negocios</p>'
-          +'</div>'
+        tipo:'factura_vencida',
+        cliente: detalleTexto,
+        deuda: totalPendiente,
+        limite: 0,
+        negocio: config.nombre||'tu negocio',
+        emailDueno: emailDueno,
+        emailCliente: ''
       })
     }).catch(function(){});
   }
+
+}
 
 }
 
