@@ -765,114 +765,105 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
   <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Pedido especial, cliente VIP..."></div>
-  <div class="fg"><label class="fl">¿Cómo te pagan?</label></div>
-  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
-    <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
-      <div class="pay-ico">💵</div>
-      <div class="pay-lbl">Efectivo</div>
-      <div class="pay-sub">Calculá el vuelto</div>
-    </div>
-    <div class="pay-method" onclick="selPago('cuentadni',this)" id="pm-cuentadni">
-      <div class="pay-ico">🏛️</div>
-      <div class="pay-lbl">Cuenta DNI</div>
-      <div class="pay-sub">QR o transferencia</div>
-    </div>
-    <div class="pay-method" onclick="selPago('mercadopago',this)" id="pm-mercadopago">
-      <div class="pay-ico">📱</div>
-      <div class="pay-lbl">Mercado Pago</div>
-      <div class="pay-sub">QR o transferencia</div>
-    </div>
-    <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
-      <div class="pay-ico">🤝</div>
-      <div class="pay-lbl">Fiado</div>
-      <div class="pay-sub">A cuenta del cliente</div>
-    </div>
-    <div class="pay-method" onclick="selPago('empleado',this)" id="pm-empleado">
-      <div class="pay-ico">👤</div>
-      <div class="pay-lbl">Empleado</div>
-      <div class="pay-sub">Descuenta del sueldo</div>
-    </div>
-  </div>
-  <!-- EMPLEADO -->
-  <div id="pago-empleado" style="display:none;">
-    <div style="background:var(--acc-dim);border:1px solid var(--acc);border-radius:10px;padding:16px;margin-bottom:12px;">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--acc2);margin-bottom:12px;">👤 ¿A cuenta de qué empleado?</div>
-      <select class="fi" id="cobro-empleado-sel" style="font-size:15px;margin-bottom:10px;" onchange="selEmpleadoCobro(this.value)">
-        <option value="">— Elegir empleado —</option>
-      </select>
-      <div id="cobro-empleado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;"></div>
-    </div>
-  </div>
-  <!-- FIADO -->
-  <div id="pago-fiado" style="display:none;">
-    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:16px;margin-bottom:12px;">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--yel);margin-bottom:12px;">🤝 ¿A cuenta de quién?</div>
-      <select class="fi" id="fiado-cliente-sel" style="font-size:15px;margin-bottom:10px;" onchange="selFiadoCliente(this.value)">
-        <option value="">— Elegir cliente —</option>
-      </select>
-      <div id="fiado-cliente-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;"></div>
-      <button class="btn btn-ghost btn-sm btn-full" onclick="abrirNuevoClienteRapido()" style="border-color:var(--yel);color:var(--yel);">+ Nuevo cliente</button>
-    </div>
-  </div>
-  <!-- EFECTIVO -->
-  <div id="pago-efectivo">
-    <div class="efectivo-box">
-      <div class="efectivo-row"><span class="ef-lbl">Total a cobrar</span><span class="ef-val" id="ef-total" style="color:var(--yel)">$0</span></div>
-      <div class="fg" style="margin-top:10px;margin-bottom:0;"><label class="fl">Efectivo recibido $</label><input class="fi" id="ef-recibido" type="number" placeholder="0" oninput="calcVuelto()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarCobro();}" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;"></div>
-      <div class="efectivo-row" style="margin-top:10px;"><span class="ef-lbl" style="font-weight:600;">Vuelto</span><span class="ef-val vuelto-num" id="ef-vuelto">$0</span></div>
-    </div>
-  </div>
-  <!-- CUENTA DNI -->
-  <div id="pago-cuentadni" style="display:none;">
-    <div class="qr-display">
-      <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR impreso de Cuenta DNI o compartí el alias</div>
-      <div class="alias-box">
-        <div class="alias-val" id="alias-dni-display">—</div>
-        <div class="alias-lbl">ALIAS CUENTA DNI</div>
-      </div>
-      <div class="alias-box" style="margin-top:8px;">
-        <div class="alias-val" style="font-size:13px;" id="cvu-dni-display">—</div>
-        <div class="alias-lbl">CVU CUENTA DNI</div>
-      </div>
-      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="dni-monto-display">$0</div>
-      <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto en su app</div>
-    </div>
-  </div>
-  <!-- MERCADO PAGO -->
-  <div id="pago-mercadopago" style="display:none;">
-    <div class="qr-display">
-      <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR de Mercado Pago o compartí el alias</div>
-      <div class="alias-box">
-        <div class="alias-val" id="alias-mp-display">—</div>
-        <div class="alias-lbl">ALIAS MERCADO PAGO</div>
-      </div>
-      <div class="alias-box" style="margin-top:8px;">
-        <div class="alias-val" style="font-size:13px;" id="cvu-mp-display">—</div>
-        <div class="alias-lbl">CVU MERCADO PAGO</div>
-      </div>
-      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="mp-monto-display">$0</div>
-      <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto o escanea el QR impreso</div>
-      <button class="btn btn-acc btn-full" onclick="generarQRDinamico()" id="btn-qr-dinamico" style="margin-top:12px;">📱 Generar QR con monto exacto</button>
-      <div id="qr-dinamico-wrap" style="display:none;margin-top:14px;text-align:center;">
-        <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;">Mostrá este QR al cliente para que escanee</div>
-        <img id="qr-dinamico-img" src="" style="width:200px;height:200px;border-radius:10px;background:#fff;padding:8px;" alt="QR">
-        <div style="font-size:11px;color:var(--mut2);margin-top:8px;">El monto ya viene cargado — el cliente solo confirma</div>
-      </div>
-    </div>
-  </div>
   </div><!-- cierre columna izquierda -->
 
-  <!-- COLUMNA DERECHA: resumen y confirmar -->
+  <!-- COLUMNA DERECHA: cómo te pagan + confirmar -->
   <div style="display:flex;flex-direction:column;gap:14px;">
-    <div class="card" style="background:var(--sur2);flex:1;">
-      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--mut2);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;">Resumen</div>
-      <div style="font-size:12px;color:var(--mut2);margin-bottom:6px;">Subtotal productos</div>
-      <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--acc2);margin-bottom:16px;" id="cobrar-num-right">$0</div>
-      <div style="font-size:11px;color:var(--mut2);margin-bottom:4px;">MONTO A COBRAR</div>
-      <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-bottom:8px;" id="cobrar-num-big">$0</div>
+    <div class="fg" style="margin-bottom:0;"><label class="fl">¿Cómo te pagan?</label></div>
+    <div class="pay-methods" style="grid-template-columns:1fr 1fr;">
+      <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
+        <div class="pay-ico">💵</div>
+        <div class="pay-lbl">Efectivo</div>
+        <div class="pay-sub">Calculá el vuelto</div>
+      </div>
+      <div class="pay-method" onclick="selPago('cuentadni',this)" id="pm-cuentadni">
+        <div class="pay-ico">🏛️</div>
+        <div class="pay-lbl">Cuenta DNI</div>
+        <div class="pay-sub">QR o transferencia</div>
+      </div>
+      <div class="pay-method" onclick="selPago('mercadopago',this)" id="pm-mercadopago">
+        <div class="pay-ico">📱</div>
+        <div class="pay-lbl">Mercado Pago</div>
+        <div class="pay-sub">QR o transferencia</div>
+      </div>
+      <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
+        <div class="pay-ico">🤝</div>
+        <div class="pay-lbl">Fiado</div>
+        <div class="pay-sub">A cuenta del cliente</div>
+      </div>
+      <div class="pay-method" onclick="selPago('empleado',this)" id="pm-empleado" style="grid-column:1/3;">
+        <div class="pay-ico">👤</div>
+        <div class="pay-lbl">Empleado</div>
+        <div class="pay-sub">Descuenta del sueldo</div>
+      </div>
     </div>
-    <button class="btn btn-grn btn-full btn-lg cobrar-btn-desktop" onclick="confirmarCobro()" style="font-size:18px;padding:16px;">✓ Confirmar cobro</button>
-    <button class="btn btn-ghost btn-full btn-sm cobrar-btn-desktop" onclick="closeModal('modal-cobrar')">Cancelar</button>
+    <!-- EMPLEADO -->
+    <div id="pago-empleado" style="display:none;">
+      <div style="background:var(--acc-dim);border:1px solid var(--acc);border-radius:10px;padding:16px;">
+        <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--acc2);margin-bottom:12px;">👤 ¿A cuenta de qué empleado?</div>
+        <select class="fi" id="cobro-empleado-sel" style="font-size:15px;margin-bottom:10px;" onchange="selEmpleadoCobro(this.value)">
+          <option value="">— Elegir empleado —</option>
+        </select>
+        <div id="cobro-empleado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;"></div>
+      </div>
+    </div>
+    <!-- FIADO -->
+    <div id="pago-fiado" style="display:none;">
+      <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:16px;">
+        <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--yel);margin-bottom:12px;">🤝 ¿A cuenta de quién?</div>
+        <select class="fi" id="fiado-cliente-sel" style="font-size:15px;margin-bottom:10px;" onchange="selFiadoCliente(this.value)">
+          <option value="">— Elegir cliente —</option>
+        </select>
+        <div id="fiado-cliente-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;"></div>
+        <button class="btn btn-ghost btn-sm btn-full" onclick="abrirNuevoClienteRapido()" style="border-color:var(--yel);color:var(--yel);">+ Nuevo cliente</button>
+      </div>
+    </div>
+    <!-- EFECTIVO -->
+    <div id="pago-efectivo">
+      <div class="efectivo-box">
+        <div class="efectivo-row"><span class="ef-lbl">Total a cobrar</span><span class="ef-val" id="ef-total" style="color:var(--yel)">$0</span></div>
+        <div class="fg" style="margin-top:10px;margin-bottom:0;"><label class="fl">Efectivo recibido $</label><input class="fi" id="ef-recibido" type="number" placeholder="0" oninput="calcVuelto()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarCobro();}" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;"></div>
+        <div class="efectivo-row" style="margin-top:10px;"><span class="ef-lbl" style="font-weight:600;">Vuelto</span><span class="ef-val vuelto-num" id="ef-vuelto">$0</span></div>
+      </div>
+    </div>
+    <!-- CUENTA DNI -->
+    <div id="pago-cuentadni" style="display:none;">
+      <div class="qr-display">
+        <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR impreso de Cuenta DNI o compartí el alias</div>
+        <div class="alias-box">
+          <div class="alias-val" id="alias-dni-display">—</div>
+          <div class="alias-lbl">ALIAS CUENTA DNI</div>
+        </div>
+        <div class="alias-box" style="margin-top:8px;">
+          <div class="alias-val" style="font-size:13px;" id="cvu-dni-display">—</div>
+          <div class="alias-lbl">CVU CUENTA DNI</div>
+        </div>
+        <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="dni-monto-display">$0</div>
+        <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto en su app</div>
+      </div>
+    </div>
+    <!-- MERCADO PAGO -->
+    <div id="pago-mercadopago" style="display:none;">
+      <div class="qr-display">
+        <div style="font-size:13px;color:var(--mut2);margin-bottom:8px;">Presentá el QR de Mercado Pago o compartí el alias</div>
+        <div class="alias-box">
+          <div class="alias-val" id="alias-mp-display">—</div>
+          <div class="alias-lbl">ALIAS MERCADO PAGO</div>
+        </div>
+        <div class="alias-box" style="margin-top:8px;">
+          <div class="alias-val" style="font-size:13px;" id="cvu-mp-display">—</div>
+          <div class="alias-lbl">CVU MERCADO PAGO</div>
+        </div>
+        <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:900;color:var(--grn);margin-top:14px;" id="mp-monto-display">$0</div>
+        <div style="font-size:11px;color:var(--mut2);margin-top:4px;">El cliente escribe este monto o escanea el QR impreso</div>
+        <button class="btn btn-acc btn-full" onclick="generarQRDinamico()" id="btn-qr-dinamico" style="margin-top:12px;">📱 Generar QR con monto exacto</button>
+        <div id="qr-dinamico-wrap" style="display:none;margin-top:14px;text-align:center;">
+          <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;">Mostrá este QR al cliente para que escanee</div>
+          <img id="qr-dinamico-img" src="" style="width:200px;height:200px;border-radius:10px;background:#fff;padding:8px;" alt="QR">
+          <div style="font-size:11px;color:var(--mut2);margin-top:8px;">El monto ya viene cargado — el cliente solo confirma</div>
+        </div>
+      </div>
+    </div>
   </div>
   </div><!-- cierre grilla -->
   <div class="cobrar-sticky-footer">
@@ -2501,7 +2492,11 @@ function selProdCobroNombre(id,nombre){
     renderLineasCobro();
     setTimeout(function(){
       var cInp = el('cobro-cant-'+l.id);
-      if(cInp){ cInp.focus(); cInp.select(); }
+      if(cInp){
+        cInp.focus(); cInp.select();
+        clearTimeout(_cantCobroTimer);
+        _cantCobroTimer = setTimeout(function(){ agregarLineaSiCorresponde(l.id); }, 900);
+      }
     },30);
   }
   else { l.prodId=null; actualizarTotalCobro(); }
