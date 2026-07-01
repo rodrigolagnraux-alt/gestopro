@@ -4820,10 +4820,16 @@ function ocultarLogin(){
 function alertarFacturasVencidas(){
   var hoyStr = hoy();
   var alertaKey = 'gp_fact_alerta_'+hoyStr;
-  if(localStorage.getItem(alertaKey)) return; // ya se mandó hoy
+  if(localStorage.getItem(alertaKey)) return;
+
+  var manana = new Date(); manana.setDate(manana.getDate()+1);
+  var mananaStr = fechaLocalStr(manana);
 
   var vencidas = facturas.filter(function(f){
     return (f.estado==='pendiente'||f.estado==='parcial') && f.venc && f.venc <= hoyStr;
+  });
+  var porVencer = facturas.filter(function(f){
+    return (f.estado==='pendiente'||f.estado==='parcial') && f.venc === mananaStr;
   });
 
   // Marcar como vencidas
@@ -4831,36 +4837,63 @@ function alertarFacturasVencidas(){
     if(f.estado!=='vencida'){ f.estado='vencida'; saveFactura(f); }
   });
 
-  if(!vencidas.length) return;
+  if(!vencidas.length && !porVencer.length) return;
 
-  // Registrar que ya se mandó hoy
   try{ localStorage.setItem(alertaKey,'1'); }catch(e){}
 
-  // Mandar WhatsApp al dueño
-  var telDueno = (config.tel||'').replace(/\D/g,'');
-  if(!telDueno) return;
-  if(telDueno.length<=10) telDueno='549'+telDueno;
+  // Solo email — no WhatsApp para no interrumpir la caja
+  var emailDueno = (config.email||currentUser&&currentUser.email||'');
 
   var detalle = vencidas.map(function(f){
     var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
     return '• '+f.prov+' — '+fmtM(pendiente)+' (vencía '+fmtF(f.venc)+')';
   }).join('\n');
 
-  var totalPendiente = vencidas.reduce(function(s,f){
+  var detalleManana = porVencer.map(function(f){
+    var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
+    return '• '+f.prov+' — '+fmtM(pendiente)+' (vence mañana '+fmtF(f.venc)+')';
+  }).join('\n');
+
+  var totalPendiente = [...vencidas,...porVencer].reduce(function(s,f){
     return s + (f.montoPagado ? f.monto-f.montoPagado : f.monto);
   },0);
 
-  var msg = '⚠️ *GestoPro — Facturas vencidas*\n\n'
-    +detalle+'\n\n'
-    +'💰 Total pendiente: *'+fmtM(totalPendiente)+'*';
+  var msg = '';
+  if(vencidas.length) msg += '🔴 *Facturas VENCIDAS*\n'+detalle+'\n\n';
+  if(porVencer.length) msg += '🟡 *Vencen mañana*\n'+detalleManana+'\n\n';
+  msg += '💰 Total pendiente: *'+fmtM(totalPendiente)+'*';
 
-  var link = document.createElement('a');
-  link.href = 'https://wa.me/'+telDueno+'?text='+encodeURIComponent(msg);
-  link.target = '_blank';
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  setTimeout(function(){ if(link.parentNode) document.body.removeChild(link); },1000);
+  // Email al dueño via Resend
+  if(emailDueno){
+    var detalleHtml = '';
+    if(vencidas.length) detalleHtml += '<h3 style="color:#e53e3e;">🔴 Vencidas</h3><ul>'+vencidas.map(function(f){
+      var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
+      return '<li><b>'+f.prov+'</b> — '+fmtM(pendiente)+' (vencía '+fmtF(f.venc)+')</li>';
+    }).join('')+'</ul>';
+    if(porVencer.length) detalleHtml += '<h3 style="color:#d97706;">🟡 Vencen mañana</h3><ul>'+porVencer.map(function(f){
+      var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
+      return '<li><b>'+f.prov+'</b> — '+fmtM(pendiente)+' (vence '+fmtF(f.venc)+')</li>';
+    }).join('')+'</ul>';
+    var subjectEmail = vencidas.length
+      ? '⚠️ GestoPro — '+vencidas.length+' factura'+(vencidas.length>1?'s':'')+' vencida'+(vencidas.length>1?'s':'')
+      : '🟡 GestoPro — Factura por vencer mañana';
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-fiado',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+supabaseAnonKey},
+      body:JSON.stringify({
+        to: emailDueno,
+        subject: subjectEmail,
+        html: '<div style="font-family:sans-serif;max-width:500px;">'
+          +'<h2 style="color:#e53e3e;">⚠️ Facturas vencidas</h2>'
+          +'<p>Las siguientes facturas están vencidas y pendientes de pago:</p>'
+          +'<ul>'+detalleHtml+'</ul>'
+          +'<p><b>Total pendiente: <span style="color:#e53e3e;">'+fmtM(totalPendiente)+'</span></b></p>'
+          +'<p style="color:#666;font-size:12px;">GestoPro — Sistema de gestión de negocios</p>'
+          +'</div>'
+      })
+    }).catch(function(){});
+  }
+
 }
 
 function crearNegocio(nombre, email){
