@@ -3153,7 +3153,7 @@ function crearCategoriaNueva(sel){
   sel.value = nombre;
 }
 function abrirEditarProd(id){
-  var p = productos.find(function(p){return p.id===id;});
+  var p = productos.find(function(p){return String(p.id)===String(id);});
   if(!p) return;
   prodEditId = id;
   set('p-cod','val',p.cod||'');
@@ -3229,7 +3229,7 @@ function guardarProd(){
   if(!nom){toast('Ingresá el nombre del producto','err');return;}
   const pcat=el('p-cat'); const pum=el('p-um');
   if(prodEditId){
-    var p = productos.find(function(p){return p.id===prodEditId;});
+    var p = productos.find(function(p){return String(p.id)===String(prodEditId);});
     if(p){
       p.cod = get('p-cod').trim()||p.cod;
       p.nom = nom;
@@ -3267,7 +3267,7 @@ function guardarProd(){
 }
 function eliminarProd(id){
   if(!confirm('¿Eliminar?'))return;
-  productos=productos.filter(function(p){return p.id!==id;});
+  productos=productos.filter(function(p){return String(p.id)!==String(id);});
   eliminarDeNube('productos',id);
   saveState();renderProds();renderDash();toast('Eliminado');
 }
@@ -3433,7 +3433,7 @@ function renderMovItem(m){
       +'</div>';
   }
   if(m.tipo==='ingreso'){
-    const prod=productos.find(function(p){return p.id===m.prodId;});
+    const prod=productos.find(function(p){return String(p.id)===String(m.prodId);});
     const importe=prod&&prod.precio?m.cant*prod.precio:null;
     var nomIngreso = m.prodNom||m.desc||'Ingreso de mercadería';
     var motivoIngreso = m.motivo||m.desc||'Compra';
@@ -3446,7 +3446,7 @@ function renderMovItem(m){
       var descEgreso = m.desc||m.descripcion||m.prod||'Egreso';
       return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+descEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto||m.total||0)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
     }
-    const prod=productos.find(function(p){return p.id===m.prodId;});
+    const prod=productos.find(function(p){return String(p.id)===String(m.prodId);});
     const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
     var nomEgreso = m.prodNom||m.desc||'Egreso';
     var motivoEgreso = m.motivo||m.desc||'Salida';
@@ -3538,7 +3538,7 @@ function setCatFilter(cat,btn){ const fr=el('prod-fr');if(fr)fr.dataset.cat=cat;
 function abrirEgresoProd(prodId){
   const s=el('eg-prod');
   if(!s)return;
-  s.innerHTML=productos.map(function(p){return'<option value="'+p.id+'"'+(p.id===prodId?' selected':'')+'>'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
+  s.innerHTML=productos.map(function(p){return'<option value="'+p.id+'"'+(String(p.id)===String(prodId)?' selected':'')+'>'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
   set('eg-fecha','val',hoy()); set('eg-cant','val','');
   updEgresoInfo(); openModal('modal-egreso');
 }
@@ -4087,7 +4087,7 @@ function buscarProductoScanner(){
   var list = el('scanner-results-list');
   if(list){
     list.innerHTML = byName.slice(0,6).map(function(p){
-      return '<div style="padding:10px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="mostrarProductoEncontrado(productos.find(function(pr){return pr.id==='+p.id+'}))">'
+      return '<div style="padding:10px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="mostrarProductoEncontrado(productos.find(function(pr){return String(pr.id)===String(\''+p.id+'\')}))">'
         +'<div><div style="font-size:13px;">'+p.nom+'</div><div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.cat+' · '+p.um+'</div></div>'
         +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">'+(p.pventa?fmtM(p.pventa):fmtM(p.precio))+'</div>'
         +'</div>';
@@ -4450,7 +4450,7 @@ function renderItemCorte(p){
 }
 
 function updPrecioCorne(prodId, val){
-  var p = productos.find(function(p){return p.id===prodId;});
+  var p = productos.find(function(p){return String(p.id)===String(prodId);});
   if(p){ p.pventa=parseFloat(val)||0; guardarEnNube('productos',p.id,p); saveState(); }
 }
 
@@ -4737,7 +4737,7 @@ function calcFinanciero(period){
   // Costo de mercaderia vendida (egresos con precio)
   var egresos=movsF.filter(function(m){return m.tipo==='egreso';});
   var costoMerc=egresos.reduce(function(s,m){
-    var prod=productos.find(function(p){return p.id===m.prodId;});
+    var prod=productos.find(function(p){return String(p.id)===String(m.prodId);});
     return s+(prod?prod.precio*m.cant:0);
   },0);
   
