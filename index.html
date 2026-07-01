@@ -2972,7 +2972,7 @@ function confirmarIngresoFactura(){
       prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100));
     }
     guardarEnNube('productos',prod.id,prod);
-    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:fecha,motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
+    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
   if(cambiosPrecio.length>0){
