@@ -4854,7 +4854,7 @@ function alertarFacturasVencidas(){
     return '• '+f.prov+' — '+fmtM(pendiente)+' (vence mañana '+fmtF(f.venc)+')';
   }).join('\n');
 
-  var totalPendiente = [...vencidas,...porVencer].reduce(function(s,f){
+  var totalPendiente = vencidas.concat(porVencer).reduce(function(s,f){
     return s + (f.montoPagado ? f.monto-f.montoPagado : f.monto);
   },0);
 
