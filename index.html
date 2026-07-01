@@ -1599,6 +1599,10 @@ select.fi{appearance:none;cursor:pointer;}
           <span style="color:var(--mut2);">Mercadería llevada</span>
           <span id="emp-sw-merc" style="font-family:DM Mono,monospace;color:var(--red);"></span>
         </div>
+        <div id="emp-sw-deuda-row" style="display:none;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span style="color:var(--red);">⚠️ Deuda semana anterior</span>
+          <span id="emp-sw-deuda" style="font-family:DM Mono,monospace;color:var(--red);"></span>
+        </div>
         <div style="border-top:1px solid var(--brd);margin:8px 0;"></div>
         <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;">
           <span>A pagar</span>
@@ -5964,7 +5968,20 @@ async function cargarSemanaActual() {
   var yaLiquidada = !!swPagada.data;
 
   var anticipos = sw.data ? (sw.data.anticipos||0) : 0;
-  var total = Math.max(0, totalHorasMonto - anticipos - totalMerc);
+
+  // Deuda arrastrada de semanas anteriores
+  var deudaAnterior = 0;
+  var deudaRes = await supabaseClient.from('empleados_semanas')
+    .select('deuda_pendiente').eq('empleado_id', empActual.id)
+    .eq('pagado', true).lt('semana_fin', lunesStr)
+    .order('semana_inicio', {ascending:false}).limit(1);
+  if(deudaRes.data && deudaRes.data.length && deudaRes.data[0].deuda_pendiente > 0){
+    deudaAnterior = deudaRes.data[0].deuda_pendiente;
+  }
+
+  var saldoBruto = totalHorasMonto - anticipos - totalMerc - deudaAnterior;
+  var total = Math.max(0, saldoBruto);
+  var deudaEmpleado = saldoBruto < 0 ? Math.abs(saldoBruto) : 0;
 
   empSemanaActual = {
     id: sw.data ? sw.data.id : null,
@@ -5980,6 +5997,8 @@ async function cargarSemanaActual() {
     mercaderia: totalMerc,
     mercaderiaIds: mercItems.map(function(m){ return m.id; }),
     total: total,
+    deudaEmpleado: deudaEmpleado,
+    deudaAnterior: deudaAnterior,
     yaLiquidada: yaLiquidada,
     totalYaPagado: yaLiquidada ? (swPagada.data.total_pagado||0) : 0
   };
@@ -5992,6 +6011,13 @@ async function cargarSemanaActual() {
   el('emp-sw-extra').textContent = horasDomingo > 0 ? horasDomingo+'hs +'+pesos(montoDomingo) : '$0';
   el('emp-sw-anticipos').textContent = anticipos > 0 ? '-'+pesos(anticipos) : '$0';
   el('emp-sw-merc').textContent = totalMerc > 0 ? '-'+pesos(totalMerc) : '$0';
+  var deudaRow = el('emp-sw-deuda-row');
+  if(deudaAnterior > 0 && deudaRow){
+    deudaRow.style.display = 'flex';
+    el('emp-sw-deuda').textContent = '-'+pesos(deudaAnterior);
+  } else if(deudaRow){
+    deudaRow.style.display = 'none';
+  }
 
   var liquidarBtn = document.querySelector('button[onclick="abrirModalLiquidar()"]');
   var anticipoBtn = document.querySelector('button[onclick="abrirModalAnticipo()"]');
@@ -6000,8 +6026,13 @@ async function cargarSemanaActual() {
     if(liquidarBtn){ liquidarBtn.disabled = true; liquidarBtn.textContent = '✅ Semana liquidada'; liquidarBtn.style.opacity = '0.5'; }
     if(anticipoBtn){ anticipoBtn.disabled = true; anticipoBtn.style.opacity = '0.5'; }
   } else {
-    el('emp-sw-total').textContent = pesos(total);
-    if(liquidarBtn){ liquidarBtn.disabled = false; liquidarBtn.textContent = '✅ Liquidar semana'; liquidarBtn.style.opacity = '1'; }
+    if(deudaEmpleado > 0){
+      el('emp-sw-total').innerHTML = '<span style="color:var(--red);">⚠️ Debe '+pesos(deudaEmpleado)+'</span><div style="font-size:10px;color:var(--mut2);margin-top:2px;">La mercadería supera el sueldo — se arrastra a la próxima semana</div>';
+      if(liquidarBtn){ liquidarBtn.disabled = false; liquidarBtn.textContent = '✅ Cerrar semana (deuda pendiente)'; liquidarBtn.style.opacity = '1'; }
+    } else {
+      el('emp-sw-total').textContent = pesos(total);
+      if(liquidarBtn){ liquidarBtn.disabled = false; liquidarBtn.textContent = '✅ Liquidar semana'; liquidarBtn.style.opacity = '1'; }
+    }
     if(anticipoBtn){ anticipoBtn.disabled = false; anticipoBtn.style.opacity = '1'; }
   }
 }
@@ -6240,15 +6271,16 @@ async function confirmarLiquidacion() {
   if(!empActual || !empSemanaActual) return;
   if(empSemanaActual.yaLiquidada){ toast('Esta semana ya fue liquidada ✓'); closeModal('modal-emp-liquidar'); return; }
   var total = empSemanaActual.total;
+  var deuda = empSemanaActual.deudaEmpleado || 0;
   var lunes = empSemanaActual.lunes;
   var domingo = empSemanaActual.domingo;
 
-  // Upsert semana
   if(empSemanaActual.id) {
     await supabaseClient.from('empleados_semanas').update({
       horas_extra: empSemanaActual.montoDomingo,
       mercaderia: empSemanaActual.mercaderia,
       total_pagado: total,
+      deuda_pendiente: deuda,
       pagado: true,
       fecha_pago: new Date().toISOString()
     }).eq('id', empSemanaActual.id);
@@ -6263,26 +6295,31 @@ async function confirmarLiquidacion() {
       anticipos: empSemanaActual.anticipos,
       mercaderia: empSemanaActual.mercaderia,
       total_pagado: total,
+      deuda_pendiente: deuda,
       pagado: true,
       fecha_pago: new Date().toISOString()
     });
   }
 
-  // Marcar la mercadería pendiente como descontada
+  // Marcar mercadería como descontada
   if(empSemanaActual.mercaderiaIds && empSemanaActual.mercaderiaIds.length){
     await supabaseClient.from('empleados_mercaderia')
       .update({descontado:true})
       .in('id', empSemanaActual.mercaderiaIds);
   }
 
-  // Egreso automático en movimientos
+  // Egreso solo si hay algo a pagar
   if(total > 0) {
     var _mSueldo = {id:Date.now(),tipo:'egreso',cat:'Sueldos',prod:'Sueldo semanal — '+empActual.nombre,cant:1,precio:total,total:total,fecha:new Date().toISOString()};
     movimientos.unshift(_mSueldo);
     saveMovimiento(_mSueldo);
   }
 
-  toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
+  if(deuda > 0){
+    toast('⚠️ Semana cerrada — '+empActual.nombre+' debe '+pesos(deuda)+' para la próxima semana');
+  } else {
+    toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
+  }
   closeModal('modal-emp-liquidar');
   await cargarHorasDias();
   await cargarSemanaActual();
