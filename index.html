@@ -752,7 +752,7 @@ select.fi{appearance:none;cursor:pointer;}
         <button class="btn btn-ghost" onclick="agregarLineaCobro()" style="font-size:14px;padding:10px 16px;">+ Manual</button>
       </div>
     </div>
-    <div id="cobro-lineas"></div>
+    <div id="cobro-lineas" style="max-height:220px;overflow-y:auto;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;border-top:1px solid var(--brd);margin-top:6px;">
       <span style="font-size:12px;color:var(--mut2);">Subtotal productos</span>
       <span id="cobro-subtotal" style="font-family:DM Mono,monospace;font-size:13px;color:var(--acc2);">$0</span>
@@ -763,40 +763,35 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="cobrar-total-lbl">MONTO A COBRAR</div>
     <div class="cobrar-total-num" id="cobrar-num">$0</div>
   </div>
-  <div class="fg"><label class="fl">Monto $</label><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:20px;text-align:center;font-family:DM Mono,monospace;"></div>
-  <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="cobrar-desc" placeholder="Ej: Pedido especial, cliente VIP..."></div>
+  <div class="fg" style="margin-bottom:6px;"><input class="fi" id="cobrar-monto" type="number" placeholder="0" oninput="updCobrar()" style="font-size:14px;text-align:center;font-family:DM Mono,monospace;padding:6px;"></div>
+  <div id="cobrar-desc-wrap" style="display:none;margin-bottom:6px;"><input class="fi" id="cobrar-desc" placeholder="Ej: Pedido especial, cliente VIP..." style="font-size:13px;padding:6px 10px;"></div>
+  <div onclick="mostrarNotaCobro()" id="cobrar-desc-toggle" style="font-size:11px;color:var(--mut2);cursor:pointer;margin-bottom:4px;">+ Agregar nota</div>
   </div><!-- cierre columna izquierda -->
 
   <!-- COLUMNA DERECHA: cómo te pagan + confirmar -->
   <div style="display:flex;flex-direction:column;gap:14px;">
     <div class="fg" style="margin-bottom:0;"><label class="fl">¿Cómo te pagan?</label></div>
-    <div class="pay-methods" style="grid-template-columns:1fr 1fr;">
-      <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo">
-        <div class="pay-ico">💵</div>
+    <div class="pay-methods" style="grid-template-columns:1fr 1fr;gap:6px;">
+      <div class="pay-method on" onclick="selPago('efectivo',this)" id="pm-efectivo" style="padding:8px 6px;">
+        <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">💵</div>
         <div class="pay-lbl">Efectivo</div>
-        <div class="pay-sub">Calculá el vuelto</div>
       </div>
-      <div class="pay-method" onclick="selPago('cuentadni',this)" id="pm-cuentadni">
-        <div class="pay-ico">🏛️</div>
+      <div class="pay-method" onclick="selPago('cuentadni',this)" id="pm-cuentadni" style="padding:8px 6px;">
+        <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">🏛️</div>
         <div class="pay-lbl">Cuenta DNI</div>
-        <div class="pay-sub">QR o transferencia</div>
       </div>
-      <div class="pay-method" onclick="selPago('mercadopago',this)" id="pm-mercadopago">
-        <div class="pay-ico">📱</div>
+      <div class="pay-method" onclick="selPago('mercadopago',this)" id="pm-mercadopago" style="padding:8px 6px;">
+        <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">📱</div>
         <div class="pay-lbl">Mercado Pago</div>
-        <div class="pay-sub">QR o transferencia</div>
       </div>
-      <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado">
-        <div class="pay-ico">🤝</div>
+      <div class="pay-method" onclick="selPago('fiado',this)" id="pm-fiado" style="padding:8px 6px;">
+        <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">🤝</div>
         <div class="pay-lbl">Fiado</div>
-        <div class="pay-sub">A cuenta del cliente</div>
       </div>
-      <div class="pay-method" onclick="selPago('empleado',this)" id="pm-empleado" style="grid-column:1/3;">
-        <div class="pay-ico">👤</div>
+      <div class="pay-method" onclick="selPago('empleado',this)" id="pm-empleado" style="grid-column:1/3;padding:8px 6px;">
+        <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">👤</div>
         <div class="pay-lbl">Empleado</div>
-        <div class="pay-sub">Descuenta del sueldo</div>
-      </div>
-    </div>
+      </div>    </div>
     <!-- EMPLEADO -->
     <div id="pago-empleado" style="display:none;">
       <div style="background:var(--acc-dim);border:1px solid var(--acc);border-radius:10px;padding:16px;">
@@ -2120,6 +2115,11 @@ function guardarConfig(){
 }
 
 // ═══ COBRAR ═══
+function mostrarNotaCobro(){
+  set('cobrar-desc-wrap','display','block');
+  set('cobrar-desc-toggle','display','none');
+  var d = el('cobrar-desc'); if(d) d.focus();
+}
 function abrirCobrar(){
   if(!cajeroActual){
     abrirSesionCaja();
@@ -2131,6 +2131,8 @@ function abrirCobrar(){
   set('cobrar-num','text','$0');
   set('cobrar-num-big','text','$0');
   set('cobrar-desc','val','');
+  set('cobrar-desc-wrap','display','none');
+  set('cobrar-desc-toggle','display','block');
   set('ef-recibido','val','');
   set('ef-vuelto','text','$0');
   set('ef-total','text','$0');
@@ -2239,6 +2241,7 @@ async function confirmarSesionCaja(){
     lineasCobro=[];
     set('cobrar-monto','val',''); set('cobrar-num','text','$0');
     set('cobrar-desc','val',''); set('ef-recibido','val','');
+    set('cobrar-desc-wrap','display','none'); set('cobrar-desc-toggle','display','block');
     set('ef-vuelto','text','$0'); set('ef-total','text','$0');
     renderLineasCobro();
     const pm=el('pm-efectivo'); if(pm) selPago('efectivo',pm);
@@ -2439,7 +2442,7 @@ async function confirmarCierreCaja(){
   toast('🏁 Caja cerrada · '+difTxt);
 }
 function agregarLineaCobro(){
-  lineasCobro.push({id:Date.now(),prodId:'',cant:1});
+  lineasCobro.push({id:Date.now(),prodId:'',cant:''});
   renderLineasCobro();
 }
 function renderLineasCobro(){
@@ -2460,7 +2463,7 @@ function renderLineasCobro(){
     var nomVal = prod ? prod.nom.replace(/"/g,'&quot;') : '';
     html+='<div style="display:grid;grid-template-columns:1fr 90px 44px 100px 32px;gap:6px;margin-bottom:10px;align-items:center;padding:6px 8px;background:var(--sur2);border-radius:8px;">'
       +'<input class="fi" list="dl-productos" placeholder="Buscar producto..." value="'+nomVal+'" style="font-size:15px;padding:8px 10px;font-weight:600;" oninput="selProdCobroNombre('+l.id+',this.value)">'
-      +'<input class="fi" type="number" id="cobro-cant-'+l.id+'" value="'+l.cant+'" min="0.001" step="0.001" style="font-size:16px;padding:8px;text-align:center;font-family:DM Mono,monospace;font-weight:700;" oninput="updCantCobro('+l.id+',this.value)" onkeydown="cantCobroKeydown('+l.id+',event)" onblur="cantCobroBlur('+l.id+')">'
+      +'<input class="fi" type="number" id="cobro-cant-'+l.id+'" value="'+l.cant+'" placeholder="Cant." min="0.001" step="0.001" style="font-size:16px;padding:8px;text-align:center;font-family:DM Mono,monospace;font-weight:700;" oninput="updCantCobro('+l.id+',this.value)" onkeydown="cantCobroKeydown('+l.id+',event)" onblur="cantCobroBlur('+l.id+')">'
       +'<div style="font-size:12px;color:var(--mut2);text-align:center;font-family:DM Mono,monospace;">'+um+'</div>'
       +'<div style="font-family:Syne,monospace;font-size:16px;font-weight:800;color:var(--yel);text-align:right;padding-right:4px;">'+(subtotal>0?fmtM(subtotal):'—')+'</div>'
       +'<button style="background:var(--red-dim);border:none;border-radius:6px;color:var(--red);cursor:pointer;width:32px;height:36px;font-size:14px;" onclick="quitarLineaCobro('+l.id+')">✕</button>'
@@ -2489,14 +2492,11 @@ function selProdCobroNombre(id,nombre){
   const prod=productos.find(function(p){return p.nom.toLowerCase()===codigo.toLowerCase();});
   if(prod){
     l.prodId=prod.id;
+    l.cant='';
     renderLineasCobro();
     setTimeout(function(){
       var cInp = el('cobro-cant-'+l.id);
-      if(cInp){
-        cInp.focus(); cInp.select();
-        clearTimeout(_cantCobroTimer);
-        _cantCobroTimer = setTimeout(function(){ agregarLineaSiCorresponde(l.id); }, 900);
-      }
+      if(cInp) cInp.focus();
     },30);
   }
   else { l.prodId=null; actualizarTotalCobro(); }
@@ -2506,17 +2506,23 @@ function cantCobroKeydown(id,ev){
   if(ev.key==='Enter'){
     ev.preventDefault();
     clearTimeout(_cantCobroTimer);
+    finalizarCantVacia(id);
     agregarLineaSiCorresponde(id);
   }
 }
 function cantCobroBlur(id){
   clearTimeout(_cantCobroTimer);
+  finalizarCantVacia(id);
   agregarLineaSiCorresponde(id);
+}
+function finalizarCantVacia(id){
+  const l=lineasCobro.find(function(l){return l.id===id;});
+  if(l && (l.cant===''||l.cant===0||isNaN(l.cant))) l.cant=1;
 }
 function agregarLineaSiCorresponde(idLineaCompletada){
   var esUltima = lineasCobro.length && lineasCobro[lineasCobro.length-1].id===idLineaCompletada;
   if(esUltima){
-    lineasCobro.push({id:Date.now(),prodId:'',cant:1});
+    lineasCobro.push({id:Date.now(),prodId:'',cant:''});
   }
   renderLineasCobro();
   if(esUltima){
@@ -2530,8 +2536,11 @@ function agregarLineaSiCorresponde(idLineaCompletada){
 function selProdCobro(id,val){ const l=lineasCobro.find(function(l){return l.id===id;});if(l){l.prodId=val;renderLineasCobro();} }
 function updCantCobro(id,val){
   const l=lineasCobro.find(function(l){return l.id===id;});
-  if(l){l.cant=parseFloat(val)||1;actualizarTotalCobro();}
   clearTimeout(_cantCobroTimer);
+  if(!l) return;
+  if(val===''||val===null||val===undefined){ l.cant=''; actualizarTotalCobro(); return; }
+  l.cant=parseFloat(val)||0;
+  actualizarTotalCobro();
   _cantCobroTimer = setTimeout(function(){ agregarLineaSiCorresponde(id); }, 700);
 }
 function quitarLineaCobro(id){ lineasCobro=lineasCobro.filter(function(l){return l.id!==id;});renderLineasCobro(); }
