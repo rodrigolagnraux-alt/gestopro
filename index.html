@@ -2314,14 +2314,7 @@ async function confirmarRetiro(){
 async function abrirCierreCaja(){
   if(!cajeroActual){ toast('No hay caja abierta','err'); return; }
 
-  // Calcular movimientos del turno actual
-  var ahora = new Date();
-  var movHoy = movimientos.filter(function(m){
-    var d = new Date(m.fecha+'T00:00:00');
-    return d.toDateString() === ahora.toDateString();
-  });
-
-  // Si hay cajaActualId, filtrar desde la apertura
+  // Si hay cajaActualId, traer los datos de apertura de ESTE turno puntual
   var cajaData = null;
   if(cajaActualId && supabaseClient){
     var cr = await supabaseClient.from('cajas').select('*').eq('id',cajaActualId).single();
@@ -2331,6 +2324,25 @@ async function abrirCierreCaja(){
   var fondoInicial = cajaData ? (cajaData.fondo_inicial||0) : 0;
   var retiros = cajaData ? (cajaData.retiros||0) : 0;
   var turno = cajaData ? cajaData.turno : 'turno';
+
+  // Movimientos SOLO desde que se abrió este turno (no todo el día) — así funciona bien
+  // tanto para el que abre una sola caja al día como para el que abre varios turnos.
+  var movHoy = [];
+  if(cajaData && cajaData.fecha_apertura && supabaseClient && currentNegocioId){
+    var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('created_at',cajaData.fecha_apertura);
+    if(rm.data) movHoy = rm.data.map(function(m){
+      return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,
+        desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,
+        cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero,origen:m.origen};
+    });
+  } else {
+    // Sin conexión a Supabase o sin apertura registrada: fallback a todo el día local
+    var ahora = new Date();
+    movHoy = movimientos.filter(function(m){
+      var d = new Date(m.fecha+'T00:00:00');
+      return d.toDateString() === ahora.toDateString();
+    });
+  }
 
   // Cobros del turno
   var cobrosEfectivo = movHoy.filter(function(m){return m.tipo==='cobro'&&m.metodo==='efectivo';}).reduce(function(s,m){return s+(m.monto||0);},0);
