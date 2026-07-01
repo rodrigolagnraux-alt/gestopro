@@ -2762,7 +2762,9 @@ function confirmarCobro(){
   const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
   movimientos.unshift(_mc);
   lineasCobro=[];
-  closeModal('modal-cobrar'); saveMovimiento(_mc); saveState(); renderDash();
+  closeModal('modal-cobrar'); saveMovimiento(_mc); saveState();
+  actualizarKpiCobradoLocal();
+  renderDash();
   if(pagoActual==='fiado'){
     var fSel3 = get('fiado-cliente-sel');
     var cf2 = fiados.find(function(f){return f.id==fSel3;});
@@ -3338,23 +3340,31 @@ function cancelImport(){
 }
 
 // ═══ RENDER DASHBOARD ═══
+function actualizarKpiCobradoLocal(){
+  var hoyStr = fechaLocalStr(new Date());
+  var totalHoyLocal = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
+  set('kpi-cobrado','text',fmtM(totalHoyLocal));
+}
 async function renderDash(){
   actualizarBtnCarniceria();
   const now=new Date();
   const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
   const factsPend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
   const gfPend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
-  // Cobrado hoy — consulta Supabase directo para no depender del array local
+  // Cobrado hoy — consulta Supabase directo para no depender solo del array local
   var totalHoy = 0;
   var hoyStr = fechaLocalStr(now);
+  var totalHoyLocal = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
   if(supabaseClient && currentNegocioId){
     var rh = await supabaseClient.from('movimientos_v2').select('monto').eq('negocio_id',currentNegocioId).eq('tipo','cobro').eq('fecha',hoyStr);
     if(rh.data){
       totalHoy = rh.data.reduce(function(s,m){return s+(m.monto||0);},0);
     }
     if(rh.error) console.log('Dashboard hoy error:',rh.error);
+    // Nunca mostrar menos de lo que ya sabemos por el array local (evita el número viejo por la carrera con Supabase)
+    totalHoy = Math.max(totalHoy, totalHoyLocal);
   } else {
-    totalHoy = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
+    totalHoy = totalHoyLocal;
   }
   set('kpi-cobrado','text',fmtM(totalHoy));
   set('kpi-alertas','text',String(alertas.length));
