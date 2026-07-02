@@ -2718,6 +2718,40 @@ function confirmarCobro(){
   const monto=parseFloat(get('cobrar-monto'))||0;
   if(!monto){toast('Ingresá el monto a cobrar','err');return;}
 
+  // Validar stock de los productos cargados
+  var lineasConProd = lineasCobro.filter(function(l){return l.prodId;});
+  var sinStock = [];
+  var stockAjustado = [];
+  lineasConProd.forEach(function(l){
+    var prod = productos.find(function(p){return String(p.id)===String(l.prodId);});
+    if(!prod) return;
+    if(prod.stock<=0){
+      sinStock.push(prod.nom);
+    } else if((l.cant||0) > prod.stock){
+      stockAjustado.push(prod.nom+' (quedan '+prod.stock+' '+prod.um+')');
+    }
+  });
+  if(sinStock.length){
+    toast('🚫 Sin stock de: '+sinStock.join(', ')+'. Ajustá el stock en Productos antes de vender.','err');
+    return;
+  }
+  if(stockAjustado.length){
+    toast('⚠️ Vendiste más stock del que hay: '+stockAjustado.join(', '),'err');
+    var emailDStock = config.emailDueno||'';
+    if(emailDStock){
+      lineasConProd.forEach(function(l){
+        var prod = productos.find(function(p){return String(p.id)===String(l.prodId);});
+        if(prod && (l.cant||0) > prod.stock && prod.stock > 0){
+          fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/notificar-fiado',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({tipo:'stock_insuficiente',producto:prod.nom,cantidad:l.cant,stockDisponible:prod.stock,cajero:cajeroActual?cajeroActual.nombre:'',negocio:config.nombre||'el negocio',emailDueno:emailDStock})
+          }).catch(function(){});
+        }
+      });
+    }
+  }
+
   // Validar fiado
   if(pagoActual==='fiado'){
     var fSel=get('fiado-cliente-sel');
