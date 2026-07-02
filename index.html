@@ -1396,7 +1396,11 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
     <div class="frow">
-      <div class="fg" style="margin-bottom:0;"><label class="fl">Monto pagado $</label><input class="fi" id="fd-pago" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;"></div>
+      <div class="fg" style="margin-bottom:0;">
+        <label class="fl">Monto pagado $</label>
+        <input class="fi" id="fd-pago" type="number" placeholder="0" style="font-family:DM Mono,monospace;font-size:18px;text-align:center;">
+        <div onclick="pagarTodoFiado()" style="font-size:11px;color:var(--acc2);cursor:pointer;margin-top:4px;text-align:center;">Completar con el total pendiente</div>
+      </div>
       <div class="fg" style="margin-bottom:0;"><label class="fl">Forma de pago</label>
         <select class="fi" id="fd-pago-metodo">
           <option value="efectivo">💵 Efectivo</option>
@@ -5543,12 +5547,51 @@ function enviarRecordatorioWhatsApp(){
   window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
 }
 
+// Calcula cuánto queda REALMENTE pendiente de pagar de un cliente fiado.
+// Asigna los pagos ya hechos a las compras más viejas primero (FIFO), y valúa
+// lo que queda sin pagar de cada compra según el modo elegido: precio de cuando
+// se sacó la mercadería ('original') o precio de venta actual ('actual').
+function calcularDeudaPendiente(c, modoPrecio){
+  if(!c || !c.movs || !c.movs.length) return c ? (c.deuda||0) : 0;
+  var movs = c.movs.slice().sort(function(a,b){ return (a.created_at||a.fecha||'').localeCompare(b.created_at||b.fecha||''); });
+  var deudas = movs.filter(function(m){return m.tipo==='deuda';});
+  var pagos = movs.filter(function(m){return m.tipo==='pago';});
+  if(!deudas.length) return c.deuda||0;
+  var pagosDisponibles = pagos.reduce(function(s,p){return s+(p.monto||0);},0);
+  var totalPendiente = 0;
+  deudas.forEach(function(m){
+    var detalle = m.detalle ? (typeof m.detalle==='string'?JSON.parse(m.detalle):m.detalle) : null;
+    var montoOriginal = 0, montoHoy = 0;
+    if(detalle && Array.isArray(detalle) && detalle.length){
+      detalle.forEach(function(item){
+        var precioOriginal = item.precioVenta||item.precio||0;
+        var prodActual = productos.find(function(p){return p.id==item.id||p.nom===item.nom;});
+        var precioHoy = prodActual ? (prodActual.pventa||prodActual.precio||precioOriginal) : precioOriginal;
+        montoOriginal += (item.cant||1)*precioOriginal;
+        montoHoy += (item.cant||1)*precioHoy;
+      });
+    } else {
+      montoOriginal = m.monto||0;
+      montoHoy = m.monto||0;
+    }
+    var pagadoDeEsta = Math.min(montoOriginal, pagosDisponibles);
+    pagosDisponibles -= pagadoDeEsta;
+    var fraccionPendiente = montoOriginal>0 ? (montoOriginal-pagadoDeEsta)/montoOriginal : 0;
+    var valorElegido = modoPrecio==='actual' ? montoHoy : montoOriginal;
+    totalPendiente += valorElegido * fraccionPendiente;
+  });
+  return Math.round(totalPendiente);
+}
+
 function renderHeaderFiado(c){
   var inicial = c.nom.charAt(0).toUpperCase();
   var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
   var col = colors[c.nom.charCodeAt(0) % colors.length];
-  var saldado = c.deuda <= 0;
+  var modoPrecio = config.fiadoPrecio || 'original';
+  var deudaCalc = calcularDeudaPendiente(c, modoPrecio);
+  var saldado = deudaCalc <= 0;
   var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
+  var modoTxt = modoPrecio==='actual' ? '<span style="font-size:10px;color:var(--acc2);"> · precio actualizado</span>' : '';
   var notaTxt = c.nota ? '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">📝 '+c.nota+'</div>' : '';
   var telTxt = c.tel ? '<div style="font-size:11px;color:var(--mut2);">📞 <a href="tel:'+c.tel+'" style="color:var(--acc2);">'+c.tel+'</a></div>' : '';
   var emailTxt = c.email ? '<div style="font-size:11px;color:var(--mut2);">✉️ '+c.email+'</div>' : '';
@@ -5559,8 +5602,8 @@ function renderHeaderFiado(c){
     + telTxt + emailTxt + notaTxt
     + '</div>'
     + '<div style="text-align:right;">'
-    + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'
-    + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+'</div>'
+    + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(deudaCalc))+'</div>'
+    + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+modoTxt+'</div>'
     + '</div>'
     + '</div>';
   set('fd-header','html',html);
@@ -5593,12 +5636,21 @@ function renderHistorialFiado(c){
   set('fd-historial','html',html);
 }
 
+function pagarTodoFiado(){
+  var c = fiadoActualCliente;
+  if(!c) return;
+  var modoPrecio = config.fiadoPrecio || 'original';
+  var deudaCobrable = calcularDeudaPendiente(c, modoPrecio);
+  set('fd-pago','val', String(deudaCobrable));
+}
 async function pagarFiado(){
   var c = fiadoActualCliente;
   if(!c) return;
   var pago = parseFloat(get('fd-pago'))||0;
   if(!pago){ toast('Ingresá el monto','err'); return; }
-  if(pago > c.deuda){ toast('El pago supera la deuda ('+fmtM(c.deuda)+')','err'); return; }
+  var modoPrecio = config.fiadoPrecio || 'original';
+  var deudaCobrable = calcularDeudaPendiente(c, modoPrecio);
+  if(pago > deudaCobrable + 1){ toast('El pago supera la deuda ('+fmtM(deudaCobrable)+')','err'); return; }
   var metodoEl = el('fd-pago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP'};
