@@ -2168,7 +2168,28 @@ async function abrirSesionCaja(){
   }
   el('caja-pin-inp').value = '';
   el('caja-pin-error').style.display = 'none';
+  await poblarTurnosDisponibles();
   openModal('modal-sesion-caja');
+}
+
+async function poblarTurnosDisponibles(){
+  var turnoSel = el('caja-turno-sel');
+  if(!turnoSel) return;
+  var TODOS_TURNOS = [
+    {v:'mañana', lbl:'🌅 Mañana'},
+    {v:'tarde', lbl:'🌆 Tarde'},
+    {v:'noche', lbl:'🌙 Noche'}
+  ];
+  var usados = [];
+  if(supabaseClient && currentNegocioId){
+    var hoyStr = hoy();
+    var res = await supabaseClient.from('cajas').select('turno').eq('negocio_id',currentNegocioId).gte('fecha_apertura',hoyStr+'T00:00:00').lte('fecha_apertura',hoyStr+'T23:59:59');
+    if(res.data) usados = res.data.map(function(c){return c.turno;});
+  }
+  var disponibles = TODOS_TURNOS.filter(function(t){return usados.indexOf(t.v)===-1;});
+  // Si ya se usaron todos, no bloqueamos — mostramos todos igual para no trabar el flujo
+  var opciones = disponibles.length ? disponibles : TODOS_TURNOS;
+  turnoSel.innerHTML = opciones.map(function(t){return '<option value="'+t.v+'">'+t.lbl+'</option>';}).join('');
 }
 
 function onCajeroCambia(){
@@ -3717,16 +3738,18 @@ async function renderResumen(){
   set('res-periodo','text', label);
   var ri = el('res-ingresos'); var re = el('res-egresos'); var rb = el('res-balance');
   if(ri) ri.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
-  var movsF = [], factsF = [];
+  var movsF = [], factsF = [], cajasF = [];
   if(supabaseClient && currentNegocioId){
     var resMovs = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resMovs.data){
-      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat};});
+      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,createdAt:m.created_at};});
     }
     var resFacts = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resFacts.data){
       factsF = resFacts.data.map(function(f){return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,origen:f.origen,obs:f.obs};});
     }
+    var resCajas = await supabaseClient.from('cajas').select('*').eq('negocio_id',currentNegocioId).gte('fecha_apertura',desdeStr+'T00:00:00').lte('fecha_apertura',hastaStr+'T23:59:59');
+    if(resCajas.data) cajasF = resCajas.data;
   } else {
     movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
     factsF = facturas.filter(function(f){ var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
@@ -3766,11 +3789,35 @@ async function renderResumen(){
     +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div>'
     +'<div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;">'
     +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
-  renderResumenDiario(movsF, factsF, label);
+  renderResumenDiario(movsF, factsF, label, cajasF);
 }
 function setResPeriod(p,btn){ /* legacy - no-op */ }
 
-function renderResumenDiario(movsF, factsF, label){
+function turnosHtmlDelDia(fecha, cajasF, movsF){
+  var cajasDelDia = cajasF.filter(function(c){
+    return c.fecha_apertura && c.fecha_apertura.slice(0,10)===fecha;
+  }).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
+  if(!cajasDelDia.length) return '';
+  var bloques = cajasDelDia.map(function(c){
+    var desde = c.fecha_apertura;
+    var hasta = c.fecha_cierre || new Date().toISOString();
+    var cobrosTurno = movsF.filter(function(m){
+      return m.tipo==='cobro' && m.createdAt && m.createdAt>=desde && m.createdAt<=hasta;
+    }).reduce(function(s,m){return s+(m.monto||0);},0);
+    var turnoLbl = c.turno ? (c.turno.charAt(0).toUpperCase()+c.turno.slice(1)) : 'Turno';
+    var horaApertura = new Date(desde).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;">'
+      +'<span style="color:var(--mut2);">🕐 '+turnoLbl+' · '+(c.cajero_nombre||'—')+' · '+horaApertura+'</span>'
+      +'<span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(cobrosTurno)+'</span>'
+      +'</div>';
+  }).join('');
+  return '<div style="background:var(--sur2);border-radius:8px;padding:8px 10px;margin-bottom:10px;">'
+    +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;">Por turno</div>'
+    +bloques
+    +'</div>';
+}
+function renderResumenDiario(movsF, factsF, label, cajasF){
+  cajasF = cajasF || [];
   var diasEl = el('res-dias-lista');
   var diasPeriodo = el('res-dias-periodo');
   if(!diasEl) return;
@@ -3832,6 +3879,8 @@ function renderResumenDiario(movsF, factsF, label){
         +'</div>';
     }
 
+    var turnosHtml = turnosHtmlDelDia(fecha, cajasF, movsF);
+
     return '<div style="border-bottom:1px solid var(--brd);padding:12px 0;">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;">'+fechaLbl+'</div>'
@@ -3840,6 +3889,7 @@ function renderResumenDiario(movsF, factsF, label){
       +(d.fiadoEntregado>0?'<div style="font-size:11px;color:var(--mut2);">Total vendido: <b style="color:var(--txt);">'+fmtM(totalVendido)+'</b></div>':'')
       +'</div>'
       +'</div>'
+      +turnosHtml
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
       +'<div style="background:var(--sur2);border-radius:6px;padding:6px 8px;text-align:center;">'
       +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:2px;">💵 EFECT.</div>'
