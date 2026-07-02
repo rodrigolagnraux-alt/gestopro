@@ -5540,7 +5540,7 @@ function renderCartillaFiado(c){
   }
   el_c.innerHTML = items.map(function(item){
     var prodActual = productos.find(function(p){return p.id==(item.prodId||item.id)||p.nom===item.nom;});
-    var precioActual = prodActual ? (prodActual.precio||0) : item.precioOriginal;
+    var precioActual = prodActual ? (prodActual.pventa||prodActual.precio||0) : item.precioOriginal;
     var totalOriginal = item.cant * item.precioOriginal;
     var totalActual = item.cant * precioActual;
     var diff = totalActual - totalOriginal;
@@ -5556,8 +5556,8 @@ function renderCartillaFiado(c){
   }).join('');
   var totalOriginal = items.reduce(function(s,i){return s+i.cant*i.precioOriginal;},0);
   var totalActual = items.reduce(function(s,i){
-    var p=productos.find(function(p){return p.id==i.id||p.nom===i.nom;});
-    return s+i.cant*(p?p.precio||0:i.precioOriginal);
+    var p=productos.find(function(p){return p.id==(i.prodId||i.id)||p.nom===i.nom;});
+    return s+i.cant*(p?(p.pventa||p.precio||0):i.precioOriginal);
   },0);
   var diff = totalActual - totalOriginal;
   el_c.innerHTML += '<div style="padding:10px 0 0;margin-top:4px;">'
