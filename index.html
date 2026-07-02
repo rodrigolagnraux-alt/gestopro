@@ -5718,7 +5718,7 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   });
   // Actualizar deuda
   await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',clienteId);
-  var idx = fiados.findIndex(function(f){return f.id===clienteId;});
+  var idx = fiados.findIndex(function(f){return String(f.id)===String(clienteId);});
   if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
 
   // Si con esta compra supera el límite → email silencioso al dueño y al cliente
