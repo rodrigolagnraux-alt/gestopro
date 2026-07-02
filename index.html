@@ -3015,6 +3015,12 @@ function confirmarIngresoFactura(){
   }
   if(total>0){
     const _fi={id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,origen:pagoFactura==='efectivo'?origenPagoFact:'',obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]+origenLbl}; facturas.unshift(_fi); saveFactura(_fi);
+    if(estadoFact==='pagada'){
+      var origenEgresoFact = pagoFactura==='efectivo' ? origenPagoFact : '';
+      var descEgresoFact = 'Pago factura '+_fi.num+' · '+prov+(origenEgresoFact==='bolsillo'?' · Del bolsillo':'');
+      var _egf={id:Date.now()+Math.random(),tipo:'egreso',desc:descEgresoFact,monto:total,fecha:hoy(),metodo:pagoFactura,origen:origenEgresoFact};
+      movimientos.unshift(_egf); saveMovimiento(_egf);
+    }
   }
   pagoFactura='pendiente';
   closeModal('modal-ingreso'); saveState(); renderDash(); // ingreso guardado
@@ -3798,17 +3804,59 @@ function turnosHtmlDelDia(fecha, cajasF, movsF){
     return c.fecha_apertura && c.fecha_apertura.slice(0,10)===fecha;
   }).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
   if(!cajasDelDia.length) return '';
+  var iconTurno = {'mañana':'🌅','tarde':'🌆','noche':'🌙'};
   var bloques = cajasDelDia.map(function(c){
-    var desde = c.fecha_apertura;
-    var hasta = c.fecha_cierre || new Date().toISOString();
-    var cobrosTurno = movsF.filter(function(m){
-      return m.tipo==='cobro' && m.createdAt && m.createdAt>=desde && m.createdAt<=hasta;
-    }).reduce(function(s,m){return s+(m.monto||0);},0);
     var turnoLbl = c.turno ? (c.turno.charAt(0).toUpperCase()+c.turno.slice(1)) : 'Turno';
-    var horaApertura = new Date(desde).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;">'
-      +'<span style="color:var(--mut2);">🕐 '+turnoLbl+' · '+(c.cajero_nombre||'—')+' · '+horaApertura+'</span>'
-      +'<span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(cobrosTurno)+'</span>'
+    var ico = iconTurno[c.turno] || '🕐';
+    var horaApertura = new Date(c.fecha_apertura).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    var cerrado = !!c.fecha_cierre;
+    var horaCierre = cerrado ? new Date(c.fecha_cierre).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : null;
+
+    var d = {};
+    if(cerrado && c.resumen){ try{ d = JSON.parse(c.resumen); }catch(e){ d = {}; } }
+    if(!cerrado){
+      // Turno todavía abierto: calculamos en vivo desde que abrió hasta ahora
+      var hasta = new Date().toISOString();
+      var cobrosDelTurno = movsF.filter(function(m){
+        return m.tipo==='cobro' && m.createdAt && m.createdAt>=c.fecha_apertura && m.createdAt<=hasta;
+      });
+      d = {
+        fondoInicial: c.fondo_inicial||0,
+        cobrosEfectivo: cobrosDelTurno.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+m.monto;},0),
+        cobrosDni: cobrosDelTurno.filter(function(m){return m.metodo==='cuentadni';}).reduce(function(s,m){return s+m.monto;},0),
+        cobrosMp: cobrosDelTurno.filter(function(m){return m.metodo==='mercadopago';}).reduce(function(s,m){return s+m.monto;},0),
+        egresosEfectivo: 0
+      };
+    }
+    var cobradoTotal = (d.cobrosEfectivo||0)+(d.cobrosDni||0)+(d.cobrosMp||0);
+    var estadoLbl = cerrado
+      ? (horaApertura+' – '+horaCierre)
+      : (horaApertura+' – <span style="color:var(--grn);">en curso</span>');
+
+    var filaMetodos = '';
+    if(d.cobrosEfectivo>0) filaMetodos += '💵 '+fmtM(d.cobrosEfectivo)+' ';
+    if(d.cobrosDni>0) filaMetodos += '🏛️ '+fmtM(d.cobrosDni)+' ';
+    if(d.cobrosMp>0) filaMetodos += '📱 '+fmtM(d.cobrosMp)+' ';
+
+    var lineaFinal = '';
+    if(cerrado){
+      var diff = c.diferencia||0;
+      var diffTxt = diff===0 ? '✓ sin diferencia' : (diff>0 ? '↑ sobró '+fmtM(Math.abs(diff)) : '↓ faltó '+fmtM(Math.abs(diff)));
+      lineaFinal = '<span style="font-family:DM Mono,monospace;color:var(--txt);font-weight:700;">'+fmtM(c.efectivo_contado||0)+'</span>'
+        +'<span style="font-size:10px;color:'+(diff===0?'var(--grn)':'var(--yel)')+';margin-left:6px;">'+diffTxt+'</span>';
+    } else {
+      lineaFinal = '<span style="font-family:DM Mono,monospace;color:var(--acc2);font-weight:700;">'+fmtM(cobradoTotal)+'</span>';
+    }
+
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--brd);">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+      +'<span style="font-size:11px;font-weight:700;">'+ico+' '+turnoLbl+' · '+(c.cajero_nombre||'—')+'</span>'
+      +'<span style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+estadoLbl+'</span>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--mut2);">'
+      +'<span>Fondo '+fmtM(d.fondoInicial||0)+(filaMetodos?' + '+filaMetodos:'')+(d.egresosEfectivo>0?' − '+fmtM(d.egresosEfectivo)+' egr.':'')+'</span>'
+      +'<span>'+lineaFinal+'</span>'
+      +'</div>'
       +'</div>';
   }).join('');
   return '<div style="background:var(--sur2);border-radius:8px;padding:8px 10px;margin-bottom:10px;">'
