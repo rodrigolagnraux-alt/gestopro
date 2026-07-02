@@ -676,6 +676,10 @@ select.fi{appearance:none;cursor:pointer;}
     <input type="checkbox" id="ef-via-libre" style="width:18px;height:18px;accent-color:var(--yel);flex-shrink:0;">
     <label for="ef-via-libre" style="font-size:13px;color:var(--txt);cursor:pointer;">🟡 Vía libre — sin límite de crédito</label>
   </div>
+  <div class="fg" style="flex-direction:row;align-items:center;gap:10px;">
+    <input type="checkbox" id="ef-precio-original" style="width:18px;height:18px;accent-color:var(--acc2);flex-shrink:0;">
+    <label for="ef-precio-original" style="font-size:13px;color:var(--txt);cursor:pointer;">🤝 Arreglo especial — cobrarle siempre precio original, sin actualizar</label>
+  </div>
   <div class="fg"><label class="fl">Fecha de pago (opcional)</label><input class="fi" id="ef-fecha-pago" placeholder="Ej: Viernes, día 15, fin de mes..."></div>
   <div class="fg"><label class="fl">Email (para alertas automáticas)</label><input class="fi" id="ef-email" placeholder="Ej: cliente@gmail.com" type="email"></div>
   <div class="btn-row">
@@ -1415,13 +1419,13 @@ select.fi{appearance:none;cursor:pointer;}
   <!-- CARTILLA — PRODUCTOS -->
   <div class="card" style="margin-bottom:14px;">
     <div class="stitle">🛒 Mercadería tomada</div>
-    <div id="fd-cartilla"></div>
+    <div id="fd-cartilla" style="max-height:220px;overflow-y:auto;"></div>
   </div>
 
   <!-- HISTORIAL DE PAGOS -->
   <div class="card" style="margin-bottom:14px;">
     <div class="stitle">📋 Historial completo</div>
-    <div id="fd-historial"></div>
+    <div id="fd-historial" style="max-height:220px;overflow-y:auto;"></div>
   </div>
 
   <div class="btn-row">
@@ -5466,10 +5470,7 @@ function renderDeudaResumen(c){
     ? '<div style="font-size:12px;color:var(--mut2);margin-top:6px;">📅 Fecha de pago: <b style="color:var(--txt);">'+c.fecha_pago+'</b></div>'
     : '';
   el_d.innerHTML = '<div style="background:var(--sur2);border-radius:10px;padding:14px;">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-    +'<div style="font-size:12px;color:var(--mut2);">Deuda actual</div>'
-    +'<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:900;color:'+(deuda>0?'var(--red)':'var(--grn)')+';">'+(deuda>0?fmtM(deuda):'✓ Saldado')+'</div>'
-    +'</div>'+limiteHtml+fechaPagoHtml
+    +limiteHtml+fechaPagoHtml
     +'<button class="btn btn-ghost btn-sm" onclick="editarLimiteFiado()" style="margin-top:10px;font-size:11px;width:100%;">✏️ Editar límite y fecha de pago</button>'
     +'</div>';
 }
@@ -5482,6 +5483,8 @@ function editarLimiteFiado(){
   set('ef-email','val', c.email||'');
   var vlEl = el('ef-via-libre');
   if(vlEl) vlEl.checked = c.via_libre||false;
+  var poEl = el('ef-precio-original');
+  if(poEl) poEl.checked = c.precio_original||false;
   openModal('modal-editar-fiado');
 }
 
@@ -5493,20 +5496,24 @@ async function confirmarEditarFiado(){
   var nuevoEmail = get('ef-email').trim();
   var vlEl = el('ef-via-libre');
   var viaLibre = vlEl ? vlEl.checked : false;
+  var poEl = el('ef-precio-original');
+  var precioOriginal = poEl ? poEl.checked : false;
 
   await supabaseClient.from('fiados_clientes').update({
     limite: nuevoLimite,
     fecha_pago: nuevaFecha,
     via_libre: viaLibre,
+    precio_original: precioOriginal,
     email: nuevoEmail
   }).eq('id',c.id);
 
   fiadoActualCliente.limite = nuevoLimite;
   fiadoActualCliente.fecha_pago = nuevaFecha;
   fiadoActualCliente.via_libre = viaLibre;
+  fiadoActualCliente.precio_original = precioOriginal;
   fiadoActualCliente.email = nuevoEmail;
   var fidx = fiados.findIndex(function(f){return f.id===c.id;});
-  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; fiados[fidx].email=nuevoEmail; }
+  if(fidx!==-1){ fiados[fidx].limite=nuevoLimite; fiados[fidx].via_libre=viaLibre; fiados[fidx].precio_original=precioOriginal; fiados[fidx].email=nuevoEmail; }
   closeModal('modal-editar-fiado');
   renderDeudaResumen(fiadoActualCliente);
   renderHeaderFiado(fiadoActualCliente);
@@ -5623,11 +5630,11 @@ function renderHeaderFiado(c){
   var inicial = c.nom.charAt(0).toUpperCase();
   var colors = ['var(--acc)','var(--grn)','var(--yel)','var(--pur)','var(--blu)'];
   var col = colors[c.nom.charCodeAt(0) % colors.length];
-  var modoPrecio = config.fiadoPrecio || 'original';
+  var modoPrecio = c.precio_original ? 'original' : 'actual';
   var deudaCalc = calcularDeudaPendiente(c, modoPrecio);
   var saldado = deudaCalc <= 0;
   var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
-  var modoTxt = modoPrecio==='actual' ? '<span style="font-size:10px;color:var(--acc2);"> · precio actualizado</span>' : '';
+  var modoTxt = modoPrecio==='original' ? '<span style="font-size:10px;color:var(--yel);"> · 🤝 precio original (arreglo)</span>' : '<span style="font-size:10px;color:var(--acc2);"> · precio actualizado</span>';
   var notaTxt = c.nota ? '<div style="font-size:11px;color:var(--mut2);margin-top:4px;">📝 '+c.nota+'</div>' : '';
   var telTxt = c.tel ? '<div style="font-size:11px;color:var(--mut2);">📞 <a href="tel:'+c.tel+'" style="color:var(--acc2);">'+c.tel+'</a></div>' : '';
   var emailTxt = c.email ? '<div style="font-size:11px;color:var(--mut2);">✉️ '+c.email+'</div>' : '';
@@ -5675,7 +5682,7 @@ function renderHistorialFiado(c){
 function pagarTodoFiado(){
   var c = fiadoActualCliente;
   if(!c) return;
-  var modoPrecio = config.fiadoPrecio || 'original';
+  var modoPrecio = c.precio_original ? 'original' : 'actual';
   var deudaCobrable = calcularDeudaPendiente(c, modoPrecio);
   set('fd-pago','val', String(deudaCobrable));
 }
@@ -5684,7 +5691,7 @@ async function pagarFiado(){
   if(!c) return;
   var pago = parseFloat(get('fd-pago'))||0;
   if(!pago){ toast('Ingresá el monto','err'); return; }
-  var modoPrecio = config.fiadoPrecio || 'original';
+  var modoPrecio = c.precio_original ? 'original' : 'actual';
   var deudaCobrable = calcularDeudaPendiente(c, modoPrecio);
   if(pago > deudaCobrable + 1){ toast('El pago supera la deuda ('+fmtM(deudaCobrable)+')','err'); return; }
   var metodoEl = el('fd-pago-metodo');
