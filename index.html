@@ -3803,6 +3803,12 @@ function turnosHtmlDelDia(fecha, cajasF, movsF){
   var cajasDelDia = cajasF.filter(function(c){
     return c.fecha_apertura && c.fecha_apertura.slice(0,10)===fecha;
   }).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
+  // Descartar aperturas abandonadas sin cerrar: nos quedamos con todas las cerradas
+  // + como mucho la última abierta (la única que puede seguir realmente activa).
+  var cerradas = cajasDelDia.filter(function(c){ return !!c.fecha_cierre; });
+  var abiertas = cajasDelDia.filter(function(c){ return !c.fecha_cierre; });
+  var ultimaAbierta = abiertas.length ? [abiertas[abiertas.length-1]] : [];
+  cajasDelDia = cerradas.concat(ultimaAbierta).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
   if(!cajasDelDia.length) return '';
   var iconTurno = {'mañana':'🌅','tarde':'🌆','noche':'🌙'};
   var bloques = cajasDelDia.map(function(c){
