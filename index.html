@@ -2062,9 +2062,10 @@ function goLocked(id,navEl,req){
 }
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
+var _modalZCounter = 200;
 function openModal(id){
   const m=el(id);
-  if(m) m.classList.add('on');
+  if(m){ m.classList.add('on'); _modalZCounter++; m.style.zIndex = String(_modalZCounter); }
   if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
 }
 function closeModal(id){
