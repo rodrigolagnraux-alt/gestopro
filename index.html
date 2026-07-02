@@ -3809,11 +3809,18 @@ function turnosHtmlDelDia(fecha, cajasF, movsF){
     return c.fecha_apertura && c.fecha_apertura.slice(0,10)===fecha;
   }).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
   // Descartar aperturas abandonadas sin cerrar: nos quedamos con todas las cerradas
-  // + como mucho la última abierta (la única que puede seguir realmente activa).
+  // + la última abierta DE CADA PERSONA (varias cajas pueden estar activas al mismo tiempo).
   var cerradas = cajasDelDia.filter(function(c){ return !!c.fecha_cierre; });
   var abiertas = cajasDelDia.filter(function(c){ return !c.fecha_cierre; });
-  var ultimaAbierta = abiertas.length ? [abiertas[abiertas.length-1]] : [];
-  cajasDelDia = cerradas.concat(ultimaAbierta).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
+  var ultimaAbiertaPorCajero = {};
+  abiertas.forEach(function(c){
+    var key = c.cajero_id || c.cajero_nombre || '—';
+    if(!ultimaAbiertaPorCajero[key] || c.fecha_apertura > ultimaAbiertaPorCajero[key].fecha_apertura){
+      ultimaAbiertaPorCajero[key] = c;
+    }
+  });
+  var abiertasFiltradas = Object.keys(ultimaAbiertaPorCajero).map(function(k){return ultimaAbiertaPorCajero[k];});
+  cajasDelDia = cerradas.concat(abiertasFiltradas).sort(function(a,b){ return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||''); });
   if(!cajasDelDia.length) return '';
   var iconTurno = {'mañana':'🌅','tarde':'🌆','noche':'🌙'};
   var bloques = cajasDelDia.map(function(c){
