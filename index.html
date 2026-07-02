@@ -3125,21 +3125,21 @@ function confirmarPagoFactura(){
     f.estado='parcial';
     f.saldoPendiente = diff;
     f.montoPagado = (f.montoPagado||0) + monto;
-    f.fechaPago=hoy(); f.metodoPago=metodo;
+    f.fechaPago=hoy(); f.metodoPago=metodo; f.origen=origenFact;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
     renderFacts(); renderDash();
     toast('⚠️ Pago parcial registrado · Quedan '+fmtM(diff)+' pendientes de '+f.num);
   } else if(diff < -0.5){
     // Pagó de más
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0; f.origen=origenFact;
     f.montoPagado = (f.montoPagado||0) + monto;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
     renderFacts(); renderDash();
     toast('✅ Factura pagada · Pagaste '+fmtM(Math.abs(diff))+' de más');
   } else {
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0;
+    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0; f.origen=origenFact;
     f.montoPagado = (f.montoPagado||0) + monto;
     saveFactura(f); saveState();
     closeModal('modal-pagar-fact');
@@ -3752,7 +3752,7 @@ async function renderResumen(){
   if(supabaseClient && currentNegocioId){
     var resMovs = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resMovs.data){
-      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,createdAt:m.created_at};});
+      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,createdAt:m.created_at,origen:m.origen};});
     }
     var resFacts = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resFacts.data){
@@ -3781,10 +3781,11 @@ async function renderResumen(){
     +'<div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'
     +(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b></div>':'');
   const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
-  const factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
+  const esPagoFactura=function(m){ return m.desc && m.desc.indexOf('Pago factura ')===0; };
   const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
-  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&m.prodId===undefined;}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const factsPag=egresosSueltos.filter(function(m){return esPagoFactura(m);}).reduce(function(s,m){return s+(m.monto||0);},0);
+  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&!m.prodId&&!esPagoFactura(m);}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
   if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div>'
     +'<div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'
@@ -3896,7 +3897,7 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
         else if(m.metodo==='mercadopago') diasMap[fecha].cobros.mercadopago += m.monto||0;
         else diasMap[fecha].cobros.otros += m.monto||0;
       }
-    } else if(m.tipo==='egreso' && m.prodId===undefined){
+    } else if(m.tipo==='egreso' && !m.prodId){
       if(m.origen==='bolsillo') diasMap[fecha].egresosBolsillo += m.monto||0;
       else diasMap[fecha].egresos += m.monto||0;
     } else if(m.tipo==='fiado'){
