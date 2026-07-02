@@ -2792,10 +2792,10 @@ function confirmarCobro(){
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
       if(pagoActual==='fiado'){
-        detalleFiado.push({prodId:prod.id,nom:prod.nom,cant:l.cant,um:um,precioVenta:prod.precioVenta||0});
+        detalleFiado.push({prodId:prod.id,nom:prod.nom,cant:l.cant,um:um,precioVenta:prod.pventa||prod.precio||0});
       }
       if(pagoActual==='empleado'){
-        detalleEmpleado.push({nom:prod.nom,cant:l.cant,precio_unit:prod.precioVenta||0,total:l.cant*(prod.precioVenta||0)});
+        detalleEmpleado.push({nom:prod.nom,cant:l.cant,precio_unit:prod.pventa||prod.precio||0,total:l.cant*(prod.pventa||prod.precio||0)});
       }
     }
   });
@@ -5527,8 +5527,8 @@ function renderCartillaFiado(c){
     var detalle = m.detalle ? (typeof m.detalle==='string'?JSON.parse(m.detalle):m.detalle) : null;
     if(detalle && Array.isArray(detalle)){
       detalle.forEach(function(item){
-        var key = item.id||item.nom;
-        if(!productosMap[key]) productosMap[key]={nom:item.nom,cant:0,precioOriginal:item.precioVenta||item.precio||0,id:item.id};
+        var key = item.prodId||item.id||item.nom;
+        if(!productosMap[key]) productosMap[key]={nom:item.nom,cant:0,precioOriginal:item.precioVenta||item.precio||0,id:item.prodId||item.id};
         productosMap[key].cant += item.cant||1;
       });
     }
@@ -5539,7 +5539,7 @@ function renderCartillaFiado(c){
     return;
   }
   el_c.innerHTML = items.map(function(item){
-    var prodActual = productos.find(function(p){return p.id==item.id||p.nom===item.nom;});
+    var prodActual = productos.find(function(p){return p.id==(item.prodId||item.id)||p.nom===item.nom;});
     var precioActual = prodActual ? (prodActual.precio||0) : item.precioOriginal;
     var totalOriginal = item.cant * item.precioOriginal;
     var totalActual = item.cant * precioActual;
@@ -5599,11 +5599,13 @@ function calcularDeudaPendiente(c, modoPrecio){
     if(detalle && Array.isArray(detalle) && detalle.length){
       detalle.forEach(function(item){
         var precioOriginal = item.precioVenta||item.precio||0;
-        var prodActual = productos.find(function(p){return p.id==item.id||p.nom===item.nom;});
+        var prodActual = productos.find(function(p){return p.id==(item.prodId||item.id)||p.nom===item.nom;});
         var precioHoy = prodActual ? (prodActual.pventa||prodActual.precio||precioOriginal) : precioOriginal;
         montoOriginal += (item.cant||1)*precioOriginal;
         montoHoy += (item.cant||1)*precioHoy;
       });
+      // Respaldo: si el detalle tenía precio $0 guardado (dato viejo corrupto), no tratar como pagado
+      if(montoOriginal<=0 && m.monto>0){ montoOriginal = m.monto; montoHoy = m.monto; }
     } else {
       montoOriginal = m.monto||0;
       montoHoy = m.monto||0;
