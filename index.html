@@ -2180,16 +2180,20 @@ async function poblarTurnosDisponibles(){
     {v:'tarde', lbl:'🌆 Tarde'},
     {v:'noche', lbl:'🌙 Noche'}
   ];
-  var usados = [];
+  var usados = {}; // turno -> nombre de quien ya lo usó hoy
   if(supabaseClient && currentNegocioId){
     var hoyStr = hoy();
-    var res = await supabaseClient.from('cajas').select('turno').eq('negocio_id',currentNegocioId).gte('fecha_apertura',hoyStr+'T00:00:00').lte('fecha_apertura',hoyStr+'T23:59:59');
-    if(res.data) usados = res.data.map(function(c){return c.turno;});
+    var res = await supabaseClient.from('cajas').select('turno,cajero_nombre').eq('negocio_id',currentNegocioId).gte('fecha_apertura',hoyStr+'T00:00:00').lte('fecha_apertura',hoyStr+'T23:59:59');
+    if(res.data) res.data.forEach(function(c){ usados[c.turno]=c.cajero_nombre; });
   }
-  var disponibles = TODOS_TURNOS.filter(function(t){return usados.indexOf(t.v)===-1;});
-  // Si ya se usaron todos, no bloqueamos — mostramos todos igual para no trabar el flujo
-  var opciones = disponibles.length ? disponibles : TODOS_TURNOS;
-  turnoSel.innerHTML = opciones.map(function(t){return '<option value="'+t.v+'">'+t.lbl+'</option>';}).join('');
+  // Ordenamos: primero los turnos sin usar, después los ya usados (con aviso) — nunca se ocultan ni se bloquean
+  var sinUsar = TODOS_TURNOS.filter(function(t){return !usados[t.v];});
+  var yaUsados = TODOS_TURNOS.filter(function(t){return usados[t.v];});
+  var opciones = sinUsar.concat(yaUsados);
+  turnoSel.innerHTML = opciones.map(function(t){
+    var aviso = usados[t.v] ? ' — ya usado hoy ('+usados[t.v]+')' : '';
+    return '<option value="'+t.v+'">'+t.lbl+aviso+'</option>';
+  }).join('');
 }
 
 function onCajeroCambia(){
@@ -3881,7 +3885,7 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
   movsF.forEach(function(m){
     var fecha = m.fecha ? m.fecha.split('T')[0] : null;
     if(!fecha) return;
-    if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,fiadoEntregado:0,fiadoCobrado:0};
+    if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,egresosBolsillo:0,fiadoEntregado:0,fiadoCobrado:0};
     if(m.tipo==='cobro'){
       var esPagoFiado = m.desc && m.desc.toLowerCase().indexOf('pago fiado')!==-1;
       if(esPagoFiado){
@@ -3893,7 +3897,8 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
         else diasMap[fecha].cobros.otros += m.monto||0;
       }
     } else if(m.tipo==='egreso' && m.prodId===undefined){
-      diasMap[fecha].egresos += m.monto||0;
+      if(m.origen==='bolsillo') diasMap[fecha].egresosBolsillo += m.monto||0;
+      else diasMap[fecha].egresos += m.monto||0;
     } else if(m.tipo==='fiado'){
       diasMap[fecha].fiadoEntregado += m.monto||0;
     }
@@ -3902,7 +3907,7 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
     if((f.estado==='pagada'||f.estado==='parcial') && f.origen==='caja'){
       var fecha = f.fecha ? f.fecha.split('T')[0] : null;
       if(!fecha) return;
-      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,fiadoEntregado:0,fiadoCobrado:0};
+      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,egresosBolsillo:0,fiadoEntregado:0,fiadoCobrado:0};
       diasMap[fecha].egresos += f.montoPagado||f.monto||0;
     }
   });
@@ -3930,6 +3935,14 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
         +(d.fiadoEntregado>0?'<div style="text-align:center;"><div style="font-size:10px;color:var(--mut2);margin-bottom:2px;">Entregado hoy</div><div style="font-family:DM Mono,monospace;font-size:13px;color:var(--yel);">'+fmtM(d.fiadoEntregado)+'</div></div>':'')
         +(d.fiadoCobrado>0?'<div style="text-align:center;"><div style="font-size:10px;color:var(--mut2);margin-bottom:2px;">Cobrado hoy</div><div style="font-family:DM Mono,monospace;font-size:13px;color:var(--grn);">+'+fmtM(d.fiadoCobrado)+'</div></div>':'')
         +'</div>'
+        +'</div>';
+    }
+
+    var bolsilloHtml = '';
+    if(d.egresosBolsillo > 0){
+      bolsilloHtml = '<div style="background:rgba(148,120,255,.06);border:1px solid rgba(148,120,255,.2);border-radius:8px;padding:10px;margin-top:10px;">'
+        +'<div style="font-size:10px;color:var(--acc2);font-family:DM Mono,monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">💼 Pagado del bolsillo — no entra a caja</div>'
+        +'<div style="text-align:center;"><div style="font-family:DM Mono,monospace;font-size:13px;color:var(--acc2);">'+fmtM(d.egresosBolsillo)+'</div></div>'
         +'</div>';
     }
 
@@ -3963,6 +3976,7 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
       +'</div>'
       +'</div>'
       +fiadoHtml
+      +bolsilloHtml
       +'</div>';
   }).join('');
 }
