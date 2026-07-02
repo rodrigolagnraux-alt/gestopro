@@ -2360,6 +2360,9 @@ async function abrirCierreCaja(){
         desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,
         cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero,origen:m.origen};
     });
+    // Si hay más de una caja abierta a la vez, nos quedamos solo con lo que cobró ESTA persona
+    // (los movimientos viejos sin cajero guardado se incluyen igual, por compatibilidad)
+    movHoy = movHoy.filter(function(m){ return !m.cajero || m.cajero===cajaData.cajero_nombre; });
   } else {
     // Sin conexión a Supabase o sin apertura registrada: fallback a todo el día local
     var ahora = new Date();
@@ -2796,7 +2799,7 @@ function confirmarCobro(){
     descFinal='👤 '+empNom+' · '+descFinal;
   }
 
-  const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods};
+  const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods,cajero:cajeroActual?cajeroActual.nombre:null};
   movimientos.unshift(_mc);
   lineasCobro=[];
   closeModal('modal-cobrar'); saveMovimiento(_mc); saveState();
@@ -3435,6 +3438,10 @@ async function renderDash(){
   }
 }
 
+function fmtHora(iso){
+  if(!iso) return '';
+  try{ return new Date(iso).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
+}
 function renderMovItem(m){
   const icoM={efectivo:'💵',cuentadni:'🏛️',mercadopago:'📱',qr:'📱',transferencia:'🏦'};
   const metLbl={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP',transferencia:'Transferencia'};
@@ -3450,7 +3457,7 @@ function renderMovItem(m){
     return '<div class="mov-item"><div class="mov-ico" style="background:var(--yel-dim);color:'+color+';">🤝</div>'
       +'<div class="mov-txt">'
       +'<div class="mov-name">'+nombreFiado+'</div>'
-      +'<div class="mov-meta">'+fmtF(m.fecha)+' · '+estadoLbl+'</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+estadoLbl+'</div>'
       +'</div>'
       +'<div class="mov-right"><div class="mov-monto" style="color:'+color+';">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">FIADO</div></div>'
       +'</div>';
@@ -3459,7 +3466,7 @@ function renderMovItem(m){
     return '<div class="mov-item"><div class="mov-ico" style="background:var(--acc-dim);color:var(--acc2);">👤</div>'
       +'<div class="mov-txt">'
       +'<div class="mov-name">'+(m.desc||'Mercadería a empleado')+'</div>'
-      +'<div class="mov-meta">'+fmtF(m.fecha)+' · Mercadería a empleado · Se descuenta del sueldo, no entra a caja</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · Mercadería a empleado · Se descuenta del sueldo, no entra a caja</div>'
       +'</div>'
       +'<div class="mov-right"><div class="mov-monto" style="color:var(--acc2);">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">EMPLEADO</div></div>'
       +'</div>';
@@ -3470,7 +3477,7 @@ function renderMovItem(m){
     return '<div class="mov-item"><div class="mov-ico mi-cobro">'+(icoM2[m.metodo]||'💚')+'</div>'
       +'<div class="mov-txt">'
       +'<div class="mov-name">'+(m.desc||'Cobro')+'</div>'
-      +'<div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl2[m.metodo]||m.metodo||'')+'</div>'
+      +'<div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+(metLbl2[m.metodo]||m.metodo||'')+'</div>'
       +'</div>'
       +'<div class="mov-right"><div class="mov-monto mc-cobro">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">COBRO</div></div>'
       +'</div>';
@@ -3480,20 +3487,20 @@ function renderMovItem(m){
     const importe=prod&&prod.precio?m.cant*prod.precio:null;
     var nomIngreso = m.prodNom||m.desc||'Ingreso de mercadería';
     var motivoIngreso = m.motivo||m.desc||'Compra';
-    return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+nomIngreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+motivoIngreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
+    return'<div class="mov-item"><div class="mov-ico mi-ingreso">📦</div><div class="mov-txt"><div class="mov-name">'+nomIngreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+motivoIngreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' ingresaron</div></div><div class="mov-right"><div class="mov-monto mc-ingreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">ENTRADA</div></div></div>';
   }
   if(m.tipo==='egreso'){
     if(m.prodId===undefined||m.prodId===null){
       var icoM3={efectivo:'💵',transferencia:'🏦',cheque:'📝'};
       var metLbl3={efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque',transferencia:'Transferencia'};
       var descEgreso = m.desc||m.descripcion||m.prod||'Egreso';
-      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+descEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto||m.total||0)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
+      return'<div class="mov-item"><div class="mov-ico mi-egreso">'+(icoM3[m.metodo]||'📤')+'</div><div class="mov-txt"><div class="mov-name">'+descEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+(metLbl3[m.metodo]||m.metodo||'')+'</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+fmtM(m.monto||m.total||0)+'</div><div class="mov-tipo-lbl">EGRESO</div></div></div>';
     }
     const prod=productos.find(function(p){return String(p.id)===String(m.prodId);});
     const importe=prod&&prod.pventa?m.cant*prod.pventa:(prod&&prod.precio?m.cant*prod.precio:null);
     var nomEgreso = m.prodNom||m.desc||'Egreso';
     var motivoEgreso = m.motivo||m.desc||'Salida';
-    return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+nomEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' · '+motivoEgreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
+    return'<div class="mov-item"><div class="mov-ico mi-egreso">📤</div><div class="mov-txt"><div class="mov-name">'+nomEgreso+'</div><div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+motivoEgreso+' · '+(m.cant||1)+' '+(prod?prod.um:'un')+' salieron</div></div><div class="mov-right"><div class="mov-monto mc-egreso">'+(importe?fmtM(importe):(m.cant||1)+' un')+'</div><div class="mov-tipo-lbl">SALIDA</div></div></div>';
   }
   return'';
 }
@@ -3659,7 +3666,7 @@ async function renderMovs(){
   var allMovs = [];
   if(supabaseClient && currentNegocioId){
     var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr).order('fecha',{ascending:false}).order('created_at',{ascending:false});
-    if(rm.data) allMovs = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero};});
+    if(rm.data) allMovs = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,cajero:m.cajero,createdAt:m.created_at};});
   } else {
     allMovs = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
   }
@@ -3752,7 +3759,7 @@ async function renderResumen(){
   if(supabaseClient && currentNegocioId){
     var resMovs = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resMovs.data){
-      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,createdAt:m.created_at,origen:m.origen};});
+      movsF = resMovs.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat,createdAt:m.created_at,origen:m.origen,cajero:m.cajero};});
     }
     var resFacts = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resFacts.data){
@@ -3833,10 +3840,12 @@ function turnosHtmlDelDia(fecha, cajasF, movsF){
     var d = {};
     if(cerrado && c.resumen){ try{ d = JSON.parse(c.resumen); }catch(e){ d = {}; } }
     if(!cerrado){
-      // Turno todavía abierto: calculamos en vivo desde que abrió hasta ahora
+      // Turno todavía abierto: calculamos en vivo desde que abrió hasta ahora,
+      // Y solo lo que cobró ESTA persona (para que dos cajas abiertas a la vez no se mezclen)
       var hasta = new Date().toISOString();
       var cobrosDelTurno = movsF.filter(function(m){
-        return m.tipo==='cobro' && m.createdAt && m.createdAt>=c.fecha_apertura && m.createdAt<=hasta;
+        return m.tipo==='cobro' && m.createdAt && m.createdAt>=c.fecha_apertura && m.createdAt<=hasta
+          && (!m.cajero || m.cajero===c.cajero_nombre);
       });
       d = {
         fondoInicial: c.fondo_inicial||0,
