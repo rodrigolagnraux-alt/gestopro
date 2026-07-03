@@ -310,6 +310,7 @@ select.fi{appearance:none;cursor:pointer;}
 }
 .cobrar-btn-desktop{display:none;}
 .cobrar-sticky-footer{position:sticky;bottom:-32px;background:var(--sur);border-top:1px solid var(--brd2);margin:14px -20px -32px;padding:12px 20px calc(20px + env(safe-area-inset-bottom,0px));z-index:5;}
+.fiado-pago-sticky{position:sticky;bottom:-32px;background:var(--grn-dim);border-top:1px solid rgba(0,214,143,.3);margin:14px -20px -32px;padding:12px 20px calc(20px + env(safe-area-inset-bottom,0px));z-index:5;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px;}
 
 /* FIADO */
@@ -1391,14 +1392,34 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="ov" id="modal-fiado-detalle">
 <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
   <div class="modal-drag"></div>
-  <div id="fd-header" style="margin-bottom:16px;"></div>
+  <div id="fd-header" style="margin-bottom:12px;"></div>
 
   <!-- RESUMEN DE DEUDA -->
-  <div id="fd-deuda-resumen" style="margin-bottom:14px;"></div>
+  <div id="fd-deuda-resumen" style="margin-bottom:12px;"></div>
 
-  <!-- REGISTRAR PAGO -->
-  <div style="background:var(--grn-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px;">💵 Registrar pago</div>
+  <!-- CARTILLA — PRODUCTOS (colapsable) -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="stitle" onclick="toggleCartillaFiado()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <span>🛒 Mercadería tomada</span>
+      <span id="fd-cartilla-toggle-ico" style="font-size:11px;color:var(--mut2);">Ver ▾</span>
+    </div>
+    <div id="fd-cartilla" style="display:none;max-height:220px;overflow-y:auto;margin-top:8px;"></div>
+  </div>
+
+  <!-- HISTORIAL DE PAGOS -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="stitle">📋 Historial completo</div>
+    <div id="fd-historial" style="max-height:180px;overflow-y:auto;"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()" style="flex:1;">🗑 Eliminar</button>
+    <button class="btn btn-ghost btn-sm" onclick="enviarRecordatorioWhatsApp()" style="flex:1;">💬 Recordatorio</button>
+  </div>
+
+  <!-- REGISTRAR PAGO — fijo abajo -->
+  <div class="fiado-pago-sticky">
+    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--grn);margin-bottom:8px;">💵 Registrar pago</div>
     <div class="frow">
       <div class="fg" style="margin-bottom:0;">
         <label class="fl">Monto pagado $</label>
@@ -1413,25 +1434,10 @@ select.fi{appearance:none;cursor:pointer;}
         </select>
       </div>
     </div>
-    <button class="btn btn-grn btn-full" onclick="pagarFiado()" style="margin-top:10px;">✓ Registrar pago</button>
-  </div>
-
-  <!-- CARTILLA — PRODUCTOS -->
-  <div class="card" style="margin-bottom:14px;">
-    <div class="stitle">🛒 Mercadería tomada</div>
-    <div id="fd-cartilla" style="max-height:220px;overflow-y:auto;"></div>
-  </div>
-
-  <!-- HISTORIAL DE PAGOS -->
-  <div class="card" style="margin-bottom:14px;">
-    <div class="stitle">📋 Historial completo</div>
-    <div id="fd-historial" style="max-height:220px;overflow-y:auto;"></div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn btn-red btn-sm" onclick="eliminarClienteFiado()">🗑 Eliminar</button>
-    <button class="btn btn-ghost btn-sm" onclick="enviarRecordatorioWhatsApp()">💬 Recordatorio</button>
-    <button class="btn btn-ghost" onclick="closeModal('modal-fiado-detalle')">Cerrar</button>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-fiado-detalle')" style="flex:0 0 auto;padding:0 16px;">Cerrar</button>
+      <button class="btn btn-grn" onclick="pagarFiado()" style="flex:1;">✓ Registrar pago</button>
+    </div>
   </div>
 </div>
 </div>
@@ -5444,6 +5450,8 @@ async function abrirDetalleFiado(id){
   renderHeaderFiado(fiadoActualCliente);
   renderDeudaResumen(fiadoActualCliente);
   renderCartillaFiado(fiadoActualCliente);
+  var elCarta = el('fd-cartilla'); if(elCarta) elCarta.style.display='none';
+  var icoCarta = el('fd-cartilla-toggle-ico'); if(icoCarta) icoCarta.textContent='Ver ▾';
   renderHistorialFiado(fiadoActualCliente);
   openModal('modal-fiado-detalle');
 }
@@ -5522,6 +5530,14 @@ async function confirmarEditarFiado(){
 }
 
 
+function toggleCartillaFiado(){
+  var el_c = el('fd-cartilla');
+  var ico = el('fd-cartilla-toggle-ico');
+  if(!el_c) return;
+  var abierto = el_c.style.display !== 'none';
+  el_c.style.display = abierto ? 'none' : 'block';
+  if(ico) ico.textContent = abierto ? 'Ver ▾' : 'Ocultar ▴';
+}
 function renderCartillaFiado(c){
   var el_c = el('fd-cartilla');
   if(!el_c) return;
