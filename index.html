@@ -5252,9 +5252,18 @@ function verificarAccesoNegocio(negocio){
   }
   if(['basico','pro','business'].includes(negocio.plan)){
     var venc = negocio.plan_vencimiento ? new Date(negocio.plan_vencimiento+'T23:59:59') : null;
-    if(venc && new Date() > venc){
-      irAPaywall();
-      return true;
+    if(venc){
+      var finGracia = new Date(venc);
+      finGracia.setDate(finGracia.getDate()+5);
+      var ahora = new Date();
+      if(ahora > finGracia){
+        irAPaywall();
+        return true;
+      }
+      if(ahora > venc){
+        var diasGracia = Math.max(0, Math.ceil((finGracia - ahora) / 86400000));
+        setTimeout(function(){ toast('⚠️ Tu plan venció — te quedan '+diasGracia+' día'+(diasGracia!==1?'s':'')+' para renovar antes de perder el acceso'); }, 1500);
+      }
     }
     return false;
   }
