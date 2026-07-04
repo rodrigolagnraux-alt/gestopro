@@ -117,12 +117,33 @@
     border-width: 2px;
   }
 
+  .plan.anual {
+    border-color: #B8860B;
+    border-width: 2px;
+  }
+
   .badge-popular {
     position: absolute;
     top: -12px;
     left: 50%;
     transform: translateX(-50%);
     background: var(--verde);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 50px;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-ahorro {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #B8860B;
     color: white;
     font-size: 11px;
     font-weight: 600;
@@ -161,6 +182,12 @@
   .plan-precio.gratis {
     color: var(--texto-suave);
     font-size: 18px;
+  }
+
+  .plan-precio-nota {
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: 2px;
   }
 
   .plan-features {
@@ -218,6 +245,17 @@
   .btn-plan.destacado:hover {
     background: var(--verde-oscuro);
     border-color: var(--verde-oscuro);
+  }
+
+  .btn-plan.dorado {
+    background: #B8860B;
+    border-color: #B8860B;
+    color: white;
+  }
+
+  .btn-plan.dorado:hover {
+    background: #96690a;
+    border-color: #96690a;
   }
 
   .footer-nota {
@@ -401,6 +439,22 @@
     <button class="btn-plan" onclick="irAPago('Premium', '$120.000/mes', 'https://mpago.la/19PMubJ')">Elegir Premium</button>
   </div>
 
+  <!-- PREMIUM ANUAL -->
+  <div class="plan anual">
+    <div class="badge-ahorro">💰 Ahorrás $240.000</div>
+    <div class="plan-header">
+      <div class="plan-nombre">Premium Anual</div>
+      <div class="plan-precio">$100.000 <span>/ mes</span></div>
+      <div class="plan-precio-nota">Se paga $1.200.000 una vez, cubre los 12 meses</div>
+    </div>
+    <ul class="plan-features">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Todo lo del Premium</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Precio congelado si renovás año a año</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Un solo pago, sin vencimientos mensuales</li>
+    </ul>
+    <button class="btn-plan dorado" onclick="irAPago('Premium', '$1.200.000 (año completo)', 'https://mpago.la/19PMubJ', 'anual')">Elegir Premium Anual</button>
+  </div>
+
 </div>
 
 <div class="footer-nota">
@@ -450,8 +504,10 @@
     }
   });
 
-  function irAPago(nombre, precio, linkMP) {
-    document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + ' - ' + precio;
+  function irAPago(nombre, precio, linkMP, periodo) {
+    periodo = periodo || 'mensual';
+    var esAnual = periodo === 'anual';
+    document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + (esAnual ? ' Anual' : '') + ' - ' + precio;
     // Generar link dinámico con external_reference via Edge Function
     var plan = nombre.toLowerCase();
     var btn = document.getElementById('modal-mp-link');
@@ -460,7 +516,7 @@
     fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-pago', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail, plan: plan })
+      body: JSON.stringify({ email: userEmail, plan: plan, periodo: periodo })
     })
     .then(function(r){ return r.json(); })
     .then(function(data){
@@ -468,6 +524,12 @@
         btn.href = data.url;
         btn.textContent = '💳 Pagar con Mercado Pago';
         btn.style.pointerEvents = 'auto';
+      } else if(esAnual){
+        // No usamos el link estático de respaldo en anual: cobra el precio mensual, no el anual.
+        btn.textContent = '⚠️ No se pudo generar el link — escribinos por WhatsApp';
+        btn.removeAttribute('href');
+        btn.style.pointerEvents = 'none';
+        btn.style.background = '#BFBDB5';
       } else {
         btn.textContent = '💳 Pagar con Mercado Pago';
         btn.href = linkMP;
@@ -475,12 +537,19 @@
       }
     })
     .catch(function(){
-      btn.textContent = '💳 Pagar con Mercado Pago';
-      btn.href = linkMP;
-      btn.style.pointerEvents = 'auto';
+      if(esAnual){
+        btn.textContent = '⚠️ No se pudo generar el link — escribinos por WhatsApp';
+        btn.removeAttribute('href');
+        btn.style.pointerEvents = 'none';
+        btn.style.background = '#BFBDB5';
+      } else {
+        btn.textContent = '💳 Pagar con Mercado Pago';
+        btn.href = linkMP;
+        btn.style.pointerEvents = 'auto';
+      }
     });
     // WhatsApp de respaldo
-    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
+    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
     document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
     document.getElementById('modal').classList.add('activo');
   }
