@@ -5618,12 +5618,18 @@ function enviarRecordatorioWhatsApp(){
 // Asigna los pagos ya hechos a las compras más viejas primero (FIFO), y valúa
 // lo que queda sin pagar de cada compra según el modo elegido: precio de cuando
 // se sacó la mercadería ('original') o precio de venta actual ('actual').
+var ultimoCreditoFavor = 0; // sobrante de pagos de más del último cliente calculado, para avisar en el header
 function calcularDeudaPendiente(c, modoPrecio){
+  ultimoCreditoFavor = 0;
   if(!c || !c.movs || !c.movs.length) return c ? (c.deuda||0) : 0;
   var movs = c.movs.slice().sort(function(a,b){ return (a.created_at||a.fecha||'').localeCompare(b.created_at||b.fecha||''); });
   var deudas = movs.filter(function(m){return m.tipo==='deuda';});
   var pagos = movs.filter(function(m){return m.tipo==='pago';});
-  if(!deudas.length) return c.deuda||0;
+  if(!deudas.length){
+    var totalPagosSinDeuda = pagos.reduce(function(s,p){return s+(p.monto||0);},0);
+    if(totalPagosSinDeuda>0) ultimoCreditoFavor = Math.round(totalPagosSinDeuda);
+    return c.deuda||0;
+  }
   var pagosDisponibles = pagos.reduce(function(s,p){return s+(p.monto||0);},0);
   var totalPendiente = 0;
   deudas.forEach(function(m){
@@ -5649,6 +5655,7 @@ function calcularDeudaPendiente(c, modoPrecio){
     var valorElegido = modoPrecio==='actual' ? montoHoy : montoOriginal;
     totalPendiente += valorElegido * fraccionPendiente;
   });
+  if(pagosDisponibles>0) ultimoCreditoFavor = Math.round(pagosDisponibles);
   return Math.round(totalPendiente);
 }
 
@@ -5658,6 +5665,7 @@ function renderHeaderFiado(c){
   var col = colors[c.nom.charCodeAt(0) % colors.length];
   var modoPrecio = c.precio_original ? 'original' : 'actual';
   var deudaCalc = calcularDeudaPendiente(c, modoPrecio);
+  var creditoFavor = ultimoCreditoFavor;
   var saldado = deudaCalc <= 0;
   var limiteTxt = c.limite > 0 ? '<span style="font-size:11px;color:var(--mut2);"> · Límite: '+fmtM(c.limite)+'</span>' : '';
   var modoTxt = modoPrecio==='original' ? '<span style="font-size:10px;color:var(--yel);"> · 🤝 precio original (arreglo)</span>' : '<span style="font-size:10px;color:var(--acc2);"> · precio actualizado</span>';
@@ -5674,7 +5682,8 @@ function renderHeaderFiado(c){
     + '<div class="fiado-deuda'+(saldado?' saldado':'')+'" style="font-size:22px;">'+(saldado?'✓ Saldado':fmtM(deudaCalc))+'</div>'
     + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+modoTxt+'</div>'
     + '</div>'
-    + '</div>';
+    + '</div>'
+    + (creditoFavor>0 && !saldado ? '<div style="margin-top:10px;background:var(--grn-dim);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--grn);">💚 '+c.nom+' tiene '+fmtM(creditoFavor)+' a favor de un pago anterior — ya descontado de esta deuda</div>' : '');
   set('fd-header','html',html);
 }
 
