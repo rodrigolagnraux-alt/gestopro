@@ -5733,8 +5733,6 @@ async function pagarFiado(){
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP'};
 
-  var nuevaDeuda = Math.max(0, c.deuda - pago);
-
   // Guardar movimiento en Supabase
   await supabaseClient.from('fiados_movimientos').insert({
     negocio_id: currentNegocioId,
@@ -5746,7 +5744,13 @@ async function pagarFiado(){
     metodo: metLbl[metodo]
   });
 
-  // Actualizar deuda del cliente
+  // Recargar movimientos y recalcular la deuda real con FIFO (no una resta simple:
+  // eso perdía el crédito a favor cuando alguien pagaba de más, por el piso en 0).
+  var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',c.id).order('created_at',{ascending:true});
+  fiadoActualCliente.movs = movRes.data || [];
+  var nuevaDeuda = calcularDeudaPendiente(fiadoActualCliente, modoPrecio);
+
+  // Actualizar deuda del cliente con el valor recalculado (mantiene lista y barra de crédito sincronizadas con el detalle)
   await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',c.id);
   fiadoActualCliente.deuda = nuevaDeuda;
 
@@ -5755,9 +5759,6 @@ async function pagarFiado(){
   movimientos.unshift(_mc); saveMovimiento(_mc);
 
   set('fd-pago','val','');
-  // Recargar movimientos del cliente
-  var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',c.id).order('created_at',{ascending:true});
-  fiadoActualCliente.movs = movRes.data || [];
   renderHeaderFiado(fiadoActualCliente);
   renderHistorialFiado(fiadoActualCliente);
   renderFiado();
@@ -5831,11 +5832,11 @@ async function renderFiado(){
 // Función para registrar fiado desde cobrar (llamada por confirmarCobro)
 async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   if(!clienteId || !currentNegocioId) return;
-  // Cargar deuda actual
-  var res = await supabaseClient.from('fiados_clientes').select('deuda,limite,nom,email,via_libre,tel').eq('id',clienteId).single();
+  // Cargar datos del cliente (incluye precio_original para saber qué modo de cálculo usar)
+  var res = await supabaseClient.from('fiados_clientes').select('deuda,limite,nom,email,via_libre,tel,precio_original').eq('id',clienteId).single();
   if(!res.data) return;
   var c = res.data;
-  var nuevaDeuda = c.deuda + monto;
+  var deudaAnterior = c.deuda;
   // Guardar movimiento
   await supabaseClient.from('fiados_movimientos').insert({
     negocio_id: currentNegocioId,
@@ -5846,13 +5847,18 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
     fecha: hoy(),
     detalle: detalle ? JSON.stringify(detalle) : null
   });
+  // Recalcular la deuda real con FIFO (no sumar a lo bruto) para que quede
+  // sincronizada con lo que muestra el detalle del cliente
+  var movRes = await supabaseClient.from('fiados_movimientos').select('*').eq('cliente_id',clienteId).order('created_at',{ascending:true});
+  var modoPrecio = c.precio_original ? 'original' : 'actual';
+  var nuevaDeuda = calcularDeudaPendiente({movs: movRes.data||[]}, modoPrecio);
   // Actualizar deuda
   await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',clienteId);
   var idx = fiados.findIndex(function(f){return String(f.id)===String(clienteId);});
   if(idx!==-1) fiados[idx].deuda = nuevaDeuda;
 
   // Si con esta compra supera el límite → email silencioso al dueño y al cliente
-  if(!c.via_libre && c.limite > 0 && nuevaDeuda > c.limite && c.deuda < c.limite){
+  if(!c.via_libre && c.limite > 0 && nuevaDeuda > c.limite && deudaAnterior < c.limite){
     var emailDueno = config.emailDueno || '';
     var emailCliente = c.email || '';
     if(emailDueno || emailCliente){
