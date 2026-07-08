@@ -5683,7 +5683,7 @@ function renderHeaderFiado(c){
     + '<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">'+(saldado?'SIN DEUDA':'DEUDA TOTAL')+limiteTxt+modoTxt+'</div>'
     + '</div>'
     + '</div>'
-    + (creditoFavor>0 && !saldado ? '<div style="margin-top:10px;background:var(--grn-dim);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--grn);">💚 '+c.nom+' tiene '+fmtM(creditoFavor)+' a favor de un pago anterior — ya descontado de esta deuda</div>' : '');
+    + (creditoFavor>0 ? '<div style="margin-top:10px;background:var(--grn-dim);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--grn);">💚 '+c.nom+' tiene '+fmtM(creditoFavor)+' a favor'+(saldado?' para su próxima compra':' de un pago anterior — ya descontado de esta deuda')+'</div>' : '');
   set('fd-header','html',html);
 }
 
