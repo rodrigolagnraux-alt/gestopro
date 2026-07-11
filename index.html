@@ -1077,7 +1077,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-drag"></div>
   <div class="modal-t">📦 Nuevo Producto</div>
   <div class="modal-s">Agregá un producto o insumo al inventario</div>
-  <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><input class="fi" id="p-cod" placeholder="PRD001" onblur="buscarNombrePorCodigo(this.value)"></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
+  <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><div style="display:flex;gap:6px;"><input class="fi" id="p-cod" placeholder="PRD001" onblur="buscarNombrePorCodigo(this.value)" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm" onclick="escanearParaNuevoProducto()" style="white-space:nowrap;padding:0 12px;">📷</button></div></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
   <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
@@ -4068,6 +4068,20 @@ var scannerCallback = null; // 'ingreso' or 'cobro'
 var scannerFoundProd = null;
 var scannerInterval = null;
 
+function escanearParaNuevoProducto(){
+  scannerCallback = 'nuevo-producto';
+  scannerFoundProd = null;
+  set('scanner-manual','val','');
+  set('scanner-found','display','none');
+  set('scanner-not-found','display','none');
+  set('scanner-results','display','none');
+  set('scanner-confirm-btn','display','none');
+  set('scanner-listo-btn','display','none');
+  set('scanner-titulo','text','📷 Escanear — Nuevo producto');
+  openModal('modal-scanner');
+  iniciarCamara();
+}
+
 function abrirScanner(callback){
   scannerCallback = callback;
   scannerFoundProd = null;
@@ -4131,6 +4145,13 @@ function escanearFrame(){
       if(codes.length>0){
         var code = codes[0].rawValue;
         detenerCamara();
+        if(scannerCallback==='nuevo-producto'){
+          closeModal('modal-scanner');
+          set('p-cod','val',code);
+          buscarNombrePorCodigo(code);
+          toast('📷 Código capturado: '+code);
+          return;
+        }
         procesarCodigo(code);
       }
     }).catch(function(){});
