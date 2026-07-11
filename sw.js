@@ -1,6 +1,6 @@
 // GestoPro Service Worker
-const CACHE = 'gestopro-v2';
-const ASSETS = ['/gestopro/', '/gestopro/index.html'];
+const CACHE = 'gestopro-v3';
+const ASSETS = ['/', '/index.html'];
 self.addEventListener('install', function(e){
   e.waitUntil(
     caches.open(CACHE).then(function(cache){
@@ -22,7 +22,7 @@ self.addEventListener('fetch', function(e){
   e.respondWith(
     fetch(e.request).catch(function(){
       return caches.match(e.request).then(function(r){
-        return r || caches.match('/gestopro/');
+        return r || caches.match('/');
       });
     })
   );
