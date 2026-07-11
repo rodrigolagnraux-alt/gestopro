@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GestoPro — Gestión para almacenes argentinos</title>
-<meta name="description" content="GestoPro es el sistema de gestión para almacenes, carnicerías y negocios de barrio: caja, inventario, fiado, facturas leídas con IA, empleados y reportes. 35 días gratis.">
+<title>GestoPro — Gestión para comercios y distribuidoras argentinas</title>
+<meta name="description" content="GestoPro es el sistema de gestión para almacenes, carnicerías, rotiserías, distribuidoras y comercios de barrio: caja, inventario, fiado, facturas leídas con IA, empleados y reportes. 35 días gratis.">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
 
@@ -156,6 +156,22 @@ h1,h2,h3{font-family:'Sora',sans-serif;letter-spacing:-0.01em;}
   .ticket-line{animation:none;opacity:1;transform:none;}
 }
 
+.rubros-strip{
+  background:var(--paper);border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  padding:26px 0;
+}
+.rubros-strip .wrap{text-align:center;}
+.rubros-label{
+  font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;
+  letter-spacing:0.1em;color:var(--ink-soft);margin-bottom:14px;
+}
+.rubros-pills{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;}
+.rubro-pill{
+  background:var(--violeta-dim);color:var(--violeta-oscuro);
+  padding:7px 14px;border-radius:50px;font-size:13px;font-weight:600;
+}
+.rubro-pill.mas{background:transparent;border:1.5px dashed var(--linea);color:var(--ink-soft);}
+
 /* ===== SECCIONES GENERALES ===== */
 section{padding:76px 0;}
 .section-head{max-width:620px;margin-bottom:44px;}
@@ -198,6 +214,20 @@ section{padding:76px 0;}
 .mod-icon{font-size:26px;margin-bottom:14px;display:block;}
 .mod-card h3{font-size:16.5px;font-weight:700;margin-bottom:8px;font-family:'Sora',sans-serif;}
 .mod-card p{font-size:13.8px;color:var(--ink-soft);}
+
+.pasos-sec{background:var(--cream);}
+.pasos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:paso;}
+@media(max-width:900px){.pasos-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.pasos-grid{grid-template-columns:1fr;}}
+.paso-card{position:relative;padding-left:2px;}
+.paso-num{
+  font-family:'Space Mono',monospace;font-size:13px;font-weight:700;
+  color:var(--violeta);background:var(--violeta-dim);
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+}
+.paso-card h3{font-size:15.5px;font-weight:700;font-family:'Sora',sans-serif;margin-bottom:6px;}
+.paso-card p{font-size:13.5px;color:var(--ink-soft);}
 
 /* ===== PLANES ===== */
 .planes-sec{background:var(--paper);border-top:1px solid var(--linea);}
@@ -251,9 +281,9 @@ footer .flogo{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color
   <div class="wrap hero-grid">
     <div>
       <div class="logo-ico-lg">📦</div>
-      <span class="eyebrow">Gestión para almacenes y negocios de barrio</span>
-      <h1>Manejá tu almacén sin perder <em>ni un peso</em> en el camino.</h1>
-      <p class="hero-sub">Caja, inventario, fiado, facturas y sueldos — todo en un solo lugar, pensado para el día a día real de un almacén argentino. Nada de plantillas genéricas de otro país.</p>
+      <span class="eyebrow">Almacenes, distribuidoras, rotiserías y comercios</span>
+      <h1>Manejá tu negocio sin perder <em>ni un peso</em> en el camino.</h1>
+      <p class="hero-sub">Caja, inventario, fiado, facturas y sueldos — todo en un solo lugar, para cualquiera que maneje stock y caja en Argentina: del almacén de la esquina a la distribuidora que le vende.</p>
       <div class="hero-ctas">
         <a class="btn-primary" href="https://rodrigolagnraux-alt.github.io/gestopro/">Probar 35 días gratis</a>
         <a class="btn-secondary" href="#modulos">Ver cómo funciona</a>
@@ -280,6 +310,28 @@ footer .flogo{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color
     </div>
   </div>
 </header>
+
+<section class="rubros-strip">
+  <div class="wrap">
+    <div class="rubros-label">Le sirve a cualquier negocio que maneje stock y caja, por ejemplo:</div>
+    <div class="rubros-pills">
+      <span class="rubro-pill">Almacén</span>
+      <span class="rubro-pill">Autoservicio</span>
+      <span class="rubro-pill">Carnicería</span>
+      <span class="rubro-pill">Verdulería</span>
+      <span class="rubro-pill">Fiambrería</span>
+      <span class="rubro-pill">Panadería</span>
+      <span class="rubro-pill">Rotisería</span>
+      <span class="rubro-pill">Kiosco</span>
+      <span class="rubro-pill">Ferretería</span>
+      <span class="rubro-pill">Bazar</span>
+      <span class="rubro-pill">Librería</span>
+      <span class="rubro-pill">Distribuidora</span>
+      <span class="rubro-pill">Depósito</span>
+      <span class="rubro-pill mas">y el tuyo, sea cual sea</span>
+    </div>
+  </div>
+</section>
 
 <section class="antes-despues">
   <div class="wrap">
@@ -349,6 +401,38 @@ footer .flogo{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color
         <span class="mod-icon">📊</span>
         <h3>Reportes</h3>
         <p>Diario, semanal y mensual: cobrado, fiados, gastos, margen bruto y utilidad neta real — sin planillas aparte.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pasos-sec">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Cómo empezar</span>
+      <h2>Cuatro pasos, sin llamarnos por nada</h2>
+      <p>Pensado para que arranques solo, a tu ritmo. Si te trabás igual, tenés soporte por WhatsApp.</p>
+    </div>
+    <div class="pasos-grid">
+      <div class="paso-card">
+        <div class="paso-num">1</div>
+        <h3>Registrate con tu email</h3>
+        <p>Sin tarjeta, sin trámites. Quedás adentro en menos de un minuto.</p>
+      </div>
+      <div class="paso-card">
+        <div class="paso-num">2</div>
+        <h3>Cargá tus productos</h3>
+        <p>A mano o escaneando el código de barras con la cámara del celular.</p>
+      </div>
+      <div class="paso-card">
+        <div class="paso-num">3</div>
+        <h3>Empezá a cobrar y fiar</h3>
+        <p>Caja y cuentas corrientes andando desde el primer día, sin configuración extra.</p>
+      </div>
+      <div class="paso-card">
+        <div class="paso-num">4</div>
+        <h3>Elegí tu plan a los 35 días</h3>
+        <p>Con datos reales de tu propio negocio adelante, no una demo genérica.</p>
       </div>
     </div>
   </div>
@@ -425,7 +509,7 @@ footer .flogo{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color
 <footer>
   <div class="wrap">
     <div class="flogo">GestoPro</div>
-    <div>Gestión para almacenes argentinos · gestopro.com.ar</div>
+    <div>Gestión para comercios y distribuidoras argentinas · gestopro.com.ar</div>
   </div>
 </footer>
 
