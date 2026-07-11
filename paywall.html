@@ -8,9 +8,9 @@
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
 
   :root {
-    --verde: #1D9E75;
-    --verde-claro: #E1F5EE;
-    --verde-oscuro: #0F6E56;
+    --verde: #6C63FF;
+    --verde-claro: #ECEAFF;
+    --verde-oscuro: #5148D9;
     --gris-fondo: #F7F6F2;
     --gris-borde: #D3D1C7;
     --texto: #2C2C2A;
@@ -66,6 +66,15 @@
     color: var(--verde-oscuro);
     letter-spacing: -0.5px;
     margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .logo-ico {
+    width: 36px;height: 36px;background: var(--verde);border-radius: 10px;
+    display:flex;align-items:center;justify-content:center;font-size:18px;
   }
 
   .logo span { color: var(--verde); }
@@ -361,7 +370,7 @@
 </div>
 
 <div class="header">
-  <div class="logo">Gesto<span>Pro</span></div>
+  <div class="logo"><div class="logo-ico">📦</div>Gesto<span>Pro</span></div>
   <h2>Seguí gestionando tu negocio</h2>
   <p>Elegí el plan que mejor se adapta a vos. Activación inmediata.</p>
 </div>
@@ -497,7 +506,6 @@
     'Premium':'https://mpago.la/19PMubJ'
   };
 
-  // Leer sesión activa
   sb.auth.getSession().then(function(result) {
     if (result.data && result.data.session) {
       userEmail = result.data.session.user.email || '';
@@ -508,7 +516,6 @@
     periodo = periodo || 'mensual';
     var esAnual = periodo === 'anual';
     document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + (esAnual ? ' Anual' : '') + ' - ' + precio;
-    // Generar link dinámico con external_reference via Edge Function
     var plan = nombre.toLowerCase();
     var btn = document.getElementById('modal-mp-link');
     btn.textContent = '⏳ Generando link...';
@@ -525,7 +532,6 @@
         btn.textContent = '💳 Pagar con Mercado Pago';
         btn.style.pointerEvents = 'auto';
       } else if(esAnual){
-        // No usamos el link estático de respaldo en anual: cobra el precio mensual, no el anual.
         btn.textContent = '⚠️ No se pudo generar el link — escribinos por WhatsApp';
         btn.removeAttribute('href');
         btn.style.pointerEvents = 'none';
@@ -548,7 +554,6 @@
         btn.style.pointerEvents = 'auto';
       }
     });
-    // WhatsApp de respaldo
     var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
     document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
     document.getElementById('modal').classList.add('activo');
