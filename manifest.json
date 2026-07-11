@@ -2,21 +2,21 @@
   "name": "GestoPro",
   "short_name": "GestoPro",
   "description": "Tu negocio, bajo control",
-  "start_url": "/gestopro/",
-  "scope": "/gestopro/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1a1035",
   "theme_color": "#2d1f6e",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/gestopro/icon_192.png",
+      "src": "/icon_192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/gestopro/icon_512.png",
+      "src": "/icon_512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
