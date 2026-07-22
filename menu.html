@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menú online</title>
+<style>
+  :root {
+    --verde: #16a34a;
+    --verde-oscuro: #15803d;
+    --gris-fondo: #f5f5f4;
+    --gris-borde: #e7e5e4;
+    --texto: #1c1917;
+    --texto-suave: #78716c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--gris-fondo);
+    color: var(--texto);
+    padding-bottom: 90px;
+  }
+  header {
+    background: white;
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--gris-borde);
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: var(--texto-suave); font-size: 13px; }
+  .categoria {
+    padding: 16px 16px 4px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+    letter-spacing: 0.03em;
+  }
+  .item {
+    background: white;
+    margin: 8px 16px;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--gris-borde);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-nombre { font-weight: 600; font-size: 15px; }
+  .item-precio { color: var(--verde-oscuro); font-weight: 700; margin-top: 2px; }
+  .item-sin-stock { color: #b91c1c; font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .cantidad-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .cantidad-control button {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--gris-borde);
+    background: var(--gris-fondo);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .cantidad-control button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cantidad-num { min-width: 18px; text-align: center; font-weight: 600; }
+  .barra-carrito {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--verde);
+    color: white;
+    padding: 14px 20px;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  }
+  .barra-carrito.visible { display: flex; }
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10;
+    align-items: flex-end;
+  }
+  .overlay.visible { display: flex; }
+  .panel {
+    background: white;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+  }
+  .panel h2 { margin-top: 0; }
+  .panel-cerrar {
+    float: right;
+    border: none;
+    background: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--texto-suave);
+  }
+  .resumen-linea {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--gris-borde);
+    font-size: 14px;
+  }
+  .resumen-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 14px 0 6px;
+  }
+  input[type="text"], input[type="tel"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--gris-borde);
+    font-size: 15px;
+  }
+  .opciones-radio {
+    display: flex;
+    gap: 8px;
+  }
+  .opciones-radio label {
+    flex: 1;
+    margin: 0;
+    border: 1px solid var(--gris-borde);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .opciones-radio input { display: none; }
+  .opciones-radio input:checked + span {
+    color: var(--verde-oscuro);
+  }
+  .opciones-radio label:has(input:checked) {
+    border-color: var(--verde);
+    background: #f0fdf4;
+  }
+  #campo-direccion.oculto { display: none; }
+  .btn-principal {
+    width: 100%;
+    padding: 14px;
+    background: var(--verde);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 18px;
+  }
+  .btn-principal:disabled { opacity: 0.5; cursor: not-allowed; }
+  .estado-mensaje {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--texto-suave);
+  }
+  .confirmacion {
+    text-align: center;
+    padding: 30px 10px;
+  }
+  .confirmacion .check {
+    font-size: 48px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="nombre-negocio">Cargando...</h1>
+  <p>Armá tu pedido y confirmalo acá mismo</p>
+</header>
+
+<div id="contenido-menu"></div>
+
+<div class="barra-carrito" id="barra-carrito">
+  <span id="barra-carrito-texto">0 productos</span>
+  <span id="barra-carrito-total">$0</span>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hnaewjnvxlvywnihxkgv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW";
+
+function paramsUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("negocio");
+}
+
+const slug = paramsUrl();
+let negocio = null;
+let items = [];
+let carrito = {}; // { item_id: cantidad }
+
+async function consultarSupabase(ruta) {
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, {
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`
+    }
+  });
+  if (!resp.ok) throw new Error("Error consultando Supabase");
+  return resp.json();
+}
+
+async function insertarPedido(pedido) {
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/pedidos`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    },
+    body: JSON.stringify(pedido)
+  });
+  if (!resp.ok) {
+    const texto = await resp.text();
+    throw new Error(texto);
+  }
+  return resp.json();
+}
+
+function formatoPrecio(n) {
+  return "$" + Number(n).toLocaleString("es-AR");
+}
+
+function renderizarMenu() {
+  const cont = document.getElementById("contenido-menu");
+  cont.innerHTML = "";
+
+  const categorias = [...new Set(items.map(i => i.categoria || "Otros"))];
+
+  categorias.forEach(cat => {
+    const catEl = document.createElement("div");
+    catEl.className = "categoria";
+    catEl.textContent = cat;
+    cont.appendChild(catEl);
+
+    items.filter(i => (i.categoria || "Otros") === cat).forEach(item => {
+      const sinStock = item.stock !== null && item.stock <= 0;
+      const cantidad = carrito[item.id] || 0;
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="item-info">
+          <div class="item-nombre">${item.nombre}</div>
+          <div class="item-precio">${formatoPrecio(item.precio)}</div>
+          ${sinStock ? '<div class="item-sin-stock">Sin stock</div>' : ''}
+        </div>
+        <div class="cantidad-control">
+          <button ${sinStock ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', -1)">−</button>
+          <span class="cantidad-num">${cantidad}</span>
+          <button ${sinStock ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', 1)">+</button>
+        </div>
+      `;
+      cont.appendChild(div);
+    });
+  });
+}
+
+function cambiarCantidad(itemId, delta) {
+  const item = items.find(i => i.id === itemId);
+  const actual = carrito[itemId] || 0;
+  let nueva = actual + delta;
+  if (nueva < 0) nueva = 0;
+  if (item.stock !== null && nueva > item.stock) nueva = item.stock;
+  if (nueva === 0) {
+    delete carrito[itemId];
+  } else {
+    carrito[itemId] = nueva;
+  }
+  renderizarMenu();
+  actualizarBarraCarrito();
+}
+
+function calcularTotal() {
+  return Object.entries(carrito).reduce((acc, [id, cant]) => {
+    const item = items.find(i => i.id === id);
+    return acc + (item.precio * cant);
+  }, 0);
+}
+
+function actualizarBarraCarrito() {
+  const barra = document.getElementById("barra-carrito");
+  const totalProductos = Object.values(carrito).reduce((a, b) => a + b, 0);
+  if (totalProductos === 0) {
+    barra.classList.remove("visible");
+    return;
+  }
+  barra.classList.add("visible");
+  document.getElementById("barra-carrito-texto").textContent =
+    `${totalProductos} producto${totalProductos > 1 ? "s" : ""}`;
+  document.getElementById("barra-carrito-total").textContent = formatoPrecio(calcularTotal());
+}
+
+document.getElementById("barra-carrito").addEventListener("click", abrirCheckout);
+
+function abrirCheckout() {
+  const panel = document.getElementById("panel");
+  const total = calcularTotal();
+
+  const lineasResumen = Object.entries(carrito).map(([id, cant]) => {
+    const item = items.find(i => i.id === id);
+    return `<div class="resumen-linea"><span>${cant} x ${item.nombre}</span><span>${formatoPrecio(item.precio * cant)}</span></div>`;
+  }).join("");
+
+  panel.innerHTML = `
+    <button class="panel-cerrar" onclick="cerrarPanel()">×</button>
+    <h2>Confirmar pedido</h2>
+    ${lineasResumen}
+    <div class="resumen-total"><span>Total</span><span>${formatoPrecio(total)}</span></div>
+
+    <label>Tu nombre</label>
+    <input type="text" id="campo-nombre" placeholder="Nombre y apellido">
+
+    <label>Teléfono</label>
+    <input type="tel" id="campo-telefono" placeholder="11 1234 5678">
+
+    <label>Forma de entrega</label>
+    <div class="opciones-radio">
+      <label><input type="radio" name="entrega" value="delivery" checked onchange="toggleDireccion()"><span>Delivery</span></label>
+      <label><input type="radio" name="entrega" value="retira" onchange="toggleDireccion()"><span>Retiro en local</span></label>
+    </div>
+
+    <div id="campo-direccion">
+      <label>Dirección de entrega</label>
+      <input type="text" id="campo-direccion-input" placeholder="Calle, número, barrio">
+    </div>
+
+    <label>Forma de pago</label>
+    <div class="opciones-radio">
+      <label><input type="radio" name="pago" value="mercado_pago" checked><span>Mercado Pago</span></label>
+      <label><input type="radio" name="pago" value="efectivo"><span>Pago al recibir</span></label>
+    </div>
+
+    <button class="btn-principal" id="btn-confirmar" onclick="confirmarPedido()">Confirmar pedido</button>
+  `;
+  document.getElementById("overlay").classList.add("visible");
+}
+
+function toggleDireccion() {
+  const esRetira = document.querySelector('input[name="entrega"]:checked').value === "retira";
+  document.getElementById("campo-direccion").classList.toggle("oculto", esRetira);
+}
+
+function cerrarPanel() {
+  document.getElementById("overlay").classList.remove("visible");
+}
+
+async function confirmarPedido() {
+  const nombre = document.getElementById("campo-nombre").value.trim();
+  const telefono = document.getElementById("campo-telefono").value.trim();
+  const tipoEntrega = document.querySelector('input[name="entrega"]:checked').value;
+  const direccionInput = document.getElementById("campo-direccion-input");
+  const direccion = tipoEntrega === "delivery" ? direccionInput.value.trim() : "Retira en local";
+  const metodoPago = document.querySelector('input[name="pago"]:checked').value;
+
+  if (!nombre || !telefono || (tipoEntrega === "delivery" && !direccion)) {
+    alert("Completá todos los campos para continuar.");
+    return;
+  }
+
+  const btn = document.getElementById("btn-confirmar");
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  const itemsPedido = Object.entries(carrito).map(([id, cant]) => {
+    const item = items.find(i => i.id === id);
+    return { menu_item_id: id, nombre: item.nombre, precio: item.precio, cantidad: cant };
+  });
+  const subtotal = calcularTotal();
+
+  const pedido = {
+    negocio_id: negocio.id,
+    cliente_nombre: nombre,
+    cliente_telefono: telefono,
+    tipo_entrega: tipoEntrega,
+    direccion: direccion,
+    items: itemsPedido,
+    subtotal: subtotal,
+    costo_envio: 0,
+    total: subtotal,
+    metodo_pago: metodoPago,
+    estado: "pendiente"
+  };
+
+  try {
+    await insertarPedido(pedido);
+    mostrarConfirmacion(metodoPago);
+    carrito = {};
+    actualizarBarraCarrito();
+  } catch (err) {
+    console.error(err);
+    alert("Hubo un problema al enviar el pedido. Probá de nuevo.");
+    btn.disabled = false;
+    btn.textContent = "Confirmar pedido";
+  }
+}
+
+function mostrarConfirmacion(metodoPago) {
+  const panel = document.getElementById("panel");
+  const mensajePago = metodoPago === "mercado_pago"
+    ? "El negocio te va a contactar para coordinar el pago por Mercado Pago."
+    : "Pagás al recibir tu pedido.";
+  panel.innerHTML = `
+    <div class="confirmacion">
+      <div class="check">✅</div>
+      <h2>¡Pedido enviado!</h2>
+      <p>${mensajePago}</p>
+      <button class="btn-principal" onclick="cerrarPanel(); location.reload();">Volver al menú</button>
+    </div>
+  `;
+}
+
+async function iniciar() {
+  const cont = document.getElementById("contenido-menu");
+
+  if (!slug) {
+    cont.innerHTML = '<div class="estado-mensaje">Link inválido. Pedile al negocio el link correcto.</div>';
+    return;
+  }
+
+  try {
+    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre`);
+    if (negocios.length === 0) {
+      cont.innerHTML = '<div class="estado-mensaje">No encontramos este negocio.</div>';
+      return;
+    }
+    negocio = negocios[0];
+    document.getElementById("nombre-negocio").textContent = negocio.nombre;
+
+    items = await consultarSupabase(
+      `menu_items?negocio_id=eq.${negocio.id}&visible=eq.true&order=orden.asc,nombre.asc`
+    );
+
+    if (items.length === 0) {
+      cont.innerHTML = '<div class="estado-mensaje">Este negocio todavía no cargó su menú.</div>';
+      return;
+    }
+
+    renderizarMenu();
+  } catch (err) {
+    console.error(err);
+    cont.innerHTML = '<div class="estado-mensaje">No pudimos cargar el menú. Intentá de nuevo en un momento.</div>';
+  }
+}
+
+iniciar();
+</script>
+
+</body>
+</html>
