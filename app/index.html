@@ -4079,7 +4079,90 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
   }).join('');
 }
 
-// ═══ RENDER PAGE ═══
+async function renderMenuOnline(){
+  if(!currentNegocioId) return;
+  var negRes = await supabaseClient.from('negocios').select('slug').eq('id',currentNegocioId).single();
+  var slug = negRes.data ? negRes.data.slug : null;
+  var linkEl = el('menu-link-display');
+  if(linkEl) linkEl.textContent = slug ? 'gestopro.com.ar/menu.html?negocio='+slug : 'Sin slug configurado';
+  window._menuLinkActual = slug ? 'https://gestopro.com.ar/menu.html?negocio='+slug : '';
+  var res = await supabaseClient.from('menu_items').select('*').eq('negocio_id',currentNegocioId).order('orden',{ascending:true}).order('nombre',{ascending:true});
+  var items = res.data || [];
+  window._menuItemsCache = items;
+  var cont = el('menu-items-lista');
+  if(!cont) return;
+  if(!items.length){
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🍕</div><div class="empty-t">Sin platos cargados</div><div class="empty-s">Tocá + Nuevo plato para armar tu menú</div></div>';
+    return;
+  }
+  cont.innerHTML = items.map(function(it){
+    var stockTxt = (it.stock===null||it.stock===undefined) ? 'sin límite de stock' : 'quedan '+it.stock;
+    var badge = it.visible ? '<span class="bdg bg">Visible</span>' : '<span class="bdg br">Oculto</span>';
+    return '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+      +'<div style="flex:1;">'
+      +'<div style="font-size:13.5px;font-weight:600;">'+it.nombre+'</div>'
+      +'<div class="mn md" style="font-size:11px;margin-top:2px;">'+(it.categoria||'Sin categoría')+' · '+fmtM(it.precio)+' · '+stockTxt+'</div>'
+      +'</div>'
+      +badge
+      +'<button class="btn-accion" onclick="abrirModalPlato(\''+it.id+'\')">✏️</button>'
+      +'<button class="btn-accion rojo" onclick="eliminarPlato(\''+it.id+'\')">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+function copiarLinkMenu(){
+  var link = window._menuLinkActual;
+  if(!link){ toast('Configurá el slug del negocio primero','err'); return; }
+  navigator.clipboard.writeText(link).then(function(){ toast('Link copiado ✓'); }).catch(function(){ toast('No se pudo copiar','err'); });
+}
+
+var platoEditId = null;
+function abrirModalPlato(id){
+  platoEditId = id||null;
+  if(id){
+    var it = (window._menuItemsCache||[]).find(function(x){return String(x.id)===String(id);});
+    if(!it) return;
+    set('modal-plato-titulo','text','✏️ Editar plato');
+    set('plato-nombre','val',it.nombre||'');
+    set('plato-categoria','val',it.categoria||'');
+    set('plato-precio','val',it.precio||'');
+    set('plato-stock','val', (it.stock===null||it.stock===undefined) ? '' : it.stock);
+    var vEl = el('plato-visible'); if(vEl) vEl.checked = it.visible!==false;
+  } else {
+    set('modal-plato-titulo','text','🍕 Nuevo plato');
+    ['plato-nombre','plato-categoria','plato-precio','plato-stock'].forEach(function(id){set(id,'val','');});
+    var vEl2 = el('plato-visible'); if(vEl2) vEl2.checked = true;
+  }
+  openModal('modal-plato');
+}
+
+async function guardarPlato(){
+  var nombre = get('plato-nombre').trim();
+  var precio = parseFloat(get('plato-precio'))||0;
+  if(!nombre){ toast('Ingresá el nombre del plato','err'); return; }
+  if(!precio){ toast('Ingresá el precio','err'); return; }
+  var categoria = get('plato-categoria').trim()||'Otros';
+  var stockVal = get('plato-stock').trim();
+  var stock = stockVal===''? null : (parseInt(stockVal)||0);
+  var visible = el('plato-visible') ? el('plato-visible').checked : true;
+  if(platoEditId){
+    await supabaseClient.from('menu_items').update({nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible}).eq('id',platoEditId);
+    toast('Plato actualizado ✓');
+  } else {
+    await supabaseClient.from('menu_items').insert({negocio_id:currentNegocioId,nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible});
+    toast('Plato agregado ✓');
+  }
+  closeModal('modal-plato');
+  renderMenuOnline();
+}
+
+async function eliminarPlato(id){
+  if(!confirm('¿Eliminar este plato del menú?')) return;
+  await supabaseClient.from('menu_items').delete().eq('id',id);
+  renderMenuOnline();
+  toast('Plato eliminado');
+}
+  // ═══ RENDER PAGE ═══
 function renderPage(id){
   if(id==='dash') renderDash();
   else if(id==='productos') renderProds();
