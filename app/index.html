@@ -337,6 +337,11 @@ select.fi{appearance:none;cursor:pointer;}
 .pin-btn{background:var(--sur2);border:1px solid var(--brd2);border-radius:10px;padding:16px;font-family:"Syne",sans-serif;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;transition:all .15s;}
 .pin-btn:active{background:var(--acc-dim);border-color:var(--acc);}
 .pin-error{color:var(--red);font-size:12px;height:16px;margin-bottom:8px;}
+
+/* PEDIDOS ONLINE — alerta global */
+#alerta-pedido-online{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-16px);width:min(92vw,420px);background:var(--yel-dim);border:1px solid var(--yel);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;z-index:500;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;cursor:pointer;}
+#alerta-pedido-online.on{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0);animation:alertaPedidoPulse 1s ease infinite alternate;}
+@keyframes alertaPedidoPulse{from{box-shadow:0 0 0 0 rgba(255,184,48,.45);}to{box-shadow:0 0 0 10px rgba(255,184,48,0);}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -398,6 +403,13 @@ select.fi{appearance:none;cursor:pointer;}
 }
 </style>
 <div id="toast"></div>
+
+<!-- ALERTA GLOBAL: NUEVO PEDIDO ONLINE -->
+<div id="alerta-pedido-online" onclick="irAPedidosOnlineDesdeAlerta()">
+  <div style="font-size:22px;">🔔</div>
+  <div id="alerta-pedido-online-txt" style="flex:1;font-size:13px;color:var(--yel);font-weight:600;"></div>
+  <div style="font-size:12px;color:var(--mut2);">Ver →</div>
+</div>
 
 <!-- MODAL PIN -->
 <div class="pin-overlay" id="pin-overlay">
@@ -470,7 +482,6 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
 </div>
 <div class="sb-ov" id="sbov" onclick="closeSB()"></div>
-
 <!-- MODAL PLAN -->
 <!-- MODALES EMPLEADOS -->
 
@@ -1164,7 +1175,6 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-config')">Cancelar</button><button class="btn btn-acc" onclick="guardarConfig()">💾 Guardar</button></div>
 </div>
 </div>
-
 <!-- HEADER -->
 <header>
   <div style="display:flex;align-items:center;gap:8px;">
@@ -1185,6 +1195,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i on" onclick="go('dash',this)"><span class="sb-ico">◈</span>Dashboard</div>
     <div class="sb-i" onclick="go('productos',this)"><span class="sb-ico">📦</span>Productos<span class="sb-badge" id="sb-alerta">0</span></div>
     <div class="sb-i" onclick="go('menuonline',this)"><span class="sb-ico">🍕</span>Menú Online</div>
+    <div class="sb-i" id="sb-pedidos-online" onclick="go('pedidosonline',this)"><span class="sb-ico">🛎️</span>Pedidos Online<span class="sb-badge" id="sb-pedidos-online-badge" style="display:none;">0</span></div>
     <div class="sb-i" onclick="go('movimientos',this)"><span class="sb-ico">↕</span>Movimientos</div>
   </div>
   <div class="sb-sec">
@@ -1319,6 +1330,18 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <button class="btn btn-acc btn-full" onclick="abrirModalPlato()" style="margin-bottom:16px;">+ Nuevo plato</button>
   <div id="menu-items-lista"></div>
+</div>
+
+<!-- PEDIDOS ONLINE (pedidos de clientes finales vía Menú Online) -->
+<div id="pg-pedidosonline" class="pg">
+  <div class="ptitle">🛎️ Pedidos Online</div>
+  <div class="psub" style="margin-bottom:14px;">Pedidos que llegan desde tu link de Menú Online</div>
+  <div class="ptabs" style="margin-bottom:14px;">
+    <button class="ptab on" id="pedonline-tab-pendiente" onclick="setTabPedidosOnline('pendiente',this)">🟡 Pendientes</button>
+    <button class="ptab" id="pedonline-tab-preparando" onclick="setTabPedidosOnline('preparando',this)">🍳 Preparando</button>
+    <button class="ptab" id="pedonline-tab-entregado" onclick="setTabPedidosOnline('entregado',this)">✅ Entregados</button>
+  </div>
+  <div id="pedidosonline-lista"></div>
 </div>
   <!-- MOVIMIENTOS -->
 <div id="pg-movimientos" class="pg">
@@ -1926,7 +1949,6 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </main>
 </div>
-
 <script>
 // ═══ SAFE DOM ═══
 function el(id){ return document.getElementById(id); }
@@ -3413,7 +3435,7 @@ function handleFile(file){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       pendingImport=rows.map(function(r,i){
-        const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
+        const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');};
         const keys=Object.keys(r);
         const find=function(){
           const terms=[].slice.call(arguments);
@@ -3589,7 +3611,7 @@ function renderMovItem(m){
 // ═══ RENDER PRODUCTOS ═══
 function buildCatFilters(activeCat){
   var fr=el('prod-fr'); if(!fr) return;
-  var cats=[]; 
+  var cats=[];
   productos.forEach(function(p){ if(cats.indexOf(p.cat)===-1) cats.push(p.cat); });
   cats.sort();
   while(fr.firstChild) fr.removeChild(fr.firstChild);
@@ -4162,6 +4184,195 @@ async function eliminarPlato(id){
   renderMenuOnline();
   toast('Plato eliminado');
 }
+
+// ═══════════════════════════════════════════════
+// PEDIDOS ONLINE (pedidos de clientes finales vía Menú Online)
+// ═══════════════════════════════════════════════
+var pedidosOnlineTab = 'pendiente';
+var pedidosOnlineData = [];
+var pedidosOnlineIdsVistos = [];
+try{ pedidosOnlineIdsVistos = JSON.parse(localStorage.getItem('gp_pedidos_online_vistos')||'[]'); }catch(e){ pedidosOnlineIdsVistos = []; }
+var pedidosOnlinePollInterval = null;
+var pedidosOnlineAudioCtx = null;
+
+function guardarPedidosOnlineVistos(){
+  try{ localStorage.setItem('gp_pedidos_online_vistos', JSON.stringify(pedidosOnlineIdsVistos.slice(-500))); }catch(e){}
+}
+
+function iniciarPollingPedidosOnline(){
+  if(pedidosOnlinePollInterval || !currentNegocioId) return;
+  verificarPedidosOnlineNuevos();
+  pedidosOnlinePollInterval = setInterval(verificarPedidosOnlineNuevos, 15000);
+}
+
+function detenerPollingPedidosOnline(){
+  if(pedidosOnlinePollInterval){ clearInterval(pedidosOnlinePollInterval); pedidosOnlinePollInterval=null; }
+}
+
+async function verificarPedidosOnlineNuevos(){
+  if(!supabaseClient || !currentNegocioId) return;
+  var res = await supabaseClient.from('pedidos').select('*').eq('negocio_id',currentNegocioId).order('created_at',{ascending:false}).limit(50);
+  if(res.error || !res.data) return;
+  var pendientesNuevos = res.data.filter(function(p){
+    return p.estado==='pendiente' && pedidosOnlineIdsVistos.indexOf(String(p.id))===-1;
+  });
+  if(pendientesNuevos.length){
+    pendientesNuevos.forEach(function(p){ pedidosOnlineIdsVistos.push(String(p.id)); });
+    guardarPedidosOnlineVistos();
+    sonarAlertaPedido();
+    mostrarAlertaVisualPedido(pendientesNuevos);
+  }
+  var pendCount = res.data.filter(function(p){return p.estado==='pendiente';}).length;
+  var badge = el('sb-pedidos-online-badge');
+  if(badge){ badge.style.display = pendCount>0?'':'none'; badge.textContent=String(pendCount); }
+  var pg = el('pg-pedidosonline');
+  if(pg && pg.classList.contains('on')) renderPedidosOnline(res.data);
+}
+
+function sonarAlertaPedido(){
+  try{
+    if(!pedidosOnlineAudioCtx) pedidosOnlineAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    var ctx = pedidosOnlineAudioCtx;
+    [0,0.28,0.56].forEach(function(t){
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type='sine'; osc.frequency.value=880;
+      gain.gain.value=0.18;
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+t);
+      osc.stop(ctx.currentTime+t+0.18);
+    });
+  }catch(e){}
+}
+
+function mostrarAlertaVisualPedido(pedidosNuevos){
+  var banner = el('alerta-pedido-online');
+  if(!banner) return;
+  var p = pedidosNuevos[0];
+  var extra = pedidosNuevos.length>1 ? ' (+'+(pedidosNuevos.length-1)+' más)' : '';
+  set('alerta-pedido-online-txt','text','🔔 Nuevo pedido de '+(p.cliente_nombre||'cliente')+' · '+fmtM(p.total||0)+extra);
+  banner.classList.add('on');
+  clearTimeout(banner._t);
+  banner._t = setTimeout(function(){ banner.classList.remove('on'); }, 9000);
+}
+
+function irAPedidosOnlineDesdeAlerta(){
+  var banner = el('alerta-pedido-online');
+  if(banner) banner.classList.remove('on');
+  go('pedidosonline', el('sb-pedidos-online'));
+}
+
+function setTabPedidosOnline(tab, btn){
+  pedidosOnlineTab = tab;
+  document.querySelectorAll('#pg-pedidosonline .ptab').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  renderPedidosOnline(pedidosOnlineData.length?pedidosOnlineData:undefined);
+}
+
+async function renderPedidosOnline(dataPrecargada){
+  if(!currentNegocioId) return;
+  var cont = el('pedidosonline-lista');
+  if(!cont) return;
+  var data = dataPrecargada;
+  if(!data){
+    cont.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:16px;text-align:center;">Cargando...</div>';
+    var res = await supabaseClient.from('pedidos').select('*').eq('negocio_id',currentNegocioId).order('created_at',{ascending:false}).limit(150);
+    if(res.error){
+      cont.innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-t">No pudimos cargar los pedidos</div><div class="empty-s">Puede faltar el permiso de lectura (RLS) en la tabla <b>pedidos</b> para tu usuario.</div></div>';
+      return;
+    }
+    data = res.data || [];
+  }
+  pedidosOnlineData = data;
+  var pendCount = data.filter(function(p){return p.estado==='pendiente';}).length;
+  var badge = el('sb-pedidos-online-badge');
+  if(badge){ badge.style.display = pendCount>0?'':'none'; badge.textContent=String(pendCount); }
+
+  var lista = data.filter(function(p){ return p.estado===pedidosOnlineTab; });
+  if(!lista.length){
+    var vacioTxt = {pendiente:'Sin pedidos pendientes',preparando:'Nada en preparación',entregado:'Todavía no hay pedidos entregados'};
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">📦</div><div class="empty-t">'+(vacioTxt[pedidosOnlineTab]||'Sin pedidos')+'</div></div>';
+    return;
+  }
+  cont.innerHTML = lista.map(renderPedidoOnlineCard).join('');
+}
+
+function renderPedidoOnlineCard(p){
+  var itemsHtml = (p.items||[]).map(function(it){
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2);padding:2px 0;"><span>'+(it.cantidad||1)+' x '+(it.nombre||'')+'</span><span>'+fmtM((it.precio||0)*(it.cantidad||1))+'</span></div>';
+  }).join('');
+  var metLbl = {mercado_pago:'📱 Mercado Pago', efectivo:'💵 Efectivo al recibir'};
+  var entregaLbl = p.tipo_entrega==='delivery' ? '🛵 Delivery — '+(p.direccion||'') : '🏪 Retira en local';
+  var fecha = p.created_at ? new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  var estadoLbl = {pendiente:'PENDIENTE',preparando:'PREPARANDO',entregado:'ENTREGADO'};
+  var estadoBdg = {pendiente:'by',preparando:'by',entregado:'bg'};
+  var tieneUbicacion = p.tipo_entrega==='delivery' && p.dest_lat && p.dest_lng;
+  var btnMapa = tieneUbicacion
+    ? '<a class="btn btn-ghost btn-sm" style="display:block;text-align:center;margin-bottom:8px;text-decoration:none;" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination='+p.dest_lat+','+p.dest_lng+'">📍 Abrir ubicación del cliente en Maps</a>'
+    : (p.tipo_entrega==='delivery' ? '<div style="font-size:11px;color:var(--mut2);margin-bottom:8px;">El cliente no compartió su ubicación — usá la dirección escrita.</div>' : '');
+  var botonAccion = '';
+  if(p.estado==='pendiente'){
+    botonAccion = '<button class="btn btn-acc btn-full" onclick="iniciarPreparacionPedido(\''+p.id+'\')">🍳 Empezar a preparar</button>';
+  } else if(p.estado==='preparando'){
+    botonAccion = btnMapa+'<button class="btn btn-grn btn-full" onclick="marcarPedidoOnlineEntregado(\''+p.id+'\')">✓ Marcar entregado y cobrar</button>';
+  } else {
+    botonAccion = '<div style="font-size:11px;color:var(--mut2);text-align:center;">Cobrado como '+(metLbl[p.metodo_pago]||p.metodo_pago)+'</div>';
+  }
+  return '<div class="card" style="margin-bottom:12px;'+(p.estado!=='entregado'?'border-color:var(--yel);':'')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">'
+    +'<div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;">'+(p.cliente_nombre||'Cliente')+'</div>'
+    +'<div style="font-size:11px;color:var(--mut2);">📞 '+(p.cliente_telefono||'—')+' · '+fecha+'</div>'
+    +'</div>'
+    +bdg(estadoBdg[p.estado]||'bg', estadoLbl[p.estado]||p.estado)
+    +'</div>'
+    +'<div style="background:var(--sur2);border-radius:8px;padding:10px;margin-bottom:8px;">'
+    +itemsHtml
+    +'<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;padding-top:6px;margin-top:4px;border-top:1px solid var(--brd);"><span>Total</span><span style="color:var(--grn);">'+fmtM(p.total||0)+'</span></div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--mut2);margin-bottom:10px;">'+entregaLbl+' · '+(metLbl[p.metodo_pago]||p.metodo_pago||'')+'</div>'
+    +botonAccion
+    +'</div>';
+}
+
+async function iniciarPreparacionPedido(id){
+  var p = pedidosOnlineData.find(function(x){return String(x.id)===String(id);});
+  if(!p) return;
+  var res = await supabaseClient.from('pedidos').update({estado:'preparando'}).eq('id',id);
+  if(res.error){
+    toast('No se pudo actualizar el pedido — falta la política UPDATE en Supabase para "pedidos"','err');
+    return;
+  }
+  p.estado='preparando';
+  renderPedidosOnline(pedidosOnlineData);
+  toast('🍳 Pedido en preparación');
+}
+
+async function marcarPedidoOnlineEntregado(id){
+  var p = pedidosOnlineData.find(function(x){return String(x.id)===String(id);});
+  if(!p) return;
+  if(!confirm('¿Marcar como entregado y registrar el cobro de '+fmtM(p.total||0)+'?')) return;
+  var metodoMap = {mercado_pago:'mercadopago', efectivo:'efectivo'};
+  var metodo = metodoMap[p.metodo_pago] || 'efectivo';
+  var res = await supabaseClient.from('pedidos').update({estado:'entregado'}).eq('id',id);
+  if(res.error){
+    toast('No se pudo actualizar el pedido — falta la política UPDATE en Supabase para "pedidos"','err');
+    return;
+  }
+  var itemsDesc = (p.items||[]).map(function(it){ return (it.cantidad||1)+'x '+(it.nombre||''); }).join(', ');
+  var _m = {
+    id: Date.now(), tipo:'cobro',
+    desc: '🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
+    monto: p.total||0, fecha: hoy(), metodo: metodo
+  };
+  movimientos.unshift(_m);
+  saveMovimiento(_m);
+  actualizarKpiCobradoLocal();
+  renderDash();
+  p.estado='entregado';
+  renderPedidosOnline(pedidosOnlineData);
+  toast('✓ Pedido entregado y cobrado · '+fmtM(p.total||0));
+}
   // ═══ RENDER PAGE ═══
 function renderPage(id){
   if(id==='dash') renderDash();
@@ -4174,6 +4385,7 @@ function renderPage(id){
   else if(id==='finanzas'){ sincronizarDatos().then(function(){ renderFinanzas(); }); }
   else if(id==='empleados') renderEmpleados();
   else if(id==='menuonline') renderMenuOnline();
+  else if(id==='pedidosonline') renderPedidosOnline();
   else if(id==='pedidos') renderPedidos();
 }
 
@@ -4411,7 +4623,7 @@ function buscarProductoScanner(){
     return;
   }
   if(byName.length===1){ mostrarProductoEncontrado(byName[0]); return; }
-  
+
   // Multiple results
   set('scanner-not-found','display','none');
   set('scanner-found','display','none');
@@ -4514,7 +4726,7 @@ function confirmarScanner(){
   if(!cant||cant<=0){toast('Ingresá la cantidad','err');return;}
   var umEl=el('scanner-um');
   var um = umEl?umEl.value:(scannerFoundProd.um||'UN');
-  
+
   if(scannerCallback==='ingreso'){
     var precio = parseFloat(get('scanner-precio'))||scannerFoundProd.precio||0;
     // Update product price if changed
@@ -4883,7 +5095,7 @@ async function renderFinanzas(){
 function renderSimulador(){
   var sEl=el('fin-simulador');
   if(!sEl) return;
-  
+
   // Calculate current stock value and potential revenue at different margins
   var prodsConPrecio=productos.filter(function(p){return p.stock>0&&p.precio>0;});
   if(!prodsConPrecio.length){
@@ -5062,32 +5274,32 @@ function calcFinanciero(period){
     movsF=movimientos.filter(function(m){return new Date(m.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
     factsF=facturas.filter(function(f){return new Date(f.fecha+'T00:00:00').getFullYear()===now.getFullYear();});
   }
-  
+
   // Ventas (cobros)
   var cobros=movsF.filter(function(m){return m.tipo==='cobro';});
   var totalVentas=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
-  
+
   // Costo de mercaderia vendida (egresos con precio)
   var egresos=movsF.filter(function(m){return m.tipo==='egreso';});
   var costoMerc=egresos.reduce(function(s,m){
     var prod=productos.find(function(p){return String(p.id)===String(m.prodId);});
     return s+(prod?prod.precio*m.cant:0);
   },0);
-  
+
   // Facturas pagadas
   var factsPag=factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
-  
+
   // Gastos fijos
   var totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto*gfMult;},0);
-  
+
   // Valor del stock actual
   var valorStock=productos.reduce(function(s,p){return s+(p.stock||0)*(p.precio||0);},0);
   var gananciaStock=productos.reduce(function(s,p){return s+(p.stock||0)*((p.pventa||0)-(p.precio||0));},0);
-  
+
   // Margen promedio
   var prodsConPrecio=productos.filter(function(p){return p.precio>0&&p.pventa>0;});
   var margenProm=prodsConPrecio.length?Math.round(prodsConPrecio.reduce(function(s,p){return s+(p.pventa-p.precio)/p.precio*100;},0)/prodsConPrecio.length):0;
-  
+
   return {
     totalVentas:totalVentas, costoMerc:costoMerc,
     gananciaVentas:totalVentas-costoMerc,
@@ -5223,6 +5435,7 @@ function mostrarRegistro(){
 }
 function cerrarSesion(){
   if(!confirm('Cerrar sesion?')) return;
+  detenerPollingPedidosOnline();
   if(supabaseClient) supabaseClient.auth.signOut();
   currentUser=null; currentNegocioId=null;
   productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
@@ -5267,6 +5480,7 @@ function entrarSinNube(){
 function ocultarLogin(){
   var ls=el('login-screen'); if(ls)ls.style.display='none';
   initAppData();
+  iniciarPollingPedidosOnline();
   setTimeout(function(){ alertarFacturasVencidas(); }, 3000);
 }
 
