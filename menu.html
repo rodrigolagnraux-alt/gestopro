@@ -157,6 +157,25 @@
     background: #f0fdf4;
   }
   #campo-direccion.oculto { display: none; }
+  .btn-ubicacion {
+    width: 100%;
+    padding: 11px;
+    background: #f0fdf4;
+    color: var(--verde-oscuro);
+    border: 1px solid var(--verde);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-ubicacion:disabled { opacity: 0.6; cursor: not-allowed; }
+  #ubicacion-status {
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: 6px;
+    min-height: 14px;
+  }
   .btn-principal {
     width: 100%;
     padding: 14px;
@@ -215,6 +234,7 @@ const slug = paramsUrl();
 let negocio = null;
 let items = [];
 let carrito = {}; // { item_id: cantidad }
+let ubicacionCliente = null; // { lat, lng } — capturada opcionalmente en el checkout
 
 async function consultarSupabase(ruta) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, {
@@ -350,6 +370,8 @@ function abrirCheckout() {
     <div id="campo-direccion">
       <label>Dirección de entrega</label>
       <input type="text" id="campo-direccion-input" placeholder="Calle, número, barrio">
+      <button type="button" class="btn-ubicacion" id="btn-ubicacion" onclick="compartirUbicacion()">📍 Compartir mi ubicación (ayuda a que te encuentren más rápido)</button>
+      <div id="ubicacion-status"></div>
     </div>
 
     <label>Forma de pago</label>
@@ -366,6 +388,30 @@ function abrirCheckout() {
 function toggleDireccion() {
   const esRetira = document.querySelector('input[name="entrega"]:checked').value === "retira";
   document.getElementById("campo-direccion").classList.toggle("oculto", esRetira);
+}
+
+function compartirUbicacion() {
+  const status = document.getElementById("ubicacion-status");
+  const btn = document.getElementById("btn-ubicacion");
+  if (!navigator.geolocation) {
+    status.textContent = "Tu navegador no permite compartir ubicación. Completá la dirección escrita.";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Obteniendo ubicación...";
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      ubicacionCliente = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      btn.textContent = "✅ Ubicación compartida";
+      status.textContent = "Listo — así el que reparte sabe exactamente adónde ir.";
+    },
+    function () {
+      btn.disabled = false;
+      btn.textContent = "📍 Compartir mi ubicación (ayuda a que te encuentren más rápido)";
+      status.textContent = "No pudimos acceder a tu ubicación. Podés seguir solo con la dirección escrita.";
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
 function cerrarPanel() {
@@ -401,6 +447,8 @@ async function confirmarPedido() {
     cliente_telefono: telefono,
     tipo_entrega: tipoEntrega,
     direccion: direccion,
+    dest_lat: (tipoEntrega === "delivery" && ubicacionCliente) ? ubicacionCliente.lat : null,
+    dest_lng: (tipoEntrega === "delivery" && ubicacionCliente) ? ubicacionCliente.lng : null,
     items: itemsPedido,
     subtotal: subtotal,
     costo_envio: 0,
@@ -413,6 +461,7 @@ async function confirmarPedido() {
     await insertarPedido(pedido);
     mostrarConfirmacion(metodoPago);
     carrito = {};
+    ubicacionCliente = null;
     actualizarBarraCarrito();
   } catch (err) {
     console.error(err);
