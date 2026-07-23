@@ -293,7 +293,7 @@
   .badge-vencido { background: var(--rojo-claro); color: var(--rojo); }
   .badge-basico { background: var(--azul-claro); color: var(--azul); }
   .badge-pro { background: var(--verde-claro); color: var(--verde-oscuro); }
-  .badge-premium { background: #F3E5F5; color: #6A1B9A; }
+  .badge-business { background: #F3E5F5; color: #6A1B9A; }
 
   .dias-badge {
     font-size: 12px;
@@ -490,7 +490,7 @@
 
 <aside class="sidebar">
   <div class="logo-admin">Gesto<span>Pro</span><small>Admin Panel</small></div>
-  
+
   <a class="nav-item activo" href="#">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     Panel principal
@@ -605,7 +605,7 @@
       <select id="select-plan">
         <option value="basico">Básico — $60.000/mes</option>
         <option value="pro">Pro — $75.000/mes</option>
-        <option value="premium">Premium — $120.000/mes</option>
+        <option value="business">Premium — $120.000/mes</option>
       </select>
     </div>
     <div class="modal-field">
@@ -640,7 +640,7 @@
         <option value="trial">Gratis (35 días trial)</option>
         <option value="basico">Básico — $60.000/mes</option>
         <option value="pro">Pro — $75.000/mes</option>
-        <option value="premium">Premium — $120.000/mes</option>
+        <option value="business">Premium — $120.000/mes</option>
       </select>
     </div>
     <div class="modal-btns">
@@ -704,7 +704,7 @@ function cargarNegocios(){
     }
     negocios = data.map(function(n){
       var plan = n.plan || 'gratis';
-      var esPago = ['basico','pro','premium'].includes(plan);
+      var esPago = ['basico','pro','business'].includes(plan);
       var estado = plan;
       if(!esPago){ var dias = diasTrial(n.fecha_registro); estado = dias > 0 ? 'trial' : 'vencido'; }
       return { id: n.id, nombre: n.nombre||'(sin nombre)', email: n.email||'', plan: estado, planReal: plan, registro: n.fecha_registro, venc_plan: n.plan_vencimiento, aprobado: n.aprobado };
@@ -727,7 +727,7 @@ function renderBadgePlan(plan) {
     vencido: '<span class="badge badge-vencido">✗ Vencido</span>',
     basico: '<span class="badge badge-basico">Básico</span>',
     pro: '<span class="badge badge-pro">Pro</span>',
-    premium: '<span class="badge badge-premium">Premium</span>',
+    business: '<span class="badge badge-business">Premium</span>',
   };
   return badges[plan] || plan;
 }
@@ -745,7 +745,7 @@ function renderTabla() {
     var matchFiltro = filtroActual === 'todos' ||
       (filtroActual === 'trial' && n.plan === 'trial') ||
       (filtroActual === 'vencido' && n.plan === 'vencido') ||
-      (filtroActual === 'pago' && ['basico','pro','premium'].includes(n.plan));
+      (filtroActual === 'pago' && ['basico','pro','business'].includes(n.plan));
 
     var matchBusqueda = n.nombre.toLowerCase().includes(busquedaActual.toLowerCase()) ||
       n.email.toLowerCase().includes(busquedaActual.toLowerCase());
@@ -764,7 +764,7 @@ function renderTabla() {
     html += '<td>' + renderDias(n) + '</td>';
     html += '<td style="font-size:12.5px;color:var(--texto-suave);">' + fechaStr + '</td>';
     html += '<td><div class="acciones">';
-    
+
     if (n.plan === 'trial' || n.plan === 'vencido') {
       html += '<button class="btn-accion verde" onclick="mostrarModalPlan(\'' + n.id + '\')">';
       html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Activar plan</button>';
@@ -791,7 +791,7 @@ function renderTabla() {
 
 function actualizarStats() {
   var total = negocios.length;
-  var activos = negocios.filter(function(n) { return ['basico','pro','premium'].includes(n.plan); }).length;
+  var activos = negocios.filter(function(n) { return ['basico','pro','business'].includes(n.plan); }).length;
   var trial = negocios.filter(function(n) { return n.plan === 'trial'; }).length;
   var vencido = negocios.filter(function(n) { return n.plan === 'vencido'; }).length;
   document.getElementById('stat-total').textContent = total;
@@ -820,7 +820,7 @@ function mostrarModalPlan(id) {
   proximo.setMonth(proximo.getMonth() + 1);
   document.getElementById('fecha-venc').value = proximo.toISOString().split('T')[0];
 
-  if (['basico','pro','premium'].includes(negocioSeleccionado.planReal)) {
+  if (['basico','pro','business'].includes(negocioSeleccionado.planReal)) {
     document.getElementById('select-plan').value = negocioSeleccionado.planReal;
   }
 
