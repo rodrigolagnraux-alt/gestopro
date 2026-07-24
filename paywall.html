@@ -357,6 +357,44 @@
     flex-direction: column;
     gap: 10px;
   }
+
+  .campo-signup {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--gris-borde);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+    background: var(--gris-fondo);
+    color: var(--texto);
+  }
+
+  .campo-signup:focus {
+    outline: none;
+    border-color: var(--verde);
+    background: var(--blanco);
+  }
+
+  .signup-error {
+    display: none;
+    background: #FFEBEE;
+    color: #C62828;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+
+  .signup-nota {
+    font-size: 12px;
+    color: var(--texto-suave);
+    text-align: left;
+    margin-top: -4px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
@@ -477,20 +515,41 @@
 <!-- Modal confirmación -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <h3>¡Perfecto!</h3>
-    <p>Pagá con Mercado Pago y avisanos por WhatsApp. Tu plan se activa en minutos.</p>
-    <div class="plan-elegido" id="modal-plan-texto">Plan Pro - $75.000/mes</div>
-    <p style="font-size:13px;">Después de pagar, tocá el botón de WhatsApp y te activamos la cuenta en minutos.</p>
-    <div class="modal-btns">
-      <a id="modal-mp-link" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#009ee3;color:white;padding:12px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:4px;">
-        💳 Pagar con Mercado Pago
-      </a>
-      <a id="modal-wa-link" href="#" class="whatsapp-link" style="justify-content:center; text-decoration:none;">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        Enviar solicitud por WhatsApp
-      </a>
-      <button class="btn-plan" onclick="cerrarModal()">Cancelar</button>
+
+    <!-- Paso 1: crear cuenta (solo si no hay sesión activa) -->
+    <div id="modal-signup">
+      <h3>Antes de pagar, creá tu cuenta</h3>
+      <p>Así, apenas se acredite el pago, tu cuenta queda activada automáticamente — sin que tengas que avisarnos.</p>
+      <div class="plan-elegido" id="modal-plan-texto-signup">Plan Pro - $75.000/mes</div>
+      <div class="signup-error" id="su-error"></div>
+      <input type="text" id="su-nombre" class="campo-signup" placeholder="Nombre de tu negocio">
+      <input type="email" id="su-email" class="campo-signup" placeholder="Tu email">
+      <input type="password" id="su-pass" class="campo-signup" placeholder="Contraseña (mínimo 6 caracteres)">
+      <div class="signup-nota">Con este email y contraseña vas a entrar a la app en gestopro.com.ar/app/ una vez activado el plan.</div>
+      <div class="modal-btns">
+        <button class="btn-plan destacado" id="su-btn" onclick="crearCuentaYContinuar()">Crear cuenta y continuar</button>
+        <button class="btn-plan" onclick="cerrarModal()">Cancelar</button>
+      </div>
     </div>
+
+    <!-- Paso 2: pagar -->
+    <div id="modal-pago" style="display:none;">
+      <h3>¡Perfecto!</h3>
+      <p>Pagá con Mercado Pago. Tu plan se activa solo apenas se acredite el pago.</p>
+      <div class="plan-elegido" id="modal-plan-texto">Plan Pro - $75.000/mes</div>
+      <p style="font-size:13px;">Si por algo no se activa solo en unos minutos, escribinos por WhatsApp y lo revisamos.</p>
+      <div class="modal-btns">
+        <a id="modal-mp-link" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#009ee3;color:white;padding:12px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:4px;">
+          💳 Pagar con Mercado Pago
+        </a>
+        <a id="modal-wa-link" href="#" class="whatsapp-link" style="justify-content:center; text-decoration:none;">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Enviar solicitud por WhatsApp
+        </a>
+        <button class="btn-plan" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -500,11 +559,7 @@
   var SUPA_KEY = 'sb_publishable_Zbs92esH09scVXRSKJp8qw_UU26i2kW';
   var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
   var userEmail = '';
-  var LINKS_MP = {
-    'Basico': 'https://mpago.la/18wMsaQ',
-    'Pro':    'https://mpago.la/2DGu6A8',
-    'Premium':'https://mpago.la/19PMubJ'
-  };
+  var pendingPlan = null; // { nombre, precio, linkMP, periodo }
 
   sb.auth.getSession().then(function(result) {
     if (result.data && result.data.session) {
@@ -515,48 +570,151 @@
   function irAPago(nombre, precio, linkMP, periodo) {
     periodo = periodo || 'mensual';
     var esAnual = periodo === 'anual';
-    document.getElementById('modal-plan-texto').textContent = 'Plan ' + nombre + (esAnual ? ' Anual' : '') + ' - ' + precio;
-    var plan = nombre.toLowerCase();
+    var textoPlan = 'Plan ' + nombre + (esAnual ? ' Anual' : '') + ' - ' + precio;
+    pendingPlan = { nombre: nombre, precio: precio, linkMP: linkMP, periodo: periodo };
+
+    document.getElementById('modal-plan-texto').textContent = textoPlan;
+    document.getElementById('modal-plan-texto-signup').textContent = textoPlan;
+    document.getElementById('modal').classList.add('activo');
+
+    if (userEmail) {
+      // Ya hay sesión activa (vino logueado desde la app) — vamos directo al pago
+      mostrarPasoPago();
+      generarLinkPago();
+    } else {
+      // Cliente nuevo, sin cuenta todavía — primero le creamos la cuenta
+      mostrarPasoSignup();
+    }
+  }
+
+  function mostrarPasoSignup() {
+    document.getElementById('modal-signup').style.display = 'block';
+    document.getElementById('modal-pago').style.display = 'none';
+  }
+
+  function mostrarPasoPago() {
+    document.getElementById('modal-signup').style.display = 'none';
+    document.getElementById('modal-pago').style.display = 'block';
+  }
+
+  function crearCuentaYContinuar() {
+    var nombre = (document.getElementById('su-nombre').value || '').trim();
+    var email = (document.getElementById('su-email').value || '').trim();
+    var pass = document.getElementById('su-pass').value || '';
+    var errEl = document.getElementById('su-error');
+    var btn = document.getElementById('su-btn');
+    errEl.style.display = 'none';
+
+    if (!nombre || !email || !pass) {
+      errEl.textContent = 'Completá todos los campos.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (pass.length < 6) {
+      errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creando cuenta...';
+
+    sb.auth.signUp({ email: email, password: pass }).then(function(result) {
+      if (result.error) {
+        var msg = result.error.message || '';
+        if (msg.toLowerCase().indexOf('already') !== -1 || msg.toLowerCase().indexOf('registrad') !== -1) {
+          errEl.textContent = 'Ya existe una cuenta con ese email. Iniciá sesión en gestopro.com.ar/app/ y generá el pago desde ahí.';
+        } else {
+          errEl.textContent = msg;
+        }
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Crear cuenta y continuar';
+        return;
+      }
+
+      var user = result.data.user;
+      if (!user) {
+        errEl.textContent = 'No se pudo crear la cuenta. Probá de nuevo.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Crear cuenta y continuar';
+        return;
+      }
+
+      sb.from('negocios').insert({
+        user_id: user.id,
+        nombre: nombre,
+        email: email,
+        plan: 'gratis',
+        config: '{}',
+        aprobado: true,
+        fecha_registro: new Date().toISOString()
+      }).then(function(res) {
+        if (res.error) {
+          errEl.textContent = 'La cuenta se creó pero hubo un problema guardando el negocio. Escribinos por WhatsApp.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Crear cuenta y continuar';
+          return;
+        }
+        userEmail = email;
+        mostrarPasoPago();
+        generarLinkPago();
+      });
+    }).catch(function() {
+      errEl.textContent = 'No se pudo crear la cuenta. Probá de nuevo.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Crear cuenta y continuar';
+    });
+  }
+
+  function generarLinkPago() {
+    var p = pendingPlan;
+    var esAnual = p.periodo === 'anual';
+    var plan = p.nombre.toLowerCase();
     var btn = document.getElementById('modal-mp-link');
     btn.textContent = '⏳ Generando link...';
     btn.style.pointerEvents = 'none';
+
     fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-pago', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail, plan: plan, periodo: periodo })
+      body: JSON.stringify({ email: userEmail, plan: plan, periodo: p.periodo })
     })
     .then(function(r){ return r.json(); })
     .then(function(data){
-      if(data.url){
+      if (data.url) {
         btn.href = data.url;
         btn.textContent = '💳 Pagar con Mercado Pago';
         btn.style.pointerEvents = 'auto';
-      } else if(esAnual){
+      } else if (esAnual) {
         btn.textContent = '⚠️ No se pudo generar el link — escribinos por WhatsApp';
         btn.removeAttribute('href');
         btn.style.pointerEvents = 'none';
         btn.style.background = '#BFBDB5';
       } else {
         btn.textContent = '💳 Pagar con Mercado Pago';
-        btn.href = linkMP;
+        btn.href = p.linkMP;
         btn.style.pointerEvents = 'auto';
       }
     })
     .catch(function(){
-      if(esAnual){
+      if (esAnual) {
         btn.textContent = '⚠️ No se pudo generar el link — escribinos por WhatsApp';
         btn.removeAttribute('href');
         btn.style.pointerEvents = 'none';
         btn.style.background = '#BFBDB5';
       } else {
         btn.textContent = '💳 Pagar con Mercado Pago';
-        btn.href = linkMP;
+        btn.href = p.linkMP;
         btn.style.pointerEvents = 'auto';
       }
     });
-    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + precio + '). Email: ' + userEmail + '. Por favor activame la cuenta.');
+
+    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + p.nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + p.precio + '). Email: ' + userEmail + '. Por favor activame la cuenta si todavía no se activó sola.');
     document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
-    document.getElementById('modal').classList.add('activo');
   }
 
   function cerrarModal() {
