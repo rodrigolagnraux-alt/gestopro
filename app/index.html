@@ -7214,5 +7214,159 @@ if(document.readyState==='loading'){
 }
 
 </script>
+<!-- ═══════════════════════════════════════════════════════════
+     WIDGET DE CHAT — Asistente GestoPro (chatbot-ia)
+     Botón flotante visible en todas las pantallas. Habla con la
+     Edge Function chatbot-ia (Supabase) usando currentNegocioId.
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+  #gp-chat-btn{
+    position:fixed; bottom:20px; right:20px; z-index:9999;
+    width:52px; height:52px; border-radius:50%;
+    background:var(--acc); color:#fff; border:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+  #gp-chat-btn:active{ transform:scale(0.95); }
+  #gp-chat-panel{
+    position:fixed; bottom:84px; right:20px; z-index:9999;
+    width:340px; max-width:calc(100vw - 24px);
+    height:480px; max-height:70vh;
+    background:var(--sur2); border:1px solid var(--brd); border-radius:var(--r);
+    display:none; flex-direction:column; overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,.45);
+    font-family:inherit;
+  }
+  #gp-chat-panel.open{ display:flex; }
+  #gp-chat-head{
+    padding:12px 14px; background:var(--sur3); border-bottom:1px solid var(--brd);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #gp-chat-head-t{ font-family:Syne,sans-serif; font-weight:700; font-size:14px; color:var(--txt); }
+  #gp-chat-close{ background:none; border:none; color:var(--mut2); font-size:18px; cursor:pointer; padding:2px 6px; }
+  #gp-chat-msgs{ flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .gp-msg{ max-width:85%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .gp-msg.user{ align-self:flex-end; background:var(--acc); color:#fff; border-bottom-right-radius:3px; }
+  .gp-msg.bot{ align-self:flex-start; background:var(--sur); color:var(--txt); border:1px solid var(--brd); border-bottom-left-radius:3px; }
+  .gp-msg.bot a{ color:var(--acc2); }
+  .gp-msg.typing{ color:var(--mut2); font-style:italic; }
+  #gp-chat-inputrow{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--brd); background:var(--sur2); }
+  #gp-chat-input{
+    flex:1; resize:none; border:1px solid var(--brd); background:var(--sur); color:var(--txt);
+    border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; max-height:80px;
+  }
+  #gp-chat-send{ background:var(--acc); color:#fff; border:none; border-radius:8px; padding:0 14px; cursor:pointer; font-size:16px; }
+  #gp-chat-send:disabled{ opacity:.5; cursor:default; }
+  @media (max-width:480px){
+    #gp-chat-panel{ right:12px; bottom:78px; width:calc(100vw - 24px); }
+    #gp-chat-btn{ right:14px; bottom:14px; }
+  }
+</style>
+
+<button id="gp-chat-btn" onclick="gpToggleChat()" title="Asistente GestoPro">💬</button>
+
+<div id="gp-chat-panel">
+  <div id="gp-chat-head">
+    <span id="gp-chat-head-t">🤖 Asistente GestoPro</span>
+    <button id="gp-chat-close" onclick="gpToggleChat()">✕</button>
+  </div>
+  <div id="gp-chat-msgs"></div>
+  <div id="gp-chat-inputrow">
+    <textarea id="gp-chat-input" rows="1" placeholder="Escribí tu consulta..." onkeydown="gpChatKeydown(event)"></textarea>
+    <button id="gp-chat-send" onclick="gpEnviarMensaje()">➤</button>
+  </div>
+</div>
+
+<script>
+  // El mismo valor que cargaste como secret GESTOPRO_CHAT_TOKEN en Supabase.
+  var GP_CHAT_TOKEN = 'gp_x7kq2m4z9wp1';
+  var GP_CHAT_URL = 'https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/chatbot-ia';
+
+  var gpChatHistorial = [];
+  var gpChatAbierto = false;
+
+  function gpToggleChat(){
+    var panel = document.getElementById('gp-chat-panel');
+    gpChatAbierto = !gpChatAbierto;
+    panel.classList.toggle('open', gpChatAbierto);
+    if(gpChatAbierto && gpChatHistorial.length===0){
+      gpAppendMensaje('¡Hola! Soy el asistente de GestoPro. Puedo ayudarte a usar la app (configuración, módulos) o consultar datos de tu negocio (stock, pedidos, facturas). ¿En qué te ayudo?', 'bot');
+    }
+  }
+
+  function gpEscapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function gpRenderMd(texto){
+    var t = gpEscapeHtml(texto);
+    t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    return t;
+  }
+
+  function gpAppendMensaje(texto, quien){
+    var msgs = document.getElementById('gp-chat-msgs');
+    var div = document.createElement('div');
+    div.className = 'gp-msg ' + quien;
+    div.innerHTML = gpRenderMd(texto);
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function gpChatKeydown(ev){
+    if(ev.key === 'Enter' && !ev.shiftKey){
+      ev.preventDefault();
+      gpEnviarMensaje();
+    }
+  }
+
+  async function gpEnviarMensaje(){
+    var input = document.getElementById('gp-chat-input');
+    var mensaje = input.value.trim();
+    if(!mensaje) return;
+
+    if(!currentNegocioId){
+      gpAppendMensaje('Iniciá sesión primero para poder ayudarte con datos de tu negocio.', 'bot');
+      return;
+    }
+
+    var btn = document.getElementById('gp-chat-send');
+    gpAppendMensaje(mensaje, 'user');
+    input.value = '';
+    btn.disabled = true;
+    var typingDiv = gpAppendMensaje('escribiendo...', 'bot typing');
+
+    try{
+      var res = await fetch(GP_CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gestopro-token': GP_CHAT_TOKEN
+        },
+        body: JSON.stringify({
+          mensaje: mensaje,
+          historial: gpChatHistorial,
+          negocio_id: currentNegocioId
+        })
+      });
+      var data = await res.json();
+      typingDiv.remove();
+
+      if(res.ok && data.respuesta){
+        gpAppendMensaje(data.respuesta, 'bot');
+        gpChatHistorial = data.historial || gpChatHistorial;
+      } else {
+        gpAppendMensaje('Uy, hubo un error: ' + (data.error || 'reintentá en un momento'), 'bot');
+      }
+    } catch(e){
+      typingDiv.remove();
+      gpAppendMensaje('No pude conectarme al asistente. Revisá tu conexión e intentá de nuevo.', 'bot');
+    }
+
+    btn.disabled = false;
+  }
+</script>
 </body>
 </html>
