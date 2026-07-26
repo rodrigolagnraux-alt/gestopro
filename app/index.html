@@ -1112,18 +1112,68 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="ov" id="modal-plato">
 <div class="modal">
   <div class="modal-drag"></div>
-  <div class="modal-t" id="modal-plato-titulo">🍕 Nuevo plato</div>
-  <div class="modal-s">Se muestra en tu menú online para que el cliente lo pida</div>
-  <div class="fg"><label class="fl">Nombre del plato</label><input class="fi" id="plato-nombre" placeholder="Ej: Empanada de carne"></div>
+  <div class="modal-t" id="modal-plato-titulo">🆕 Nuevo producto online</div>
+  <div class="modal-s">Se muestra en tu Tienda Online para que el cliente lo pida</div>
+  <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="plato-nombre" placeholder="Ej: Coca-Cola 2.25L"></div>
   <div class="frow">
-    <div class="fg"><label class="fl">Categoría</label><input class="fi" id="plato-categoria" placeholder="Ej: Empanadas"></div>
+    <div class="fg"><label class="fl">Categoría</label><input class="fi" id="plato-categoria" placeholder="Ej: Bebidas"></div>
     <div class="fg"><label class="fl">Precio $</label><input class="fi" id="plato-precio" type="number" placeholder="0"></div>
   </div>
-  <div class="fg"><label class="fl">Stock (opcional)</label><input class="fi" id="plato-stock" type="number" placeholder="Dejalo vacío si no querés controlar el stock"></div>
-  <div class="chk-wrap"><input type="checkbox" id="plato-visible" checked><label for="plato-visible" class="fl" style="margin:0;cursor:pointer;">Visible en el menú público</label></div>
+  <div class="fg" id="plato-stock-wrap"><label class="fl">Stock (opcional)</label><input class="fi" id="plato-stock" type="number" placeholder="Dejalo vacío si no querés controlar el stock"></div>
+  <div id="plato-vinculado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
+  <div class="chk-wrap"><input type="checkbox" id="plato-visible" checked><label for="plato-visible" class="fl" style="margin:0;cursor:pointer;">Visible en la Tienda Online pública</label></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="closeModal('modal-plato')">Cancelar</button>
     <button class="btn btn-acc" onclick="guardarPlato()">Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL BUSCAR PRODUCTO DEL INVENTARIO PARA TIENDA ONLINE -->
+<div class="ov" id="modal-tienda-buscar">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🔍 Agregar del inventario</div>
+  <div class="modal-s">Buscá un producto de tu inventario y sumalo a la Tienda Online</div>
+  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="tienda-buscar-srch" placeholder="Buscar producto..." oninput="renderTiendaBuscarResultados()"></div>
+  <div id="tienda-buscar-lista" style="max-height:360px;overflow-y:auto;margin-top:10px;"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-tienda-buscar')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL ENTREGAR Y COBRAR PEDIDO ONLINE -->
+<div class="ov" id="modal-entregar-pedido">
+<div class="modal" style="max-width:480px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">✓ Marcar entregado y cobrar</div>
+  <div class="modal-s" id="entregar-pedido-sub">—</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;" id="entregar-pedido-resumen"></div>
+  <div class="fg"><label class="fl">¿Cómo cobrás?</label></div>
+  <div class="pay-methods" style="grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+    <div class="pay-method on" onclick="selPagoEntrega('efectivo',this)" id="epm-efectivo" style="padding:8px 6px;">
+      <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">💵</div>
+      <div class="pay-lbl">Efectivo</div>
+    </div>
+    <div class="pay-method" onclick="selPagoEntrega('mercado_pago',this)" id="epm-mercado_pago" style="padding:8px 6px;">
+      <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">📱</div>
+      <div class="pay-lbl">Merc. Pago</div>
+    </div>
+    <div class="pay-method" onclick="selPagoEntrega('cuenta_corriente',this)" id="epm-cuenta_corriente" style="padding:8px 6px;">
+      <div class="pay-ico" style="font-size:18px;margin-bottom:2px;">🤝</div>
+      <div class="pay-lbl">Cta. corriente</div>
+    </div>
+  </div>
+  <div id="entregar-pedido-fiado" style="display:none;background:var(--yel-dim);border:1px solid var(--yel);border-radius:10px;padding:16px;margin-bottom:12px;">
+    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--yel);margin-bottom:12px;">🤝 ¿A cuenta de quién?</div>
+    <select class="fi" id="entregar-fiado-cliente-sel" style="font-size:15px;margin-bottom:10px;" onchange="selFiadoClienteEntrega(this.value)">
+      <option value="">— Elegir cliente —</option>
+    </select>
+    <div id="entregar-fiado-cliente-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;"></div>
+    <button class="btn btn-ghost btn-sm btn-full" onclick="abrirNuevoClienteRapidoEntrega()" style="border-color:var(--yel);color:var(--yel);">+ Nuevo cliente</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-entregar-pedido')">Cancelar</button>
+    <button class="btn btn-grn" onclick="confirmarEntregaPedidoOnline()">✓ Confirmar</button>
   </div>
 </div>
 </div>
@@ -1141,6 +1191,9 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Teléfono del dueño (WhatsApp)</label><input class="fi" id="cfg-tel-dueno" placeholder="Ej: 2473410437" type="tel" inputmode="numeric"></div>
   <div class="fg"><label class="fl">Email del dueño (alertas silenciosas)</label><input class="fi" id="cfg-email-dueno" placeholder="Ej: dueño@gmail.com" type="email"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa para alertas automáticas (facturas vencidas, límite de fiado)</div>
+  <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🛒 Tienda Online</div>
+  <div class="fg"><label class="fl">Costo de envío ($)</label><input class="fi" id="cfg-costo-envio" type="number" placeholder="0" inputmode="numeric"></div>
+  <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa como costo de envío por defecto en los pedidos delivery de tu Tienda Online</div>
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🏛️ Cuenta DNI</div>
   <div class="fg"><label class="fl">Alias Cuenta DNI</label><input class="fi" id="cfg-alias-dni" placeholder="Ej: mi.negocio.bna"></div>
   <div class="fg"><label class="fl">CVU Cuenta DNI</label><input class="fi" id="cfg-cvu-dni" placeholder="0000003100012345678901"></div>
@@ -1196,7 +1249,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Principal</div>
     <div class="sb-i on" onclick="go('dash',this)"><span class="sb-ico">◈</span>Dashboard</div>
     <div class="sb-i" onclick="go('productos',this)"><span class="sb-ico">📦</span>Productos<span class="sb-badge" id="sb-alerta">0</span></div>
-    <div class="sb-i" onclick="go('menuonline',this)"><span class="sb-ico">🍕</span>Menú Online</div>
+    <div class="sb-i" onclick="go('menuonline',this)"><span class="sb-ico">🛒</span>Tienda Online</div>
     <div class="sb-i" id="sb-pedidos-online" onclick="go('pedidosonline',this)"><span class="sb-ico">🛎️</span>Pedidos Online<span class="sb-badge" id="sb-pedidos-online-badge" style="display:none;">0</span></div>
     <div class="sb-i" onclick="go('movimientos',this)"><span class="sb-ico">↕</span>Movimientos</div>
   </div>
@@ -1321,23 +1374,27 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 
 <div id="pg-menuonline" class="pg">
-  <div class="ptitle">Menú Online</div>
+  <div class="ptitle">Tienda Online</div>
   <div class="psub" style="margin-bottom:14px;">Tu catálogo para pedidos por link, sin llamadas ni WhatsApp</div>
   <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
     <div>
-      <div class="kl">LINK DE TU MENÚ</div>
+      <div class="kl">LINK DE TU TIENDA</div>
       <div class="mn" id="menu-link-display" style="color:var(--acc2);font-size:13px;">—</div>
     </div>
     <button class="btn btn-acc btn-sm" onclick="copiarLinkMenu()">📋 Copiar link</button>
   </div>
-  <button class="btn btn-acc btn-full" onclick="abrirModalPlato()" style="margin-bottom:16px;">+ Nuevo plato</button>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="btn btn-acc" onclick="abrirBuscadorInventarioTienda()" style="flex:1;min-width:180px;">+ Agregar del inventario</button>
+    <button class="btn btn-ghost" onclick="agregarTodosProductosTienda()" style="flex:1;min-width:180px;">✓ Agregar todos los productos</button>
+  </div>
+  <button class="btn btn-ghost btn-full" onclick="abrirModalPlato()" style="margin-bottom:16px;">+ Producto online sin vincular</button>
   <div id="menu-items-lista"></div>
 </div>
 
-<!-- PEDIDOS ONLINE (pedidos de clientes finales vía Menú Online) -->
+<!-- PEDIDOS ONLINE (pedidos de clientes finales vía Tienda Online) -->
 <div id="pg-pedidosonline" class="pg">
   <div class="ptitle">🛎️ Pedidos Online</div>
-  <div class="psub" style="margin-bottom:14px;">Pedidos que llegan desde tu link de Menú Online</div>
+  <div class="psub" style="margin-bottom:14px;">Pedidos que llegan desde tu link de Tienda Online</div>
   <div class="ptabs" style="margin-bottom:14px;">
     <button class="ptab on" id="pedonline-tab-pendiente" onclick="setTabPedidosOnline('pendiente',this)">🟡 Pendientes</button>
     <button class="ptab" id="pedonline-tab-preparando" onclick="setTabPedidosOnline('preparando',this)">🍳 Preparando</button>
@@ -2135,6 +2192,8 @@ function closeModal(id){
   if(id==='modal-config'){
     var ob=el('cfg-onboarding-banner'); if(ob) ob.style.display='none';
   }
+  if(id==='modal-entregar-pedido'){ pedidoEntregaActual = null; }
+  if(id==='modal-fiado-nuevo'){ pedidoEntregaEsperaFiado = null; }
   if(id==='modal-prod' && prodEditId){
     prodEditId=null;
     var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
@@ -2169,6 +2228,7 @@ function guardarConfig(){
   if(cv) config.cvu=cv;
   var telDueno=get('cfg-tel-dueno'); config.tel=telDueno;
   var emailDueno=get('cfg-email-dueno'); config.emailDueno=emailDueno;
+  var costoEnvio=parseFloat(get('cfg-costo-envio')); config.costoEnvio = isNaN(costoEnvio) ? 0 : costoEnvio;
   var aliasDni=get('cfg-alias-dni'); config.aliasDni=aliasDni;
   var cvuDni=get('cfg-cvu-dni'); config.cvuDni=cvuDni;
   var pin=get('cfg-pin').trim(); config.pin=pin;
@@ -4119,22 +4179,91 @@ async function renderMenuOnline(){
   var cont = el('menu-items-lista');
   if(!cont) return;
   if(!items.length){
-    cont.innerHTML = '<div class="empty"><div class="empty-ico">🍕</div><div class="empty-t">Sin platos cargados</div><div class="empty-s">Tocá + Nuevo plato para armar tu menú</div></div>';
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🛒</div><div class="empty-t">Sin productos cargados</div><div class="empty-s">Agregá productos desde tu inventario o creá uno nuevo para armar tu Tienda Online</div></div>';
     return;
   }
   cont.innerHTML = items.map(function(it){
-    var stockTxt = (it.stock===null||it.stock===undefined) ? 'sin límite de stock' : 'quedan '+it.stock;
+    var prodVinc = it.producto_id ? productos.find(function(p){return String(p.id)===String(it.producto_id);}) : null;
+    var stockTxt;
+    if(prodVinc){ stockTxt = 'stock real: '+prodVinc.stock+' '+(prodVinc.um||'UN'); }
+    else if(it.stock===null||it.stock===undefined){ stockTxt = 'sin límite de stock'; }
+    else { stockTxt = 'quedan '+it.stock; }
     var badge = it.visible ? '<span class="bdg bg">Visible</span>' : '<span class="bdg br">Oculto</span>';
+    var vincBadge = prodVinc
+      ? '<span class="bdg" style="background:var(--acc-dim);color:var(--acc2);">🔗 Vinculado</span>'
+      : '<span class="bdg" style="background:var(--sur2);color:var(--mut2);">Manual</span>';
     return '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
       +'<div style="flex:1;">'
       +'<div style="font-size:13.5px;font-weight:600;">'+it.nombre+'</div>'
       +'<div class="mn md" style="font-size:11px;margin-top:2px;">'+(it.categoria||'Sin categoría')+' · '+fmtM(it.precio)+' · '+stockTxt+'</div>'
       +'</div>'
+      +vincBadge
       +badge
       +'<button class="btn-accion" onclick="abrirModalPlato(\''+it.id+'\')">✏️</button>'
       +'<button class="btn-accion rojo" onclick="eliminarPlato(\''+it.id+'\')">✕</button>'
       +'</div>';
   }).join('');
+}
+
+function abrirBuscadorInventarioTienda(){
+  set('tienda-buscar-srch','val','');
+  renderTiendaBuscarResultados();
+  openModal('modal-tienda-buscar');
+}
+
+function renderTiendaBuscarResultados(){
+  var cont = el('tienda-buscar-lista'); if(!cont) return;
+  var q = (get('tienda-buscar-srch')||'').toLowerCase().trim();
+  var vinculados = (window._menuItemsCache||[]).map(function(it){return it.producto_id?String(it.producto_id):null;}).filter(Boolean);
+  var lista = productos.filter(function(p){
+    if(q && p.nom.toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  }).slice(0,60);
+  if(!lista.length){
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mut2);font-size:13px;">Sin resultados</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(function(p){
+    var yaAgregado = vinculados.indexOf(String(p.id))!==-1;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 8px;border-bottom:1px solid var(--brd);">'
+      +'<div><div style="font-size:13px;font-weight:600;">'+p.nom+'</div><div style="font-size:11px;color:var(--mut2);">'+fmtM(p.pventa||0)+' · Stock: '+(p.stock||0)+' '+(p.um||'UN')+'</div></div>'
+      +(yaAgregado
+        ? '<span class="bdg bg" style="white-space:nowrap;">✓ Agregado</span>'
+        : '<button class="btn btn-acc btn-sm" onclick="agregarProductoATienda(\''+p.id+'\')">+ Agregar</button>')
+      +'</div>';
+  }).join('');
+}
+
+async function agregarProductoATienda(prodId){
+  if(!currentNegocioId) return;
+  var p = productos.find(function(x){return String(x.id)===String(prodId);});
+  if(!p) return;
+  var yaExiste = (window._menuItemsCache||[]).some(function(it){return it.producto_id && String(it.producto_id)===String(p.id);});
+  if(yaExiste){ toast('Ese producto ya está en tu Tienda Online','err'); return; }
+  await supabaseClient.from('menu_items').insert({
+    negocio_id: currentNegocioId, producto_id: String(p.id),
+    nombre: p.nom, categoria: p.cat||'Otros', precio: p.pventa||0,
+    stock: null, visible: true
+  });
+  toast('✓ '+p.nom+' agregado a la Tienda Online');
+  await renderMenuOnline();
+  renderTiendaBuscarResultados();
+}
+
+async function agregarTodosProductosTienda(){
+  if(!currentNegocioId) return;
+  var candidatos = productos.filter(function(p){ return (p.pventa||0) > 0; });
+  if(!candidatos.length){ toast('No hay productos con precio de venta cargado','err'); return; }
+  var vinculados = (window._menuItemsCache||[]).map(function(it){return it.producto_id?String(it.producto_id):null;}).filter(Boolean);
+  var nuevos = candidatos.filter(function(p){ return vinculados.indexOf(String(p.id))===-1; });
+  if(!nuevos.length){ toast('Todos tus productos con precio ya están en la Tienda Online'); return; }
+  if(!confirm('¿Agregar '+nuevos.length+' producto'+(nuevos.length!==1?'s':'')+' a la Tienda Online?')) return;
+  var filas = nuevos.map(function(p){
+    return {negocio_id:currentNegocioId, producto_id:String(p.id), nombre:p.nom, categoria:p.cat||'Otros', precio:p.pventa||0, stock:null, visible:true};
+  });
+  await supabaseClient.from('menu_items').insert(filas);
+  toast('✓ '+filas.length+' producto'+(filas.length!==1?'s':'')+' agregados a la Tienda Online');
+  renderMenuOnline();
 }
 
 function copiarLinkMenu(){
@@ -4146,19 +4275,31 @@ function copiarLinkMenu(){
 var platoEditId = null;
 function abrirModalPlato(id){
   platoEditId = id||null;
+  var stockWrap = el('plato-stock-wrap');
+  var vincInfo = el('plato-vinculado-info');
   if(id){
     var it = (window._menuItemsCache||[]).find(function(x){return String(x.id)===String(id);});
     if(!it) return;
-    set('modal-plato-titulo','text','✏️ Editar plato');
+    set('modal-plato-titulo','text','✏️ Editar producto online');
     set('plato-nombre','val',it.nombre||'');
     set('plato-categoria','val',it.categoria||'');
     set('plato-precio','val',it.precio||'');
     set('plato-stock','val', (it.stock===null||it.stock===undefined) ? '' : it.stock);
     var vEl = el('plato-visible'); if(vEl) vEl.checked = it.visible!==false;
+    var prodVinc = it.producto_id ? productos.find(function(p){return String(p.id)===String(it.producto_id);}) : null;
+    if(prodVinc){
+      if(stockWrap) stockWrap.style.display='none';
+      if(vincInfo){ vincInfo.style.display='block'; vincInfo.innerHTML='🔗 Vinculado a <b style="color:var(--txt);">'+prodVinc.nom+'</b> — stock real: '+prodVinc.stock+' '+(prodVinc.um||'UN')+'. El stock se descuenta automáticamente del inventario al entregar.'; }
+    } else {
+      if(stockWrap) stockWrap.style.display='';
+      if(vincInfo) vincInfo.style.display='none';
+    }
   } else {
-    set('modal-plato-titulo','text','🍕 Nuevo plato');
+    set('modal-plato-titulo','text','🆕 Nuevo producto online');
     ['plato-nombre','plato-categoria','plato-precio','plato-stock'].forEach(function(id){set(id,'val','');});
     var vEl2 = el('plato-visible'); if(vEl2) vEl2.checked = true;
+    if(stockWrap) stockWrap.style.display='';
+    if(vincInfo) vincInfo.style.display='none';
   }
   openModal('modal-plato');
 }
@@ -4166,7 +4307,7 @@ function abrirModalPlato(id){
 async function guardarPlato(){
   var nombre = get('plato-nombre').trim();
   var precio = parseFloat(get('plato-precio'))||0;
-  if(!nombre){ toast('Ingresá el nombre del plato','err'); return; }
+  if(!nombre){ toast('Ingresá el nombre del producto','err'); return; }
   if(!precio){ toast('Ingresá el precio','err'); return; }
   var categoria = get('plato-categoria').trim()||'Otros';
   var stockVal = get('plato-stock').trim();
@@ -4174,24 +4315,24 @@ async function guardarPlato(){
   var visible = el('plato-visible') ? el('plato-visible').checked : true;
   if(platoEditId){
     await supabaseClient.from('menu_items').update({nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible}).eq('id',platoEditId);
-    toast('Plato actualizado ✓');
+    toast('Producto actualizado ✓');
   } else {
     await supabaseClient.from('menu_items').insert({negocio_id:currentNegocioId,nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible});
-    toast('Plato agregado ✓');
+    toast('Producto agregado ✓');
   }
   closeModal('modal-plato');
   renderMenuOnline();
 }
 
 async function eliminarPlato(id){
-  if(!confirm('¿Eliminar este plato del menú?')) return;
+  if(!confirm('¿Eliminar este producto de la Tienda Online?')) return;
   await supabaseClient.from('menu_items').delete().eq('id',id);
   renderMenuOnline();
-  toast('Plato eliminado');
+  toast('Producto eliminado');
 }
 
 // ═══════════════════════════════════════════════
-// PEDIDOS ONLINE (pedidos de clientes finales vía Menú Online)
+// PEDIDOS ONLINE (pedidos de clientes finales vía Tienda Online)
 // ═══════════════════════════════════════════════
 var pedidosOnlineTab = 'pendiente';
 var pedidosOnlineData = [];
@@ -4199,6 +4340,9 @@ var pedidosOnlineIdsVistos = [];
 try{ pedidosOnlineIdsVistos = JSON.parse(localStorage.getItem('gp_pedidos_online_vistos')||'[]'); }catch(e){ pedidosOnlineIdsVistos = []; }
 var pedidosOnlinePollInterval = null;
 var pedidosOnlineAudioCtx = null;
+var pedidoEntregaActual = null; // pedido online que se está marcando entregado/cobrando
+var metodoEntregaActual = 'efectivo';
+var pedidoEntregaEsperaFiado = null; // id del pedido a retomar tras crear un cliente de fiado nuevo
 
 function guardarPedidosOnlineVistos(){
   try{ localStorage.setItem('gp_pedidos_online_vistos', JSON.stringify(pedidosOnlineIdsVistos.slice(-500))); }catch(e){}
@@ -4306,7 +4450,7 @@ function renderPedidoOnlineCard(p){
   var itemsHtml = (p.items||[]).map(function(it){
     return '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2);padding:2px 0;"><span>'+(it.cantidad||1)+' x '+(it.nombre||'')+'</span><span>'+fmtM((it.precio||0)*(it.cantidad||1))+'</span></div>';
   }).join('');
-  var metLbl = {mercado_pago:'📱 Mercado Pago', efectivo:'💵 Efectivo al recibir'};
+  var metLbl = {mercado_pago:'📱 Mercado Pago', efectivo:'💵 Efectivo al recibir', cuenta_corriente:'🤝 Cuenta corriente'};
   var entregaLbl = p.tipo_entrega==='delivery' ? '🛵 Delivery — '+(p.direccion||'') : '🏪 Retira en local';
   var fecha = p.created_at ? new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
   var estadoLbl = {pendiente:'PENDIENTE',preparando:'PREPARANDO',entregado:'ENTREGADO'};
@@ -4353,30 +4497,172 @@ async function iniciarPreparacionPedido(id){
   toast('🍳 Pedido en preparación');
 }
 
-async function marcarPedidoOnlineEntregado(id){
+function marcarPedidoOnlineEntregado(id){
   var p = pedidosOnlineData.find(function(x){return String(x.id)===String(id);});
   if(!p) return;
-  if(!confirm('¿Marcar como entregado y registrar el cobro de '+fmtM(p.total||0)+'?')) return;
-  var metodoMap = {mercado_pago:'mercadopago', efectivo:'efectivo'};
-  var metodo = metodoMap[p.metodo_pago] || 'efectivo';
-  var res = await supabaseClient.from('pedidos').update({estado:'entregado'}).eq('id',id);
-  if(res.error){
-    toast('No se pudo actualizar el pedido — falta la política UPDATE en Supabase para "pedidos"','err');
+  pedidoEntregaActual = p;
+  metodoEntregaActual = 'efectivo';
+  document.querySelectorAll('#modal-entregar-pedido .pay-method').forEach(function(m){m.classList.remove('on');});
+  var efEl = el('epm-efectivo'); if(efEl) efEl.classList.add('on');
+  set('entregar-pedido-fiado','display','none');
+  var envio = p.costo_envio||0;
+  var subtotal = (p.subtotal!==undefined && p.subtotal!==null) ? p.subtotal : (p.total||0)-envio;
+  var resumen = '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2);padding:2px 0;"><span>Subtotal productos</span><span>'+fmtM(subtotal)+'</span></div>'
+    + (envio>0 ? '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2);padding:2px 0;"><span>🚚 Envío</span><span>'+fmtM(envio)+'</span></div>' : '')
+    + '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;padding-top:6px;margin-top:4px;border-top:1px solid var(--brd);"><span>Total</span><span style="color:var(--grn);">'+fmtM(p.total||0)+'</span></div>';
+  set('entregar-pedido-resumen','html',resumen);
+  set('entregar-pedido-sub','text',(p.cliente_nombre||'Cliente')+' · '+fmtM(p.total||0));
+  openModal('modal-entregar-pedido');
+}
+
+function selPagoEntrega(tipo,selEl){
+  metodoEntregaActual = tipo;
+  document.querySelectorAll('#modal-entregar-pedido .pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl) selEl.classList.add('on');
+  set('entregar-pedido-fiado','display', tipo==='cuenta_corriente'?'block':'none');
+  if(tipo==='cuenta_corriente') cargarSelectorFiadoEntrega();
+}
+
+async function cargarSelectorFiadoEntrega(){
+  var sel = el('entregar-fiado-cliente-sel');
+  if(!sel||!currentNegocioId) return;
+  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite,via_libre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
+  fiados = res.data || [];
+  if(!fiados.length){
+    sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
+    set('entregar-fiado-cliente-info','display','none');
     return;
   }
+  sel.innerHTML = '<option value="">— Elegir cliente —</option>' + fiados.map(function(f){
+    var deudaTxt = f.deuda > 0 ? ' · Debe '+fmtM(f.deuda) : ' · Sin deuda';
+    return '<option value="'+f.id+'">'+f.nom+deudaTxt+'</option>';
+  }).join('');
+  set('entregar-fiado-cliente-info','display','none');
+}
+
+function selFiadoClienteEntrega(id){
+  var info = el('entregar-fiado-cliente-info');
+  if(!id || !info){ if(info) info.style.display='none'; return; }
+  var c = fiados.find(function(f){return f.id==id;});
+  if(!c){ info.style.display='none'; return; }
+  var limiteTxt = c.limite > 0 ? ' · Límite: '+fmtM(c.limite) : '';
+  var monto = pedidoEntregaActual ? (pedidoEntregaActual.total||0) : 0;
+  var nuevaDeuda = (c.deuda||0) + monto;
+  var superaLimite = c.limite > 0 && nuevaDeuda > c.limite;
+  info.style.display = 'block';
+  info.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<div><b style="color:var(--txt);">'+c.nom+'</b>'+(c.tel?'<br><span style="color:var(--mut2);">📞 '+c.tel+'</span>':'')+'</div>'
+    +'<div style="text-align:right;">'
+    +'<div style="color:var(--red);font-family:Syne,sans-serif;font-size:14px;font-weight:800;">Debe: '+fmtM(c.deuda||0)+'</div>'
+    +'<div style="color:'+(superaLimite?'var(--red)':'var(--yel)')+';font-size:11px;">+ '+fmtM(monto)+' → '+fmtM(nuevaDeuda)+'</div>'
+    +(superaLimite?'<div style="color:var(--red);font-size:10px;font-weight:700;">⚠️ Supera el límite'+limiteTxt+'</div>':'')
+    +'</div>'
+    +'</div>';
+}
+
+function abrirNuevoClienteRapidoEntrega(){
+  pedidoEntregaEsperaFiado = pedidoEntregaActual ? pedidoEntregaActual.id : null;
+  closeModal('modal-entregar-pedido');
+  setTimeout(function(){ openModal('modal-fiado-nuevo'); },200);
+}
+
+async function confirmarEntregaPedidoOnline(){
+  var p = pedidoEntregaActual;
+  if(!p) return;
+  var metodo = metodoEntregaActual;
+
+  // Resolver ítems vinculados a productos_v2 y validar stock real — mismo criterio que confirmarCobro()
+  var mRes = await supabaseClient.from('menu_items').select('*').eq('negocio_id',currentNegocioId);
+  var menuItemsFrescos = mRes.data || [];
+  var itemsResueltos = (p.items||[]).map(function(it){
+    var mi = menuItemsFrescos.find(function(x){return String(x.id)===String(it.menu_item_id);});
+    var prod = (mi && mi.producto_id) ? productos.find(function(x){return String(x.id)===String(mi.producto_id);}) : null;
+    return {it:it, prod:prod};
+  });
+  var sinStock = [];
+  var stockAjustado = [];
+  itemsResueltos.forEach(function(x){
+    if(!x.prod) return;
+    if(x.prod.stock<=0) sinStock.push(x.prod.nom);
+    else if((x.it.cantidad||1) > x.prod.stock) stockAjustado.push(x.prod.nom+' (quedan '+x.prod.stock+' '+(x.prod.um||'UN')+')');
+  });
+  if(sinStock.length){
+    toast('🚫 Sin stock de: '+sinStock.join(', ')+'. Ajustá el stock en Productos antes de entregar.','err');
+    return;
+  }
+
+  // Validar cuenta corriente
+  var clienteFiadoId = null, cFiadoSel = null;
+  if(metodo==='cuenta_corriente'){
+    clienteFiadoId = get('entregar-fiado-cliente-sel');
+    if(!clienteFiadoId){ toast('Seleccioná un cliente para la cuenta corriente','err'); return; }
+    cFiadoSel = fiados.find(function(f){return f.id==clienteFiadoId;});
+    if(cFiadoSel && !cFiadoSel.via_libre && cFiadoSel.limite>0 && cFiadoSel.deuda>=cFiadoSel.limite){
+      toast('🚫 '+cFiadoSel.nom+' ya superó el límite ('+fmtM(cFiadoSel.deuda)+'/'+fmtM(cFiadoSel.limite)+'). Debe pagar antes de seguir fiando.','err');
+      return;
+    }
+  }
+
+  if(stockAjustado.length){
+    toast('⚠️ Vendiste más stock del que hay: '+stockAjustado.join(', '),'err');
+  }
+
   var itemsDesc = (p.items||[]).map(function(it){ return (it.cantidad||1)+'x '+(it.nombre||''); }).join(', ');
-  var _m = {
-    id: Date.now(), tipo:'cobro',
-    desc: '🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
-    monto: p.total||0, fecha: hoy(), metodo: metodo
-  };
-  movimientos.unshift(_m);
-  saveMovimiento(_m);
+  var envio = p.costo_envio||0;
+  var subtotal = (p.subtotal!==undefined && p.subtotal!==null) ? p.subtotal : (p.total||0)-envio;
+
+  if(metodo==='cuenta_corriente'){
+    var detalleFiado = itemsResueltos.filter(function(x){return x.prod;}).map(function(x){
+      return {prodId:x.prod.id, nom:x.prod.nom, cant:x.it.cantidad||1, um:x.prod.um||'UN', precioVenta:x.it.precio||x.prod.pventa||0};
+    });
+    var descFiado = '🤝 '+(cFiadoSel?cFiadoSel.nom:'cliente')+' · 🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:'')+(envio>0?' · + envío '+fmtM(envio):'');
+    var _mf = { id:Date.now(), tipo:'fiado', desc:descFiado, monto:p.total||0, fecha:hoy(), metodo:'fiado' };
+    movimientos.unshift(_mf);
+    saveMovimiento(_mf);
+    await registrarFiadoCliente(clienteFiadoId, p.total||0, descFiado, detalleFiado);
+  } else {
+    var metodoMap = {mercado_pago:'mercadopago', efectivo:'efectivo'};
+    var metodoMov = metodoMap[metodo] || 'efectivo';
+    var _m = {
+      id: Date.now(), tipo:'cobro',
+      desc: '🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
+      monto: subtotal, fecha: hoy(), metodo: metodoMov
+    };
+    movimientos.unshift(_m);
+    saveMovimiento(_m);
+    if(envio>0){
+      var _mEnvio = {
+        id: Date.now()+1, tipo:'cobro',
+        desc: '🚚 Envío — Pedido online '+(p.cliente_nombre||'Cliente'),
+        monto: envio, fecha: hoy(), metodo: metodoMov, cat:'Envio'
+      };
+      movimientos.unshift(_mEnvio);
+      saveMovimiento(_mEnvio);
+    }
+  }
   actualizarKpiCobradoLocal();
   renderDash();
+
+  var res = await supabaseClient.from('pedidos').update({estado:'entregado', metodo_pago:metodo}).eq('id',p.id);
+  if(res.error){
+    toast('El cobro quedó registrado pero no se pudo marcar el pedido como entregado — falta la política UPDATE en Supabase para "pedidos"','err');
+    return;
+  }
+
+  // Recién ahora descontamos el stock real de productos_v2
+  itemsResueltos.forEach(function(x){
+    if(x.prod){
+      x.prod.stock = Math.max(0, x.prod.stock-(x.it.cantidad||1));
+      guardarEnNube('productos', x.prod.id, x.prod);
+    }
+  });
+
   p.estado='entregado';
+  p.metodo_pago=metodo;
   renderPedidosOnline(pedidosOnlineData);
-  toast('✓ Pedido entregado y cobrado · '+fmtM(p.total||0));
+  closeModal('modal-entregar-pedido');
+  pedidoEntregaActual = null;
+  toast((metodo==='cuenta_corriente'?'🤝 ':'✓ ')+'Pedido entregado · '+fmtM(p.total||0));
 }
   // ═══ RENDER PAGE ═══
 function renderPage(id){
@@ -5806,6 +6092,7 @@ async function guardarClienteFiado(){
   var nom = get('fn-nombre').trim();
   if(!nom){ toast('Ingresá el nombre del cliente','err'); return; }
   if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+  var pedIdPendienteEntrega = pedidoEntregaEsperaFiado;
   var viaLibre = el('fn-via-libre') && el('fn-via-libre').checked;
   var limite = viaLibre ? 0 : (parseFloat(get('fn-limite'))||0);
   var ins = await supabaseClient.from('fiados_clientes').insert({
@@ -5825,6 +6112,18 @@ async function guardarClienteFiado(){
   closeModal('modal-fiado-nuevo');
   renderFiado();
   toast('🤝 Cliente '+nom+' agregado ✓');
+  if(pedIdPendienteEntrega){
+    pedidoEntregaEsperaFiado = null;
+    var nuevoClienteId = ins.data.id;
+    setTimeout(function(){
+      marcarPedidoOnlineEntregado(pedIdPendienteEntrega);
+      selPagoEntrega('cuenta_corriente', el('epm-cuenta_corriente'));
+      cargarSelectorFiadoEntrega().then(function(){
+        var sel = el('entregar-fiado-cliente-sel');
+        if(sel){ sel.value = nuevoClienteId; selFiadoClienteEntrega(nuevoClienteId); }
+      });
+    }, 200);
+  }
 }
 
 async function abrirDetalleFiado(id){
@@ -6288,6 +6587,7 @@ function initAppData(){
   set('cfg-nombre','val',config.nombre||'');
   set('cfg-tel-dueno','val',config.tel||'');
   set('cfg-email-dueno','val',config.emailDueno||'');
+  set('cfg-costo-envio','val',config.costoEnvio!==undefined?config.costoEnvio:'');
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-alias-dni','val',config.aliasDni||'');
