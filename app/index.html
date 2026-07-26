@@ -1134,6 +1134,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-t">⚙️ Configuración</div>
   <div class="modal-s">Datos del negocio y configuración de la app</div>
 
+  <div id="cfg-onboarding-banner" style="display:none;background:var(--sur2);border:1px solid var(--acc2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--txt);line-height:1.5;">👋 Completá estos datos para que las alertas automáticas funcionen bien (facturas vencidas, límite de fiado). Podés cerrar esto y completarlo después.</div>
+
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">🏪 Mi negocio</div>
   <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="cfg-nombre" placeholder="Ej: Almacén Don Juan"></div>
   <div class="fg"><label class="fl">Teléfono del dueño (WhatsApp)</label><input class="fi" id="cfg-tel-dueno" placeholder="Ej: 2473410437" type="tel" inputmode="numeric"></div>
@@ -2130,6 +2132,9 @@ function openModal(id){
 }
 function closeModal(id){
   const m=el(id); if(m) m.classList.remove('on');
+  if(id==='modal-config'){
+    var ob=el('cfg-onboarding-banner'); if(ob) ob.style.display='none';
+  }
   if(id==='modal-prod' && prodEditId){
     prodEditId=null;
     var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
@@ -5481,7 +5486,25 @@ function ocultarLogin(){
   var ls=el('login-screen'); if(ls)ls.style.display='none';
   initAppData();
   iniciarPollingPedidosOnline();
+  verificarOnboarding();
   setTimeout(function(){ alertarFacturasVencidas(); }, 3000);
+}
+
+function verificarOnboarding(){
+  if(localStorage.getItem('gp_onboarding_mostrado')) return;
+  try{ localStorage.setItem('gp_onboarding_mostrado','1'); }catch(e){}
+  var faltaNombre = !config.nombre;
+  var faltaTel = !config.tel;
+  var faltaEmail = !config.emailDueno;
+  if(!faltaNombre && !faltaTel && !faltaEmail) return;
+  var banner = el('cfg-onboarding-banner');
+  if(banner) banner.style.display='block';
+  openModal('modal-config');
+  setTimeout(function(){
+    var focusId = faltaNombre ? 'cfg-nombre' : (faltaTel ? 'cfg-tel-dueno' : 'cfg-email-dueno');
+    var fEl = el(focusId);
+    if(fEl) fEl.focus();
+  }, 200);
 }
 
 function alertarFacturasVencidas(){
@@ -5509,7 +5532,7 @@ function alertarFacturasVencidas(){
   try{ localStorage.setItem(alertaKey,'1'); }catch(e){}
 
   // Solo email — no WhatsApp para no interrumpir la caja
-  var emailDueno = (config.email||currentUser&&currentUser.email||'');
+  var emailDueno = (config.emailDueno||currentUser&&currentUser.email||'');
 
   var detalle = vencidas.map(function(f){
     var pendiente = f.montoPagado ? (f.monto - f.montoPagado) : f.monto;
