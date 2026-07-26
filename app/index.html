@@ -7284,12 +7284,14 @@ if(document.readyState==='loading'){
 
   var gpChatHistorial = [];
   var gpChatAbierto = false;
+  var gpSaludoMostrado = false;
 
   function gpToggleChat(){
     var panel = document.getElementById('gp-chat-panel');
     gpChatAbierto = !gpChatAbierto;
     panel.classList.toggle('open', gpChatAbierto);
-    if(gpChatAbierto && gpChatHistorial.length===0){
+    if(gpChatAbierto && !gpSaludoMostrado){
+      gpSaludoMostrado = true;
       gpAppendMensaje('¡Hola! Soy el asistente de GestoPro. Puedo ayudarte a usar la app (configuración, módulos) o consultar datos de tu negocio (stock, pedidos, facturas). ¿En qué te ayudo?', 'bot');
     }
   }
