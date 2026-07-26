@@ -157,6 +157,7 @@
     background: #f0fdf4;
   }
   #campo-direccion.oculto { display: none; }
+  #linea-envio.oculto { display: none; }
   .btn-ubicacion {
     width: 100%;
     padding: 11px;
@@ -269,6 +270,10 @@ function formatoPrecio(n) {
   return "$" + Number(n).toLocaleString("es-AR");
 }
 
+function costoEnvioActual() {
+  return negocio && negocio.costo_envio ? Number(negocio.costo_envio) : 0;
+}
+
 function renderizarMenu() {
   const cont = document.getElementById("contenido-menu");
   cont.innerHTML = "";
@@ -308,6 +313,9 @@ function cambiarCantidad(itemId, delta) {
   const actual = carrito[itemId] || 0;
   let nueva = actual + delta;
   if (nueva < 0) nueva = 0;
+  // item.stock ya viene calculado como "disponible real" (stock del
+  // producto vinculado, menos lo reservado en otros pedidos pendientes)
+  // gracias a la vista menu_items_publico — no es el stock crudo.
   if (item.stock !== null && nueva > item.stock) nueva = item.stock;
   if (nueva === 0) {
     delete carrito[itemId];
@@ -318,7 +326,7 @@ function cambiarCantidad(itemId, delta) {
   actualizarBarraCarrito();
 }
 
-function calcularTotal() {
+function calcularSubtotal() {
   return Object.entries(carrito).reduce((acc, [id, cant]) => {
     const item = items.find(i => i.id === id);
     return acc + (item.precio * cant);
@@ -335,14 +343,16 @@ function actualizarBarraCarrito() {
   barra.classList.add("visible");
   document.getElementById("barra-carrito-texto").textContent =
     `${totalProductos} producto${totalProductos > 1 ? "s" : ""}`;
-  document.getElementById("barra-carrito-total").textContent = formatoPrecio(calcularTotal());
+  // La barra flotante muestra el subtotal de productos; el envío se ve
+  // recién en el panel de checkout, una vez que se elige la forma de entrega.
+  document.getElementById("barra-carrito-total").textContent = formatoPrecio(calcularSubtotal());
 }
 
 document.getElementById("barra-carrito").addEventListener("click", abrirCheckout);
 
 function abrirCheckout() {
   const panel = document.getElementById("panel");
-  const total = calcularTotal();
+  const subtotal = calcularSubtotal();
 
   const lineasResumen = Object.entries(carrito).map(([id, cant]) => {
     const item = items.find(i => i.id === id);
@@ -353,7 +363,10 @@ function abrirCheckout() {
     <button class="panel-cerrar" onclick="cerrarPanel()">×</button>
     <h2>Confirmar pedido</h2>
     ${lineasResumen}
-    <div class="resumen-total"><span>Total</span><span>${formatoPrecio(total)}</span></div>
+    <div class="resumen-linea" id="linea-envio">
+      <span>Envío</span><span id="envio-monto">${formatoPrecio(costoEnvioActual())}</span>
+    </div>
+    <div class="resumen-total"><span>Total</span><span id="total-final">${formatoPrecio(subtotal + costoEnvioActual())}</span></div>
 
     <label>Tu nombre</label>
     <input type="text" id="campo-nombre" placeholder="Nombre y apellido">
@@ -383,11 +396,21 @@ function abrirCheckout() {
     <button class="btn-principal" id="btn-confirmar" onclick="confirmarPedido()">Confirmar pedido</button>
   `;
   document.getElementById("overlay").classList.add("visible");
+  toggleDireccion();
 }
 
 function toggleDireccion() {
   const esRetira = document.querySelector('input[name="entrega"]:checked').value === "retira";
   document.getElementById("campo-direccion").classList.toggle("oculto", esRetira);
+
+  // El envío solo corre para delivery, y solo si el negocio cargó un costo > 0.
+  const envio = esRetira ? 0 : costoEnvioActual();
+  const lineaEnvio = document.getElementById("linea-envio");
+  lineaEnvio.classList.toggle("oculto", envio <= 0);
+  document.getElementById("envio-monto").textContent = formatoPrecio(envio);
+
+  const subtotal = calcularSubtotal();
+  document.getElementById("total-final").textContent = formatoPrecio(subtotal + envio);
 }
 
 function compartirUbicacion() {
@@ -439,7 +462,8 @@ async function confirmarPedido() {
     const item = items.find(i => i.id === id);
     return { menu_item_id: id, nombre: item.nombre, precio: item.precio, cantidad: cant };
   });
-  const subtotal = calcularTotal();
+  const subtotal = calcularSubtotal();
+  const costoEnvio = tipoEntrega === "delivery" ? costoEnvioActual() : 0;
 
   const pedido = {
     negocio_id: negocio.id,
@@ -451,8 +475,8 @@ async function confirmarPedido() {
     dest_lng: (tipoEntrega === "delivery" && ubicacionCliente) ? ubicacionCliente.lng : null,
     items: itemsPedido,
     subtotal: subtotal,
-    costo_envio: 0,
-    total: subtotal,
+    costo_envio: costoEnvio,
+    total: subtotal + costoEnvio,
     metodo_pago: metodoPago,
     estado: "pendiente"
   };
@@ -495,7 +519,7 @@ async function iniciar() {
   }
 
   try {
-    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre`);
+    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre,costo_envio`);
     if (negocios.length === 0) {
       cont.innerHTML = '<div class="estado-mensaje">No encontramos este negocio.</div>';
       return;
@@ -503,8 +527,12 @@ async function iniciar() {
     negocio = negocios[0];
     document.getElementById("nombre-negocio").textContent = negocio.nombre;
 
+    // menu_items_publico ya calcula el stock "disponible" real: descuenta
+    // lo que está reservado en pedidos pendientes/en preparación, para que
+    // dos clientes no puedan pedir de más sobre el mismo stock al mismo
+    // tiempo (antes se leía el stock crudo de menu_items).
     items = await consultarSupabase(
-      `menu_items?negocio_id=eq.${negocio.id}&visible=eq.true&order=orden.asc,nombre.asc`
+      `menu_items_publico?negocio_id=eq.${negocio.id}&order=orden.asc,nombre.asc`
     );
 
     if (items.length === 0) {
