@@ -3337,7 +3337,8 @@ function guardarGF(){
   const nom=get('gf-nom').trim(); const monto=parseFloat(get('gf-monto'));
   if(!nom||!monto){toast('Completá nombre y monto','err');return;}
   const ico=el('gf-ico'); const cat=el('gf-cat'); const rep=el('gf-rep'); const gest=el('gf-estado');
-  gastosFijos.push({id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'});
+  var _gf = {id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'};
+  gastosFijos.push(_gf);
   ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
   closeModal('modal-gf'); saveGastoFijo(_gf); renderDash(); renderGastos();
   toast('💡 Gasto fijo guardado ✓');
@@ -5349,7 +5350,6 @@ async function renderFinanzas(){
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
-  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos;
   var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados;
 
   if(kEl) kEl.innerHTML =
