@@ -342,7 +342,7 @@ function actualizarBarraCarrito() {
   }
   barra.classList.add("visible");
   document.getElementById("barra-carrito-texto").textContent =
-    `${totalProductos} producto${totalProductos > 1 ? "s" : ""}`;
+    `${totalProductos} producto${totalProductos > 1 ? "s" : ""} · Finalizar pedido →`;
   // La barra flotante muestra el subtotal de productos; el envío se ve
   // recién en el panel de checkout, una vez que se elige la forma de entrega.
   document.getElementById("barra-carrito-total").textContent = formatoPrecio(calcularSubtotal());
