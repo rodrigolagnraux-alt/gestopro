@@ -2451,21 +2451,21 @@ function abrirRetiro(){
 
 async function confirmarRetiro(){
   var monto = parseFloat(get('retiro-monto'))||0;
-  if(!monto){ toast('Ingresá el monto','err'); return; }
+  if(monto<=0){ toast('Ingresá un monto válido','err'); return; }
   var motivoEl = el('retiro-motivo');
   var motivo = motivoEl ? motivoEl.value : 'retiro_dueño';
   var motivoLbl = {retiro_dueño:'Retiro del dueño', pago_proveedor_efectivo:'Pago proveedor efectivo', gasto_varios:'Gasto varios'};
   var nota = get('retiro-nota').trim();
 
   // Registrar como movimiento de egreso
-  var _me = {id:Date.now(), tipo:'egreso', desc:(motivoLbl[motivo]||motivo)+(nota?' · '+nota:''), monto:monto, fecha:hoy(), metodo:'efectivo', esCaja:true};
+  var _me = {id:Date.now(), tipo:'egreso', desc:(motivoLbl[motivo]||motivo)+(nota?' · '+nota:''), monto:monto, fecha:hoy(), metodo:'efectivo', esCaja:true, cajero:cajeroActual?cajeroActual.nombre:null};
   movimientos.unshift(_me); saveMovimiento(_me);
 
-  // Actualizar retiros en la caja activa
+  // Actualizar retiros en la caja activa — incremento atómico del lado de
+  // Supabase (RPC), para que dos retiros seguidos no se pisen entre sí.
   if(cajaActualId && supabaseClient){
-    var cajaRes = await supabaseClient.from('cajas').select('retiros').eq('id',cajaActualId).single();
-    var retirosActuales = cajaRes.data ? (cajaRes.data.retiros||0) : 0;
-    await supabaseClient.from('cajas').update({retiros: retirosActuales + monto}).eq('id',cajaActualId);
+    var rpcRes = await supabaseClient.rpc('incrementar_retiro_caja', {p_caja_id: cajaActualId, p_monto: monto});
+    if(rpcRes.error) console.log('Error registrando retiro:', rpcRes.error);
   }
 
   closeModal('modal-retiro-caja');
@@ -2848,7 +2848,7 @@ function calcVuelto(){
 }
 function confirmarCobro(){
   const monto=parseFloat(get('cobrar-monto'))||0;
-  if(!monto){toast('Ingresá el monto a cobrar','err');return;}
+  if(monto<=0){toast('Ingresá un monto válido','err');return;}
 
   // Validar stock de los productos cargados
   var lineasConProd = lineasCobro.filter(function(l){return l.prodId;});
@@ -2881,6 +2881,25 @@ function confirmarCobro(){
           }).catch(function(){});
         }
       });
+    }
+  }
+
+  // El monto a cobrar se autocompleta con el subtotal escaneado, pero se puede
+  // pisar a mano (para descuentos, arreglos con el cliente, etc.) — si quedó
+  // muy desacoplado de lo que realmente se escaneó, se pide confirmar antes
+  // de seguir, y se guardan los dos valores en el movimiento para que quede
+  // auditable después.
+  var subtotalLineas = lineasConProd.reduce(function(s,l){
+    var prod = productos.find(function(p){return String(p.id)===String(l.prodId);});
+    return s + (prod ? (prod.pventa||prod.precio||0)*(l.cant||0) : 0);
+  },0);
+  subtotalLineas = Math.round(subtotalLineas*100)/100;
+  if(subtotalLineas>0){
+    var diferenciaMonto = Math.abs(monto-subtotalLineas);
+    var toleranciaMonto = Math.max(50, subtotalLineas*0.05);
+    if(diferenciaMonto>toleranciaMonto){
+      var seguirConMonto = confirm('El monto a cobrar ('+fmtM(monto)+') no coincide con lo escaneado ('+fmtM(subtotalLineas)+'). ¿Confirmás que es correcto?');
+      if(!seguirConMonto) return;
     }
   }
 
@@ -2919,8 +2938,8 @@ function confirmarCobro(){
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
-      prod.stock=Math.max(0,prod.stock-l.cant);
-      guardarEnNube('productos',prod.id,prod);
+      prod.stock=Math.max(0,prod.stock-l.cant); // optimista, para feedback inmediato en pantalla
+      ajustarStockProducto(prod.id,-l.cant); // ajuste real, atómico, del lado de Supabase
       var um=prod.um||'UN';
       prods.push(l.cant+' '+um+' '+prod.nom);
       if(pagoActual==='fiado'){
@@ -2969,7 +2988,7 @@ function confirmarCobro(){
     descFinal='👤 '+empNom+' · '+descFinal;
   }
 
-  const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods,cajero:cajeroActual?cajeroActual.nombre:null};
+  const _mc={id:Date.now(),tipo:pagoActual==='fiado'?'fiado':pagoActual==='empleado'?'empleado':'cobro',desc:descFinal,monto:monto,fecha:hoy(),metodo:pagoActual,productos:prods,cajero:cajeroActual?cajeroActual.nombre:null,subtotalCalc:subtotalLineas>0?subtotalLineas:null};
   movimientos.unshift(_mc);
   lineasCobro=[];
   closeModal('modal-cobrar'); saveMovimiento(_mc); saveState();
@@ -3166,10 +3185,9 @@ function confirmarIngresoFactura(){
     if(!prod)return;
     var precioAnterior = prod.precio||0;
     var pventaAnterior = prod.pventa||0;
-    // Update stock
-    prod.stock+=l.cant;
+    var preciosCambiaron = false;
     // Update cost price
-    if(l.precio>0) prod.precio=l.precio;
+    if(l.precio>0){ prod.precio=l.precio; preciosCambiaron=true; }
     // Recalculate sale price keeping same margin %
     if(l.precio>0){
       var margenActual = l.margen>0 ? l.margen : (precioAnterior>0&&pventaAnterior>0 ? Math.round((pventaAnterior-precioAnterior)/precioAnterior*100) : 30);
@@ -3177,11 +3195,17 @@ function confirmarIngresoFactura(){
       if(pventaAnterior>0 && nuevoPventa!==pventaAnterior){
         cambiosPrecio.push({nom:prod.nom,anterior:pventaAnterior,nuevo:nuevoPventa,margen:margenActual,costo:l.precio});
       }
-      prod.pventa = nuevoPventa;
+      prod.pventa = nuevoPventa; preciosCambiaron=true;
     } else if(l.margen>0){
-      prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100));
+      prod.pventa = Math.ceil((prod.precio||0)*(1+l.margen/100)); preciosCambiaron=true;
     }
-    guardarEnNube('productos',prod.id,prod);
+    // Precio/pventa se guardan con un update chico (sin tocar stock) — el stock
+    // se ajusta aparte, de forma atómica, para no pisar ventas concurrentes.
+    if(preciosCambiaron && supabaseClient && currentNegocioId){
+      supabaseClient.from('productos_v2').update({precio:prod.precio,pventa:prod.pventa}).eq('id',String(prod.id)).eq('negocio_id',currentNegocioId).then(function(){}).catch(function(e){console.log('Error guardando precio:',e);});
+    }
+    prod.stock+=l.cant; // optimista, para feedback inmediato en pantalla
+    ajustarStockProducto(prod.id,l.cant); // ajuste real, atómico, del lado de Supabase
     const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
@@ -3195,7 +3219,7 @@ function confirmarIngresoFactura(){
     if(estadoFact==='pagada'){
       var origenEgresoFact = pagoFactura==='efectivo' ? origenPagoFact : '';
       var descEgresoFact = 'Pago factura '+_fi.num+' · '+prov+(origenEgresoFact==='bolsillo'?' · Del bolsillo':'');
-      var _egf={id:Date.now()+Math.random(),tipo:'egreso',desc:descEgresoFact,monto:total,fecha:hoy(),metodo:pagoFactura,origen:origenEgresoFact};
+      var _egf={id:Date.now()+Math.random(),tipo:'egreso',desc:descEgresoFact,monto:total,fecha:hoy(),metodo:pagoFactura,origen:origenEgresoFact,cajero:cajeroActual?cajeroActual.nombre:null};
       movimientos.unshift(_egf); saveMovimiento(_egf);
     }
   }
@@ -3231,10 +3255,10 @@ function guardarEgreso(){
   const prod=productos.find(function(p){return p.id==s.value;});
   if(!prod)return;
   if(cant>prod.stock){toast('Stock insuficiente. Disponible: '+prod.stock+' '+prod.um,'err');return;}
-  prod.stock-=cant;
-  guardarEnNube('productos',prod.id,prod);
+  prod.stock-=cant; // optimista, para feedback inmediato en pantalla
+  ajustarStockProducto(prod.id,-cant); // ajuste real, atómico, del lado de Supabase
   const mot=el('eg-motivo'); const motivo=mot?mot.value:'Egreso';
-  const _me={id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo}; movimientos.unshift(_me);
+  const _me={id:Date.now(),tipo:'egreso',prodId:prod.id,prodNom:prod.nom,cant:cant,fecha:get('eg-fecha')||hoy(),motivo:motivo,cajero:cajeroActual?cajeroActual.nombre:null}; movimientos.unshift(_me);
   set('eg-cant','val','');
   closeModal('modal-egreso'); saveMovimiento(_me); renderDash();
   toast('📤 Registrado: '+cant+' '+prod.um+' de '+prod.nom);
@@ -3243,7 +3267,7 @@ function guardarEgreso(){
 // ═══ FACTURA ═══
 function guardarFact(){
   const prov=get('f-prov').trim(); const monto=parseFloat(get('f-monto'));
-  if(!prov||!monto){toast('Completá proveedor y monto','err');return;}
+  if(!prov||!monto||monto<0){toast('Completá proveedor e ingresá un monto válido','err');return;}
   const fest=el('f-estado'); const estado=fest?fest.value:'pendiente';
   const _f={id:Date.now(),num:get('f-num').trim()||('FACT-'+Date.now()),prov:prov,fecha:get('f-fecha')||hoy(),venc:get('f-venc'),monto:monto,estado:estado,obs:get('f-obs').trim()}; facturas.unshift(_f);
   ['f-num','f-prov','f-monto','f-venc','f-obs'].forEach(function(id){set(id,'val','');});
@@ -3283,14 +3307,16 @@ function confirmarPagoFactura(){
   var f = facturas.find(function(f){return String(f.id)===String(factPagarId);});
   if(!f) return;
   var monto = parseFloat(el('fpago-monto').value)||f.monto;
+  if(monto<=0){ toast('Ingresá un monto válido','err'); return; }
   var metodoEl = el('fpago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque'};
   var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
+  if(monto > saldoOriginal + 0.5){ toast('El pago supera el saldo pendiente ('+fmtM(saldoOriginal)+')','err'); return; }
   var diff = saldoOriginal - monto;
   var origenFact = (metodo==='efectivo') ? origenPagoFactExist : '';
   // Registrar egreso automático por el monto realmente pagado
-  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov+(origenFact==='bolsillo'?' · Del bolsillo':''),monto:monto,fecha:hoy(),metodo:metodo,origen:origenFact};
+  var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov+(origenFact==='bolsillo'?' · Del bolsillo':''),monto:monto,fecha:hoy(),metodo:metodo,origen:origenFact,cajero:cajeroActual?cajeroActual.nombre:null};
   movimientos.unshift(egreso); saveMovimiento(egreso);
 
   if(diff > 0.5){
@@ -3303,14 +3329,6 @@ function confirmarPagoFactura(){
     closeModal('modal-pagar-fact');
     renderFacts(); renderDash();
     toast('⚠️ Pago parcial registrado · Quedan '+fmtM(diff)+' pendientes de '+f.num);
-  } else if(diff < -0.5){
-    // Pagó de más
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0; f.origen=origenFact;
-    f.montoPagado = (f.montoPagado||0) + monto;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
-    toast('✅ Factura pagada · Pagaste '+fmtM(Math.abs(diff))+' de más');
   } else {
     f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0; f.origen=origenFact;
     f.montoPagado = (f.montoPagado||0) + monto;
@@ -3335,7 +3353,7 @@ function fFact(f,btn){
 // ═══ GASTO FIJO ═══
 function guardarGF(){
   const nom=get('gf-nom').trim(); const monto=parseFloat(get('gf-monto'));
-  if(!nom||!monto){toast('Completá nombre y monto','err');return;}
+  if(!nom||!monto||monto<0){toast('Completá nombre e ingresá un monto válido','err');return;}
   const ico=el('gf-ico'); const cat=el('gf-cat'); const rep=el('gf-rep'); const gest=el('gf-estado');
   var _gf = {id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'};
   gastosFijos.push(_gf);
@@ -4091,14 +4109,9 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
       diasMap[fecha].fiadoEntregado += m.monto||0;
     }
   });
-  factsF.forEach(function(f){
-    if((f.estado==='pagada'||f.estado==='parcial') && f.origen==='caja'){
-      var fecha = f.fecha ? f.fecha.split('T')[0] : null;
-      if(!fecha) return;
-      if(!diasMap[fecha]) diasMap[fecha] = {cobros:{efectivo:0,cuentadni:0,mercadopago:0,otros:0},egresos:0,egresosBolsillo:0,fiadoEntregado:0,fiadoCobrado:0};
-      diasMap[fecha].egresos += f.montoPagado||f.monto||0;
-    }
-  });
+  // Nota: las facturas pagadas "de caja" ya entran acá vía su egreso en movsF
+  // (confirmarPagoFactura/confirmarIngresoFactura generan ese movimiento) —
+  // sumarlas también desde facturas_v2 las contaba dos veces.
 
   var dias = Object.keys(diasMap).sort(function(a,b){return b.localeCompare(a);});
   if(!dias.length){
@@ -4655,8 +4668,8 @@ async function confirmarEntregaPedidoOnline(){
   // Recién ahora descontamos el stock real de productos_v2
   itemsResueltos.forEach(function(x){
     if(x.prod){
-      x.prod.stock = Math.max(0, x.prod.stock-(x.it.cantidad||1));
-      guardarEnNube('productos', x.prod.id, x.prod);
+      x.prod.stock = Math.max(0, x.prod.stock-(x.it.cantidad||1)); // optimista, para feedback inmediato en pantalla
+      ajustarStockProducto(x.prod.id, -(x.it.cantidad||1)); // ajuste real, atómico, del lado de Supabase
     }
   });
 
@@ -6018,6 +6031,22 @@ function guardarProductoNube(p){
   }).then(function(){}).catch(function(e){console.log('Save producto error:',e);});
 }
 
+// Ajusta el stock de un producto de forma atómica en Supabase (suma/resta un
+// delta directo en la base vía RPC) en vez de leer el cache local, sumar/restar
+// en JS y hacer upsert del objeto completo — eso permitía que dos ventas
+// concurrentes del mismo producto se pisen y se pierda un descuento de stock.
+// delta negativo para ventas/egresos, positivo para ingresos.
+function ajustarStockProducto(prodId, delta){
+  if(!supabaseClient||!currentNegocioId||!delta) return;
+  supabaseClient.rpc('ajustar_stock_producto', {p_producto_id:String(prodId), p_delta:delta}).then(function(res){
+    if(res.error){ console.log('Error ajustando stock:', res.error); return; }
+    var nuevoStock = res.data;
+    if(nuevoStock===null||nuevoStock===undefined) return;
+    var prod = productos.find(function(p){return String(p.id)===String(prodId);});
+    if(prod) prod.stock = nuevoStock;
+  }).catch(function(e){console.log('Error ajustando stock:',e);});
+}
+
 function guardarMovimientoNube(m){
   if(!supabaseClient||!currentNegocioId) return;
   var fecha = (m.fecha||'').slice(0,10) || new Date().toISOString().slice(0,10);
@@ -6030,7 +6059,8 @@ function guardarMovimientoNube(m){
     prod_nom:m.prodNom||null,
     cant:m.cant||null, costo:m.costo||null,
     cat:m.cat||null, cajero:m.cajero||null,
-    origen:m.origen||null
+    origen:m.origen||null,
+    subtotal_calculado:(m.subtotalCalc!==undefined&&m.subtotalCalc!==null)?m.subtotalCalc:null
   }).then(function(){}).catch(function(e){console.log('Save movimiento error:',e);});
 }
 
@@ -6405,7 +6435,7 @@ async function pagarFiado(){
   var c = fiadoActualCliente;
   if(!c) return;
   var pago = parseFloat(get('fd-pago'))||0;
-  if(!pago){ toast('Ingresá el monto','err'); return; }
+  if(pago<=0){ toast('Ingresá un monto válido','err'); return; }
   var modoPrecio = c.precio_original ? 'original' : 'actual';
   var deudaCobrable = calcularDeudaPendiente(c, modoPrecio);
   if(pago > deudaCobrable + 1){ toast('El pago supera la deuda ('+fmtM(deudaCobrable)+')','err'); return; }
