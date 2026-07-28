@@ -1082,6 +1082,35 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </div>
 
+<!-- MODAL CONFIRMAR PAGO DE GASTO FIJO -->
+<div class="ov" id="modal-gf-pagar">
+<div class="modal" style="max-width:420px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">✅ Confirmar pago de gasto fijo</div>
+  <div id="modal-gf-pagar-header" style="margin-bottom:16px;"></div>
+  <div class="fg">
+    <label class="fl">¿De dónde sale el dinero?</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+      <div class="pay-method on" onclick="selOrigenPagoGF('caja',this)" id="gfpago-origen-caja" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">🏪</div>
+        <div class="pay-lbl" style="font-size:11px;">De la caja</div>
+        <div class="pay-sub" style="font-size:10px;">Afecta el cierre</div>
+      </div>
+      <div class="pay-method" onclick="selOrigenPagoGF('bolsillo',this)" id="gfpago-origen-bolsillo" style="padding:10px 6px;">
+        <div class="pay-ico" style="font-size:20px;">💼</div>
+        <div class="pay-lbl" style="font-size:11px;">Del bolsillo</div>
+        <div class="pay-sub" style="font-size:10px;">No afecta la caja</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--mut2);margin-bottom:14px;">Se registrará automáticamente como egreso en Movimientos.</div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-gf-pagar')">Cancelar</button>
+    <button class="btn btn-grn" onclick="confirmarPagoGF()">✓ Confirmar pago</button>
+  </div>
+</div>
+</div>
+
 <!-- MODAL PRODUCTO -->
 <div class="ov" id="modal-prod">
 <div class="modal">
@@ -2033,6 +2062,9 @@ var cajeroActual = null; // {id, nombre, esDueno}
 var cajaActualId = null; // ID de la caja abierta en Supabase
 var cajaPinFallosSeguidos = 0;
 let lineasIngreso=[], lineasCobro=[];
+var gastosFijosPagos=[]; // pagos reales del mes actual, uno por gasto fijo pagado
+var gfPagarId=null; // gasto fijo pendiente de confirmar pago (origen caja/bolsillo)
+var origenPagoGF='caja';
 
 const PLANES={
   gratis:   {nombre:'Plan Gratis',   sub:'Prueba gratis — 35 días', precio:'$0',    maxP:50},
@@ -2196,6 +2228,7 @@ function closeModal(id){
   }
   if(id==='modal-entregar-pedido'){ pedidoEntregaActual = null; }
   if(id==='modal-fiado-nuevo'){ pedidoEntregaEsperaFiado = null; }
+  if(id==='modal-gf-pagar'){ gfPagarId = null; }
   if(id==='modal-prod' && prodEditId){
     prodEditId=null;
     var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
@@ -3351,24 +3384,87 @@ function fFact(f,btn){
 }
 
 // ═══ GASTO FIJO ═══
-function guardarGF(){
+async function guardarGF(){
   const nom=get('gf-nom').trim(); const monto=parseFloat(get('gf-monto'));
   if(!nom||!monto||monto<0){toast('Completá nombre e ingresá un monto válido','err');return;}
   const ico=el('gf-ico'); const cat=el('gf-cat'); const rep=el('gf-rep'); const gest=el('gf-estado');
-  var _gf = {id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:gest?gest.value:'pendiente'};
+  var marcarPagado = gest ? gest.value==='pagado' : false;
+  var _gf = {id:Date.now(),nom:nom,cat:cat?cat.value:'Servicios',ico:ico?ico.value:'💰',monto:monto,dia:parseInt(get('gf-dia'))||1,repetir:rep?rep.checked:true,estado:'pendiente'};
   gastosFijos.push(_gf);
   ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
-  closeModal('modal-gf'); saveGastoFijo(_gf); renderDash(); renderGastos();
+  closeModal('modal-gf'); saveGastoFijo(_gf);
+  if(marcarPagado) await registrarPagoGF(_gf,'caja');
+  renderDash(); await renderGastos();
   toast('💡 Gasto fijo guardado ✓');
 }
+
+// Un pago real de un gasto fijo — se guarda con fecha en gastos_fijos_pagos
+// (no un booleano perpetuo) y genera el egreso correspondiente en Movimientos,
+// igual que confirmarPagoFactura(). Si es "del bolsillo" no toca el cierre de caja.
+async function registrarPagoGF(gf, origen){
+  if(!currentNegocioId||!supabaseClient) return;
+  var ins = await supabaseClient.from('gastos_fijos_pagos').insert({negocio_id:currentNegocioId,gasto_fijo_id:String(gf.id),monto:gf.monto,fecha:hoy(),origen:origen}).select().single();
+  if(ins.data) gastosFijosPagos.push(ins.data);
+  var _me = {id:Date.now()+Math.random(),tipo:'egreso',desc:'Gasto fijo — '+gf.nom+(origen==='bolsillo'?' · Del bolsillo':''),monto:gf.monto,fecha:hoy(),metodo:'efectivo',origen:origen,cat:'GastoFijo',cajero:cajeroActual?cajeroActual.nombre:null};
+  movimientos.unshift(_me); saveMovimiento(_me);
+}
+
+function gfPagadoEsteMes(id){
+  return gastosFijosPagos.some(function(p){return String(p.gasto_fijo_id)===String(id);});
+}
+
 function toggleGFPago(id){
   const gf=gastosFijos.find(function(gf){return gf.id===id;});
-  if(gf){gf.estado=gf.estado==='pagado'?'pendiente':'pagado';saveGastoFijo(gf);renderGastos();renderDash();toast(gf.estado==='pagado'?'✅ Pagado':'↩ Marcado pendiente');}
+  if(!gf) return;
+  if(gfPagadoEsteMes(id)){
+    deshacerPagoGF(gf);
+  } else {
+    gfPagarId = id;
+    origenPagoGF = 'caja';
+    var oc=el('gfpago-origen-caja'), ob=el('gfpago-origen-bolsillo');
+    if(oc) oc.classList.add('on'); if(ob) ob.classList.remove('on');
+    var mh = el('modal-gf-pagar-header');
+    if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+escapeHtml(gf.nom)+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(gf.monto)+'</div>';
+    openModal('modal-gf-pagar');
+  }
+}
+
+function selOrigenPagoGF(origen, selEl){
+  origenPagoGF = origen;
+  document.querySelectorAll('#modal-gf-pagar .pay-method').forEach(function(m){m.classList.remove('on');});
+  if(selEl) selEl.classList.add('on');
+}
+
+async function confirmarPagoGF(){
+  const gf=gastosFijos.find(function(gf){return gf.id===gfPagarId;});
+  if(!gf) return;
+  await registrarPagoGF(gf, origenPagoGF);
+  closeModal('modal-gf-pagar');
+  gfPagarId = null;
+  renderDash(); await renderGastos();
+  toast('✅ Pagado');
+}
+
+async function deshacerPagoGF(gf){
+  var pagosDeEste = gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)===String(gf.id);});
+  for(var i=0;i<pagosDeEste.length;i++){
+    await supabaseClient.from('gastos_fijos_pagos').delete().eq('id',pagosDeEste[i].id);
+  }
+  gastosFijosPagos = gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)!==String(gf.id);});
+  renderDash(); await renderGastos();
+  toast('↩ Marcado pendiente');
 }
 function eliminarGF(id){
   if(!confirm('¿Eliminar?'))return;
   gastosFijos=gastosFijos.filter(function(gf){return gf.id!==id;});
-  saveState();if(supabaseClient&&currentNegocioId)supabaseClient.from('gastos_fijos').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){}); renderGastos();renderDash();toast('Eliminado');
+  gastosFijosPagos=gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)!==String(id);});
+  saveState();
+  if(supabaseClient&&currentNegocioId){
+    supabaseClient.from('gastos_fijos').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});
+    supabaseClient.from('gastos_fijos_pagos').delete().eq('gasto_fijo_id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});
+  }
+  renderGastos();renderDash();toast('Eliminado');
 }
 
 // ═══ PRODUCTO ═══
@@ -3895,7 +3991,19 @@ function renderFacts(){
 }
 
 // ═══ RENDER GASTOS ═══
-function renderGastos(){
+async function renderGastos(){
+  // "Pagado" ya no es un booleano perpetuo: se calcula según si existe un
+  // pago real (gastos_fijos_pagos) dentro del mes actual — así se resetea
+  // solo al entrar un mes nuevo, sin ningún job/cron.
+  if(supabaseClient && currentNegocioId){
+    var hoyD = new Date();
+    var desde = new Date(hoyD.getFullYear(), hoyD.getMonth(), 1).toISOString().slice(0,10);
+    var hasta = new Date(hoyD.getFullYear(), hoyD.getMonth()+1, 0).toISOString().slice(0,10);
+    var res = await supabaseClient.from('gastos_fijos_pagos').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desde).lte('fecha',hasta);
+    gastosFijosPagos = res.data || [];
+  }
+  recalcularEstadoGastosFijos();
+
   const totalMes=gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
   const pend=gastosFijos.filter(function(gf){return gf.estado==='pendiente';});
   const pag=gastosFijos.filter(function(gf){return gf.estado==='pagado';});
@@ -3903,7 +4011,7 @@ function renderGastos(){
   const gk=el('gf-kpis');
   if(gk)gk.innerHTML='<div class="kpi kp"><div class="kl">TOTAL MES</div><div class="kn" style="font-size:18px;">'+fmtM(totalMes)+'</div><div class="kd">'+gastosFijos.length+' gastos</div></div><div class="kpi kr"><div class="kl">POR PAGAR</div><div class="kn" style="font-size:18px;">'+fmtM(pend.reduce(function(s,gf){return s+gf.monto;},0))+'</div><div class="kd">'+pend.length+' pendientes</div></div><div class="kpi kg"><div class="kl">YA PAGADO</div><div class="kn" style="font-size:18px;">'+fmtM(pag.reduce(function(s,gf){return s+gf.monto;},0))+'</div><div class="kd">'+pag.length+' pagados</div></div>';
   const gl=el('gf-list');
-  if(gl)gl.innerHTML=gastosFijos.length?gastosFijos.slice().sort(function(a,b){return a.dia-b.dia;}).map(function(gf){return'<div class="gf-item"><div class="gf-ico-wrap">'+gf.ico+'</div><div class="gf-txt"><div class="gf-name">'+gf.nom+'</div><div class="gf-meta">'+gf.cat+' · Día '+gf.dia+(gf.repetir?' · 🔄 Mensual':'')+'</div></div><div class="gf-right"><div class="gf-monto">'+fmtM(gf.monto)+'</div><div style="margin-top:6px;display:flex;gap:4px;justify-content:flex-end;"><button class="btn '+(gf.estado==='pagado'?'btn-ghost':'btn-grn')+' btn-sm" onclick="toggleGFPago('+gf.id+')">'+(gf.estado==='pagado'?'↩':'✓ Pagar')+'</button><button class="btn btn-red btn-sm" onclick="eliminarGF('+gf.id+')">✕</button></div></div></div>';}).join(''):'<div class="empty"><div class="empty-ico">💡</div><div class="empty-t">Sin gastos fijos</div><div class="empty-s">Agregá luz, agua, gas, alquiler...</div></div>';
+  if(gl)gl.innerHTML=gastosFijos.length?gastosFijos.slice().sort(function(a,b){return a.dia-b.dia;}).map(function(gf){return'<div class="gf-item"><div class="gf-ico-wrap">'+gf.ico+'</div><div class="gf-txt"><div class="gf-name">'+escapeHtml(gf.nom)+'</div><div class="gf-meta">'+escapeHtml(gf.cat)+' · Día '+gf.dia+(gf.repetir?' · 🔄 Mensual':'')+'</div></div><div class="gf-right"><div class="gf-monto">'+fmtM(gf.monto)+'</div><div style="margin-top:6px;display:flex;gap:4px;justify-content:flex-end;"><button class="btn '+(gf.estado==='pagado'?'btn-ghost':'btn-grn')+' btn-sm" onclick="toggleGFPago('+gf.id+')">'+(gf.estado==='pagado'?'↩':'✓ Pagar')+'</button><button class="btn btn-red btn-sm" onclick="eliminarGF('+gf.id+')">✕</button></div></div></div>';}).join(''):'<div class="empty"><div class="empty-ico">💡</div><div class="empty-t">Sin gastos fijos</div><div class="empty-s">Agregá luz, agua, gas, alquiler...</div></div>';
 }
 
 // ═══ RENDER RESUMEN ═══
@@ -3976,12 +4084,15 @@ async function renderResumen(){
     +(tr>0?'<div class="fin-row"><span>🏦 Transferencia (anterior)</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(tr)+'</span></div>':'')
     +'<div class="fin-total"><span class="fin-total-lbl">Total cobrado</span><span class="fin-total-val" style="color:var(--grn);">'+fmtM(totalCobrado)+'</span></div>'
     +(totalEmpMerc>0?'<div style="font-size:11px;color:var(--mut2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">👤 Mercadería empleados: <b style="color:var(--acc2);">'+fmtM(totalEmpMerc)+'</b></div>':'');
-  const totalGF=gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
+  // Gastos fijos: lo efectivamente pagado DENTRO de este período (movimiento
+  // tipo egreso con cat:'GastoFijo'), no el total comprometido del mes actual
+  // — antes mostraba siempre el mismo número sin importar qué mes mirabas.
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
   const esPagoFactura=function(m){ return m.desc && m.desc.indexOf('Pago factura ')===0; };
+  const totalGF=egresosSueltos.filter(function(m){return m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const factsPag=egresosSueltos.filter(function(m){return esPagoFactura(m);}).reduce(function(s,m){return s+(m.monto||0);},0);
-  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&!m.prodId&&!esPagoFactura(m);}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&m.cat!=='GastoFijo'&&!m.prodId&&!esPagoFactura(m);}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
   if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div>'
     +'<div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'
@@ -5358,7 +5469,7 @@ async function renderFinanzas(){
   var ingresos = movsF.filter(function(m){return m.tipo==='ingreso';});
   var totalCompras = ingresos.reduce(function(s,m){return s+((m.costo||0)*(m.cant||0));},0);
   if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
-  var totalGF = gastosFijos.reduce(function(s,gf){return s+gf.monto;},0);
+  var totalGF = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalSueldos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
@@ -6011,10 +6122,23 @@ function sincronizarDatos(){
     supabaseClient.from('gastos_fijos').select('*').eq('negocio_id',currentNegocioId).then(function(r){
       if(r.data&&r.data.length) gastosFijos=r.data.map(function(x){try{return JSON.parse(x.data);}catch(e){return null;}}).filter(Boolean);
     }),
+    // gastos_fijos_pagos del mes actual — para saber qué gasto fijo ya está
+    // pagado ESTE mes sin depender de que se haya abierto la pantalla de
+    // Gastos Fijos (que es la que recalcula gf.estado)
+    supabaseClient.from('gastos_fijos_pagos').select('*').eq('negocio_id',currentNegocioId)
+      .gte('fecha', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10))
+      .then(function(r){ gastosFijosPagos = r.data || []; }),
     // fiados — sin cambios
     supabaseClient.from('fiados_clientes').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom').then(function(r){ fiados=r.data||[]; })
   ];
-  return Promise.all(promises).then(function(){ console.log('Datos sincronizados'); }).catch(function(e){ console.log('Sync error:',e); });
+  return Promise.all(promises).then(function(){
+    recalcularEstadoGastosFijos();
+    console.log('Datos sincronizados');
+  }).catch(function(e){ console.log('Sync error:',e); });
+}
+
+function recalcularEstadoGastosFijos(){
+  gastosFijos.forEach(function(gf){ gf.estado = gfPagadoEsteMes(gf.id) ? 'pagado' : 'pendiente'; });
 }
 
 function guardarProductoNube(p){
