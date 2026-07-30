@@ -1,5 +1,5 @@
 // GestoPro Service Worker
-const CACHE = 'gestopro-v4';
+const CACHE = 'gestopro-v5';
 const ASSETS = ['/app/', '/app/index.html'];
 self.addEventListener('install', function(e){
   e.waitUntil(
