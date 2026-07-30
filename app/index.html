@@ -3062,7 +3062,7 @@ function renderLineas(){
   const cont=el('ing-lineas'); if(!cont) return;
   cont.innerHTML=lineasIngreso.map(function(l){
     var opts='<option value="">— Elegir producto —</option>';
-    productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+p.nom+'</option>'; });
+    productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+escapeHtml(p.nom)+'</option>'; });
     opts+='<option value="__nuevo__">+ Producto nuevo...</option>';
     var sub=l.cant&&l.precio?fmtM(l.cant*l.precio):'—';
     var totalLinea = l.totalLinea || '';
@@ -3269,7 +3269,7 @@ function confirmarIngresoFactura(){
 function abrirEgreso(){
   const s=el('eg-prod');
   if(!s){return;}
-  s.innerHTML=productos.map(function(p){return '<option value="'+p.id+'">'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
+  s.innerHTML=productos.map(function(p){return '<option value="'+p.id+'">'+escapeHtml(p.nom)+' · Stock: '+p.stock+' '+escapeHtml(p.um)+'</option>';}).join('');
   if(!productos.length){toast('Primero agregá productos','err');return;}
   set('eg-fecha','val',hoy()); set('eg-cant','val','');
   updEgresoInfo();
@@ -3527,7 +3527,7 @@ async function cargarSelectProveedores(seleccionado){
   if(seleccionado && lista.indexOf(seleccionado)===-1) lista.push(seleccionado);
   var html = '<option value="">— Sin proveedor —</option>';
   lista.forEach(function(nom){
-    html += '<option value="'+nom+'"'+(nom===seleccionado?' selected':'')+'>'+nom+'</option>';
+    html += '<option value="'+escapeHtml(nom)+'"'+(nom===seleccionado?' selected':'')+'>'+escapeHtml(nom)+'</option>';
   });
   html += '<option value="__nuevo_prov__">+ Nuevo proveedor...</option>';
   sel.innerHTML = html;
@@ -3873,7 +3873,7 @@ function setCatFilter(cat,btn){ const fr=el('prod-fr');if(fr)fr.dataset.cat=cat;
 function abrirEgresoProd(prodId){
   const s=el('eg-prod');
   if(!s)return;
-  s.innerHTML=productos.map(function(p){return'<option value="'+p.id+'"'+(String(p.id)===String(prodId)?' selected':'')+'>'+p.nom+' · Stock: '+p.stock+' '+p.um+'</option>';}).join('');
+  s.innerHTML=productos.map(function(p){return'<option value="'+p.id+'"'+(String(p.id)===String(prodId)?' selected':'')+'>'+escapeHtml(p.nom)+' · Stock: '+p.stock+' '+escapeHtml(p.um)+'</option>';}).join('');
   set('eg-fecha','val',hoy()); set('eg-cant','val','');
   updEgresoInfo(); openModal('modal-egreso');
 }
@@ -5051,7 +5051,7 @@ function buscarProductoScanner(){
   if(list){
     list.innerHTML = byName.slice(0,6).map(function(p){
       return '<div style="padding:10px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="mostrarProductoEncontrado(productos.find(function(pr){return String(pr.id)===String(\''+p.id+'\')}))">'
-        +'<div><div style="font-size:13px;">'+p.nom+'</div><div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.cat+' · '+p.um+'</div></div>'
+        +'<div><div style="font-size:13px;">'+escapeHtml(p.nom)+'</div><div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">'+escapeHtml(p.cat)+' · '+escapeHtml(p.um)+'</div></div>'
         +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--acc2);">'+(p.pventa?fmtM(p.pventa):fmtM(p.precio))+'</div>'
         +'</div>';
     }).join('');
@@ -5402,11 +5402,11 @@ function renderCortesLista(){
 function renderItemCorte(p){
   return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);">'
     +'<div style="flex:1;">'
-    +'<div style="font-size:13px;">'+p.nom+'</div>'
-    +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Stock: '+p.stock+' '+p.um+(p.precio?' · $'+p.precio.toLocaleString('es-AR')+'/'+p.um:'')+'</div>'
+    +'<div style="font-size:13px;">'+escapeHtml(p.nom)+'</div>'
+    +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Stock: '+p.stock+' '+escapeHtml(p.um)+(p.precio?' · $'+p.precio.toLocaleString('es-AR')+'/'+escapeHtml(p.um):'')+'</div>'
     +'</div>'
     +'<div style="display:flex;align-items:center;gap:6px;">'
-    +'<input type="number" placeholder="$/'+p.um+'" value="'+(p.pventa||'')+'" style="width:90px;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
+    +'<input type="number" placeholder="$/'+escapeHtml(p.um)+'" value="'+(p.pventa||'')+'" style="width:90px;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
     +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+');renderCortesLista();">✕</button>'
     +'</div>'
     +'</div>';
