@@ -2328,12 +2328,12 @@ async function abrirSesionCaja(){
   if(!sel) return;
   sel.innerHTML = '<option value="">— Elegir —</option>';
   // Opción dueño
-  sel.innerHTML += '<option value="dueno">👑 ' + (config.negocioNom||'El dueño') + ' (dueño)</option>';
+  sel.innerHTML += '<option value="dueno">👑 ' + escapeHtml(config.negocioNom||'El dueño') + ' (dueño)</option>';
   // Empleados con PIN
   if(currentNegocioId){
     var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
     (res.data||[]).forEach(function(e){
-      sel.innerHTML += '<option value="'+e.id+'">'+e.nombre+'</option>';
+      sel.innerHTML += '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>';
     });
   }
   el('caja-pin-inp').value = '';
@@ -2361,7 +2361,7 @@ async function poblarTurnosDisponibles(){
   var yaUsados = TODOS_TURNOS.filter(function(t){return usados[t.v];});
   var opciones = sinUsar.concat(yaUsados);
   turnoSel.innerHTML = opciones.map(function(t){
-    var aviso = usados[t.v] ? ' — ya usado hoy ('+usados[t.v]+')' : '';
+    var aviso = usados[t.v] ? ' — ya usado hoy ('+escapeHtml(usados[t.v])+')' : '';
     return '<option value="'+t.v+'">'+t.lbl+aviso+'</option>';
   }).join('');
 }
@@ -2805,7 +2805,7 @@ async function cargarSelectorEmpleadoCobro(){
     return;
   }
   sel.innerHTML='<option value="">— Elegir empleado —</option>'+lista.map(function(e){
-    return '<option value="'+e.id+'">'+e.nombre+'</option>';
+    return '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>';
   }).join('');
   set('cobro-empleado-info','display','none');
 }
@@ -7196,7 +7196,7 @@ async function renderReporteMes(listaEmpleados) {
       .eq('empleado_id', emp.id)
       .eq('pagado', true)
       .gte('semana_inicio', inicioMes)
-      .lte('semana_fin', finMes);
+      .lte('semana_inicio', finMes);
     var semanas = sw.data || [];
     var totalSueldos = semanas.reduce(function(a,s){ return a+(s.total_pagado||0); }, 0);
 
@@ -7212,7 +7212,7 @@ async function renderReporteMes(listaEmpleados) {
     var costoReal = totalSueldos + totalMerc;
     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);font-size:12px;">'+
       '<div>'+
-        '<div style="font-weight:600;">'+emp.nombre+'</div>'+
+        '<div style="font-weight:600;">'+escapeHtml(emp.nombre)+'</div>'+
         '<div style="color:var(--mut2);font-size:11px;">Sueldos: '+pesos(totalSueldos)+' · Mercadería: '+pesos(totalMerc)+'</div>'+
       '</div>'+
       '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:var(--acc2);">'+pesos(costoReal)+'</div>'+
@@ -7484,7 +7484,7 @@ async function cargarMercaderiaMes() {
   items.forEach(function(m) {
     totalMes += (m.total||0);
     html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--brd);">'+
-      '<div><span style="font-weight:600;">'+m.producto_nom+'</span> <span style="color:var(--mut2);">x'+m.cantidad+'</span></div>'+
+      '<div><span style="font-weight:600;">'+escapeHtml(m.producto_nom)+'</span> <span style="color:var(--mut2);">x'+m.cantidad+'</span></div>'+
       '<div style="font-family:DM Mono,monospace;color:var(--red);">-'+pesos(m.total)+'</div>'+
     '</div>';
   });
@@ -7569,6 +7569,7 @@ async function guardarMercaderiaEmpleado() {
   var precio = parseFloat(el('emp-merc-precio').value)||0;
   if(!prod){ toast('Ingresá el nombre del producto','err'); return; }
   if(precio <= 0){ toast('Ingresá el precio','err'); return; }
+  if(cant <= 0){ toast('La cantidad debe ser mayor a 0','err'); return; }
   var total = cant * precio;
   await supabaseClient.from('empleados_mercaderia').insert({
     negocio_id: currentNegocioId,
