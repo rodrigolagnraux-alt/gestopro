@@ -457,7 +457,10 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="login-pass" type="password" placeholder="••••••••" style="font-size:15px;" onkeydown="if(event.key==='Enter')loginUser()"></div>
       <div id="login-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
       <button class="btn btn-acc btn-full" onclick="loginUser()" style="font-size:15px;padding:12px;">Entrar</button>
-      <div style="text-align:center;margin-top:14px;">
+      <div style="text-align:center;margin-top:12px;">
+        <span style="font-size:12px;color:var(--acc2);cursor:pointer;" onclick="olvidePassword()">¿Olvidaste tu contraseña?</span>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
         <span style="font-size:13px;color:var(--mut2);">¿No tenés cuenta? </span>
         <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarRegistro()">Registrate gratis</span>
       </div>
@@ -479,6 +482,18 @@ select.fi{appearance:none;cursor:pointer;}
       Plan Gratis incluye 50 productos y funciones básicas.<br>
       Planes desde $60.000/mes.
     </div>
+  </div>
+</div>
+<div id="pantalla-nueva-pass" style="position:fixed;inset:0;background:var(--bg);z-index:1001;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;">
+  <div style="width:100%;max-width:380px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;">🔑 Elegí tu nueva contraseña</div>
+      <div style="font-size:12px;color:var(--mut2);margin-top:6px;">Vení desde el link que te enviamos por email</div>
+    </div>
+    <div class="fg"><label class="fl">Contraseña nueva</label><input class="fi" id="nueva-pass-1" type="password" placeholder="Mínimo 6 caracteres" style="font-size:15px;"></div>
+    <div class="fg"><label class="fl">Repetir contraseña</label><input class="fi" id="nueva-pass-2" type="password" placeholder="Repetir" style="font-size:15px;" onkeydown="if(event.key==='Enter')guardarNuevaPassword()"></div>
+    <div id="nueva-pass-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+    <button class="btn btn-acc btn-full" onclick="guardarNuevaPassword()" style="font-size:15px;padding:12px;">Guardar contraseña</button>
   </div>
 </div>
 <div class="sb-ov" id="sbov" onclick="closeSB()"></div>
@@ -2221,6 +2236,20 @@ function openModal(id){
   const m=el(id);
   if(m){ m.classList.add('on'); _modalZCounter++; m.style.zIndex = String(_modalZCounter); }
   if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
+  if(id==='modal-config'){ abrirModalConfig(); }
+}
+
+// Al abrir Configuración, releemos la config real de Supabase antes de mostrar el
+// formulario — así no se ven (ni se pisan al guardar) datos viejos si otra sesión
+// guardó cambios mientras tanto.
+async function abrirModalConfig(){
+  if(supabaseClient && currentNegocioId){
+    var res = await supabaseClient.from('negocios').select('config').eq('id',currentNegocioId).single();
+    if(res.data && res.data.config){
+      try{ config = Object.assign({}, config, JSON.parse(res.data.config)); }catch(e){}
+    }
+  }
+  poblarFormConfig();
 }
 function closeModal(id){
   const m=el(id); if(m) m.classList.remove('on');
@@ -2257,26 +2286,51 @@ function setPlan(p,planEl){
 }
 
 // ═══ CONFIG ═══
-function guardarConfig(){
+async function guardarConfig(){
   const n=get('cfg-nombre'), a=get('cfg-alias'), cv=get('cfg-cvu');
-  if(n) config.nombre=n;
-  if(a) config.alias=a;
-  if(cv) config.cvu=cv;
-  var telDueno=get('cfg-tel-dueno'); config.tel=telDueno;
-  var emailDueno=get('cfg-email-dueno'); config.emailDueno=emailDueno;
-  var costoEnvio=parseFloat(get('cfg-costo-envio')); config.costoEnvio = isNaN(costoEnvio) ? 0 : costoEnvio;
-  var aliasDni=get('cfg-alias-dni'); config.aliasDni=aliasDni;
-  var cvuDni=get('cfg-cvu-dni'); config.cvuDni=cvuDni;
-  var pin=get('cfg-pin').trim(); config.pin=pin;
+  var telDueno=get('cfg-tel-dueno');
+  var emailDueno=get('cfg-email-dueno');
+  var costoEnvio=parseFloat(get('cfg-costo-envio')); costoEnvio = isNaN(costoEnvio) ? 0 : costoEnvio;
+  var aliasDni=get('cfg-alias-dni');
+  var cvuDni=get('cfg-cvu-dni');
+  var pin=get('cfg-pin').trim();
+  var rd=parseFloat(get('cfg-recargo-domingo')); rd = isNaN(rd) ? 50 : rd;
+  var mpToken=get('cfg-mp-token').trim();
+  var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
+  var fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
+  var snap = _configSnapshotAlAbrir || {};
+
+  // Releemos la config actual de Supabase justo antes de escribir, para no pisar por
+  // completo lo que otra sesión (otro dispositivo/usuario) haya guardado mientras tanto.
+  // Un campo solo se sobreescribe acá si su valor en el formulario cambió respecto al
+  // que había cuando se abrió este modal (comparado contra _configSnapshotAlAbrir) — si
+  // no lo tocaste en este guardado, gana el valor recién leído de Supabase, no el que
+  // quedó viejo en el formulario.
+  if(supabaseClient && currentNegocioId){
+    var res = await supabaseClient.from('negocios').select('config').eq('id',currentNegocioId).single();
+    if(res.data && res.data.config){
+      try{ config = Object.assign({}, config, JSON.parse(res.data.config)); }catch(e){}
+    }
+  }
+
+  if(n && n !== snap.nombre) config.nombre=n;
+  if(a && a !== snap.alias) config.alias=a;
+  if(cv && cv !== snap.cvu) config.cvu=cv;
+  if(telDueno !== snap.tel) config.tel=telDueno;
+  if(emailDueno !== snap.emailDueno) config.emailDueno=emailDueno;
+  if(costoEnvio !== snap.costoEnvio) config.costoEnvio=costoEnvio;
+  if(aliasDni !== snap.aliasDni) config.aliasDni=aliasDni;
+  if(cvuDni !== snap.cvuDni) config.cvuDni=cvuDni;
+  if(pin !== snap.pin) config.pin=pin;
   var pinStatus=el('cfg-pin-status');
   if(pinStatus){
-    if(pin){ pinStatus.textContent='🔒 PIN activo — se pedirá al entrar a Resumen y Finanzas'; pinStatus.style.color='var(--grn)'; }
+    if(config.pin){ pinStatus.textContent='🔒 PIN activo — se pedirá al entrar a Resumen y Finanzas'; pinStatus.style.color='var(--grn)'; }
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
-  var rd=parseFloat(get('cfg-recargo-domingo')); config.recargoDomingo = isNaN(rd) ? 50 : rd;
-  var mpToken=get('cfg-mp-token').trim(); if(mpToken) config.mpToken=mpToken;
-  var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
-  config.fiadoPrecio = fiadoPrecioEl ? fiadoPrecioEl.value : 'original';
+  if(rd !== snap.recargoDomingo) config.recargoDomingo=rd;
+  if(mpToken) config.mpToken=mpToken;
+  if(fiadoPrecio !== snap.fiadoPrecio) config.fiadoPrecio=fiadoPrecio;
+
   set('alias-dni-display','text',config.aliasDni||'—');
   set('cvu-dni-display','text',config.cvuDni||'—');
   set('alias-mp-display','text',config.alias||'—');
@@ -2328,12 +2382,12 @@ async function abrirSesionCaja(){
   if(!sel) return;
   sel.innerHTML = '<option value="">— Elegir —</option>';
   // Opción dueño
-  sel.innerHTML += '<option value="dueno">👑 ' + (config.negocioNom||'El dueño') + ' (dueño)</option>';
+  sel.innerHTML += '<option value="dueno">👑 ' + escapeHtml(config.negocioNom||'El dueño') + ' (dueño)</option>';
   // Empleados con PIN
   if(currentNegocioId){
-    var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+    var res = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
     (res.data||[]).forEach(function(e){
-      sel.innerHTML += '<option value="'+e.id+'">'+e.nombre+'</option>';
+      sel.innerHTML += '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>';
     });
   }
   el('caja-pin-inp').value = '';
@@ -2361,7 +2415,7 @@ async function poblarTurnosDisponibles(){
   var yaUsados = TODOS_TURNOS.filter(function(t){return usados[t.v];});
   var opciones = sinUsar.concat(yaUsados);
   turnoSel.innerHTML = opciones.map(function(t){
-    var aviso = usados[t.v] ? ' — ya usado hoy ('+usados[t.v]+')' : '';
+    var aviso = usados[t.v] ? ' — ya usado hoy ('+escapeHtml(usados[t.v])+')' : '';
     return '<option value="'+t.v+'">'+t.lbl+aviso+'</option>';
   }).join('');
 }
@@ -2379,32 +2433,35 @@ async function confirmarSesionCaja(){
   if(!selVal){ toast('Elegí un cajero','err'); return; }
   if(!pin){ toast('Ingresá el PIN','err'); return; }
 
-  var pinValido = false;
   var nombre = '';
+  var chk;
 
   if(selVal === 'dueno'){
-    var pinSistema = config.pin || '';
-    pinValido = pinSistema && pin === pinSistema;
     nombre = config.nombre || 'El dueño';
-    if(!pinSistema){ pinValido = true; nombre = config.nombre||'El dueño'; }
+    chk = await supabaseClient.rpc('verificar_pin_negocio', {p_pin: pin});
   } else {
-    var res = await supabaseClient.from('empleados').select('id,nombre,pin_caja').eq('id',selVal).single();
-    if(res.data){
-      nombre = res.data.nombre;
-      var pinEmp = res.data.pin_caja||'';
-      pinValido = pinEmp && pin === pinEmp;
-      if(!pinEmp) pinValido = true;
-    }
+    var res = await supabaseClient.from('empleados').select('id,nombre').eq('id',selVal).single();
+    nombre = res.data ? res.data.nombre : '';
+    chk = await supabaseClient.rpc('verificar_pin_empleado', {p_empleado_id: selVal, p_pin: pin});
   }
+  var chequeo = (chk && chk.data) || {valido:false};
 
-  if(!pinValido){
+  if(!chequeo.valido){
+    if(chequeo.bloqueado){
+      var minsCaja = Math.ceil((chequeo.segundos_restantes||300)/60);
+      el('caja-pin-error').textContent = '🔒 Bloqueado por '+minsCaja+' minuto'+(minsCaja!==1?'s':'')+' — demasiados intentos fallidos';
+    } else {
+      el('caja-pin-error').textContent = 'PIN incorrecto. Intentá de nuevo.';
+    }
     el('caja-pin-error').style.display = 'block';
     el('caja-pin-inp').value = '';
     el('caja-pin-inp').focus();
-    cajaPinFallosSeguidos++;
-    if(cajaPinFallosSeguidos >= 2){
-      notificarPinFallido(selVal==='dueno' ? 'sistema' : 'caja');
-      cajaPinFallosSeguidos = 0;
+    if(!chequeo.bloqueado){
+      cajaPinFallosSeguidos++;
+      if(cajaPinFallosSeguidos >= 2){
+        notificarPinFallido(selVal==='dueno' ? 'sistema' : 'caja');
+        cajaPinFallosSeguidos = 0;
+      }
     }
     return;
   }
@@ -2805,7 +2862,7 @@ async function cargarSelectorEmpleadoCobro(){
     return;
   }
   sel.innerHTML='<option value="">— Elegir empleado —</option>'+lista.map(function(e){
-    return '<option value="'+e.id+'">'+e.nombre+'</option>';
+    return '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>';
   }).join('');
   set('cobro-empleado-info','display','none');
 }
@@ -5927,6 +5984,9 @@ function initSupabase(){
   try{
     if(typeof supabase !== 'undefined'){
       supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+      supabaseClient.auth.onAuthStateChange(function(event){
+        if(event === 'PASSWORD_RECOVERY'){ mostrarPantallaNuevaPassword(); }
+      });
     }
   }catch(e){ console.log('Supabase init error:', e); }
 }
@@ -5935,6 +5995,37 @@ function initSupabase(){
 function mostrarLogin(){
   var lf=el('login-form'), rf=el('register-form');
   if(lf)lf.style.display='block'; if(rf)rf.style.display='none';
+}
+
+async function olvidePassword(){
+  var email = (get('login-email')||'').trim();
+  if(!email){ toast('Escribí tu email arriba primero','err'); return; }
+  if(!supabaseClient){ toast('No disponible sin conexión','err'); return; }
+  var res = await supabaseClient.auth.resetPasswordForEmail(email, {redirectTo: window.location.origin + window.location.pathname});
+  if(res.error){ toast(res.error.message,'err'); return; }
+  toast('Te enviamos un email con el link para elegir una contraseña nueva ✓');
+}
+
+function mostrarPantallaNuevaPassword(){
+  var ls = el('login-screen'); if(ls) ls.style.display = 'none';
+  var np = el('pantalla-nueva-pass'); if(np) np.style.display = 'flex';
+}
+
+async function guardarNuevaPassword(){
+  var p1 = get('nueva-pass-1');
+  var p2 = get('nueva-pass-2');
+  var errEl = el('nueva-pass-error');
+  if(!p1 || p1.length < 6){ if(errEl){errEl.textContent='Mínimo 6 caracteres';errEl.style.display='block';} return; }
+  if(p1 !== p2){ if(errEl){errEl.textContent='Las contraseñas no coinciden';errEl.style.display='block';} return; }
+  var res = await supabaseClient.auth.updateUser({password:p1});
+  if(res.error){ if(errEl){errEl.textContent=res.error.message;errEl.style.display='block';} return; }
+  await supabaseClient.auth.signOut();
+  var np = el('pantalla-nueva-pass'); if(np) np.style.display = 'none';
+  var ls = el('login-screen'); if(ls) ls.style.display = 'flex';
+  mostrarLogin();
+  set('login-email','val','');
+  set('login-pass','val','');
+  toast('Contraseña actualizada ✓ — iniciá sesión de nuevo');
 }
 function mostrarRegistro(){
   var lf=el('login-form'), rf=el('register-form');
@@ -6804,6 +6895,40 @@ async function registrarFiadoCliente(clienteId, monto, descripcion, detalle){
   }
 }
 
+// Rellena los campos del modal de Configuración con el valor actual de config —
+// se llama al iniciar la app y también cada vez que se abre el modal, para que
+// no se quede mostrando datos viejos si otra sesión guardó cambios mientras tanto.
+var _configSnapshotAlAbrir = {};
+function poblarFormConfig(){
+  set('alias-dni-display','text',config.aliasDni||'—');
+  set('cvu-dni-display','text',config.cvuDni||'—');
+  set('alias-mp-display','text',config.alias||'—');
+  set('cvu-mp-display','text',config.cvu||'—');
+  set('cfg-nombre','val',config.nombre||'');
+  set('cfg-tel-dueno','val',config.tel||'');
+  set('cfg-email-dueno','val',config.emailDueno||'');
+  set('cfg-costo-envio','val',config.costoEnvio!==undefined?config.costoEnvio:'');
+  set('cfg-alias','val',config.alias||'');
+  set('cfg-cvu','val',config.cvu||'');
+  set('cfg-alias-dni','val',config.aliasDni||'');
+  set('cfg-cvu-dni','val',config.cvuDni||'');
+  set('cfg-pin','val',config.pin||'');
+  set('cfg-recargo-domingo','val',config.recargoDomingo!==undefined?config.recargoDomingo:50);
+  if(config.mpToken) set('cfg-mp-token','val',config.mpToken);
+  var fpref = config.fiadoPrecio || 'original';
+  var fpEl = el('cfg-fiado-precio-'+fpref);
+  if(fpEl) fpEl.checked = true;
+  // Snapshot de referencia: al guardar, comparamos contra esto para saber qué campos tocó el usuario.
+  _configSnapshotAlAbrir = {
+    nombre: config.nombre||'', tel: config.tel||'', emailDueno: config.emailDueno||'',
+    costoEnvio: config.costoEnvio!==undefined?config.costoEnvio:0,
+    alias: config.alias||'', cvu: config.cvu||'',
+    aliasDni: config.aliasDni||'', cvuDni: config.cvuDni||'',
+    pin: config.pin||'', recargoDomingo: config.recargoDomingo!==undefined?config.recargoDomingo:50,
+    fiadoPrecio: config.fiadoPrecio||'original'
+  };
+}
+
 // ═══ INIT DATA ═══
 function initAppData(){
   // Recargar plan desde Supabase en background para asegurar que esté actualizado
@@ -6830,24 +6955,7 @@ function initAppData(){
   set('cvu-dni-display','text',config.cvuDni||'—');
   set('alias-mp-display','text',config.alias||'—');
   set('cvu-mp-display','text',config.cvu||'—');
-  set('cfg-nombre','val',config.nombre||'');
-  set('cfg-tel-dueno','val',config.tel||'');
-  set('cfg-email-dueno','val',config.emailDueno||'');
-  set('cfg-costo-envio','val',config.costoEnvio!==undefined?config.costoEnvio:'');
-  set('cfg-alias','val',config.alias||'');
-  set('cfg-cvu','val',config.cvu||'');
-  set('cfg-alias-dni','val',config.aliasDni||'');
-  set('cfg-cvu-dni','val',config.cvuDni||'');
-  set('alias-dni-display','text',config.aliasDni||'—');
-  set('cvu-dni-display','text',config.cvuDni||'—');
-  set('alias-mp-display','text',config.alias||'—');
-  set('cvu-mp-display','text',config.cvu||'—');
-  set('cfg-pin','val',config.pin||'');
-  set('cfg-recargo-domingo','val',config.recargoDomingo!==undefined?config.recargoDomingo:50);
-  if(config.mpToken) set('cfg-mp-token','val',config.mpToken);
-  var fpref = config.fiadoPrecio || 'original';
-  var fpEl = el('cfg-fiado-precio-'+fpref);
-  if(fpEl) fpEl.checked = true;
+  poblarFormConfig();
   Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
   // Ocultar overlays internos de secciones bloqueadas según plan
   var lockWraps = {pventa:'pro', oc:'business'};
@@ -7196,7 +7304,7 @@ async function renderReporteMes(listaEmpleados) {
       .eq('empleado_id', emp.id)
       .eq('pagado', true)
       .gte('semana_inicio', inicioMes)
-      .lte('semana_fin', finMes);
+      .lte('semana_inicio', finMes);
     var semanas = sw.data || [];
     var totalSueldos = semanas.reduce(function(a,s){ return a+(s.total_pagado||0); }, 0);
 
@@ -7212,7 +7320,7 @@ async function renderReporteMes(listaEmpleados) {
     var costoReal = totalSueldos + totalMerc;
     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);font-size:12px;">'+
       '<div>'+
-        '<div style="font-weight:600;">'+emp.nombre+'</div>'+
+        '<div style="font-weight:600;">'+escapeHtml(emp.nombre)+'</div>'+
         '<div style="color:var(--mut2);font-size:11px;">Sueldos: '+pesos(totalSueldos)+' · Mercadería: '+pesos(totalMerc)+'</div>'+
       '</div>'+
       '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:var(--acc2);">'+pesos(costoReal)+'</div>'+
@@ -7484,7 +7592,7 @@ async function cargarMercaderiaMes() {
   items.forEach(function(m) {
     totalMes += (m.total||0);
     html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--brd);">'+
-      '<div><span style="font-weight:600;">'+m.producto_nom+'</span> <span style="color:var(--mut2);">x'+m.cantidad+'</span></div>'+
+      '<div><span style="font-weight:600;">'+escapeHtml(m.producto_nom)+'</span> <span style="color:var(--mut2);">x'+m.cantidad+'</span></div>'+
       '<div style="font-family:DM Mono,monospace;color:var(--red);">-'+pesos(m.total)+'</div>'+
     '</div>';
   });
@@ -7530,6 +7638,11 @@ async function guardarEmpleado() {
   if(!nombre){ toast('Ingresá el nombre del empleado','err'); return; }
   if(valorHora <= 0){ toast('Ingresá el valor por hora','err'); return; }
   if(pin && (pin.length !== 4 || isNaN(pin))){ toast('El PIN debe ser de 4 dígitos numéricos','err'); return; }
+  if(pin){
+    var dupRes = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('pin_caja',pin).eq('activo',true);
+    var dup = (dupRes.data||[]).find(function(e){ return String(e.id)!==String(empEditId); });
+    if(dup){ toast('Ese PIN ya lo usa '+dup.nombre+' — elegí otro','err'); return; }
+  }
 
   var datos = {nombre:nombre, rol:rol, valor_hora:valorHora};
   if(pin) datos.pin_caja = pin;
@@ -7569,6 +7682,7 @@ async function guardarMercaderiaEmpleado() {
   var precio = parseFloat(el('emp-merc-precio').value)||0;
   if(!prod){ toast('Ingresá el nombre del producto','err'); return; }
   if(precio <= 0){ toast('Ingresá el precio','err'); return; }
+  if(cant <= 0){ toast('La cantidad debe ser mayor a 0','err'); return; }
   var total = cant * precio;
   await supabaseClient.from('empleados_mercaderia').insert({
     negocio_id: currentNegocioId,
@@ -7709,15 +7823,23 @@ function actualizarBotonLock(){
   if(btn) btn.style.display = (config.pin && config.pin.length===4) ? 'block' : 'none';
 }
 
-function verificarPin() {
-  var pinGuardado = config.pin || '';
-  if(pinActual === pinGuardado) {
+async function verificarPin() {
+  var res = await supabaseClient.rpc('verificar_pin_negocio', {p_pin: pinActual});
+  var data = (res && res.data) || {valido:false};
+
+  if(data.valido) {
     document.getElementById('pin-overlay').classList.remove('on');
     pinSesionDesbloqueada[pinDestino] = true;
     go(pinDestino, pinNavEl);
     pinActual = '';
     pinDestino = null;
     pinFallosSeguidos = 0;
+  } else if(data.bloqueado) {
+    var mins = Math.ceil((data.segundos_restantes||300)/60);
+    document.getElementById('pin-error').textContent = '🔒 Bloqueado por '+mins+' minuto'+(mins!==1?'s':'')+' — demasiados intentos fallidos';
+    pinActual = '';
+    actualizarDots();
+    if(navigator.vibrate) navigator.vibrate(200);
   } else {
     document.getElementById('pin-error').textContent = 'PIN incorrecto';
     pinActual = '';
