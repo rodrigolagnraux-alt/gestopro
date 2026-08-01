@@ -1143,6 +1143,54 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </div>
 
+<!-- MODAL IMPORTADOR INTELIGENTE DE STOCK -->
+<div class="ov" id="modal-importador-ia">
+<div class="modal" style="max-width:640px;">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🧠 Importador Inteligente de Stock</div>
+  <div class="modal-s">Excel, una lista pegada o una foto — elegí lo que tengas a mano</div>
+
+  <div class="ptabs" style="margin-bottom:14px;">
+    <button class="ptab on" id="imp-ia-tab-excel" onclick="setTabImportadorIA('excel',this)">📊 Excel/CSV</button>
+    <button class="ptab" id="imp-ia-tab-texto" onclick="setTabImportadorIA('texto',this)">✍️ Pegar texto</button>
+    <button class="ptab" id="imp-ia-tab-foto" onclick="setTabImportadorIA('foto',this)">📷 Foto</button>
+  </div>
+
+  <div id="imp-ia-panel-excel">
+    <div class="upload-z" id="upload-z"><input type="file" id="file-inp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])"><div style="font-size:32px;margin-bottom:8px;">📁</div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Arrastrá tu Excel o tocá aquí</div><div style="font-size:12px;color:var(--mut2)">.xlsx · .xls · .csv</div></div>
+  </div>
+
+  <div id="imp-ia-panel-texto" style="display:none;">
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;">Pegá tu lista tal como la tengas — un producto por línea, con o sin precio/stock. La IA se encarga de interpretarla.</div>
+    <textarea class="fi" id="ia-texto-productos" maxlength="8000" placeholder="Ej:&#10;Coca cola 2L 1500&#10;Sprite 2L 1400 stock 12&#10;Fideos Matarazzo 500g - 900" style="width:100%;min-height:140px;resize:vertical;font-family:'DM Mono',monospace;font-size:13px;padding:12px;"></textarea>
+    <button class="btn btn-acc btn-full" style="margin-top:10px;" onclick="interpretarTextoProductosIA()">🧠 Interpretar con IA</button>
+  </div>
+
+  <div id="imp-ia-panel-foto" style="display:none;">
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;">Sacale una foto a una lista o cartel de precios (impreso o tipeado, no manuscrito) y la IA la interpreta.</div>
+    <div class="upload-z" id="upload-z-foto-productos" onclick="el('ia-foto-productos-inp').click()">
+      <input type="file" id="ia-foto-productos-inp" accept="image/*" capture="environment" style="display:none;" onchange="interpretarFotoProductosIA(this)">
+      <div style="font-size:32px;margin-bottom:8px;">📷</div>
+      <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Tocá para sacar o elegir una foto</div>
+      <div style="font-size:12px;color:var(--mut2)">JPG · PNG</div>
+    </div>
+  </div>
+
+  <div id="imp-ia-loading" style="display:none;text-align:center;padding:20px;color:var(--mut2);font-size:13px;">🧠 Analizando con IA... puede tardar unos segundos</div>
+
+  <div id="import-prev" style="display:none;margin-top:14px;">
+    <div class="card">
+      <div class="stitle" id="import-prev-t">Vista previa</div>
+      <div id="imp-ia-aviso-revisar" style="display:none;background:var(--yel-dim);border:1px solid var(--yel);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--yel);display:flex;gap:8px;align-items:flex-start;">
+        <span>⚠️</span><span id="imp-ia-aviso-revisar-txt"></span>
+      </div>
+      <div id="import-prev-b"></div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button><button class="btn btn-acc" onclick="intentarImportarIA()">Importar</button></div>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- MODAL NUEVO PROVEEDOR (inline desde producto) -->
 <div class="ov" id="modal-nuevo-prov">
 <div class="modal">
@@ -1403,16 +1451,12 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
     <div><div class="ptitle">Productos</div><div class="psub" style="margin-bottom:0"><b id="prod-cnt">0 productos</b></div></div>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-ghost btn-sm" onclick="toggleImport()">↑ Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirImportadorIA()">🧠 Importar</button>
       <button class="btn btn-acc btn-sm" onclick="openModal('modal-prod')">+ Nuevo</button>
     </div>
   </div>
   <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="prod-srch" placeholder="Buscar producto..." oninput="renderProds()"></div>
   <div class="fr" id="prod-fr"></div>
-  <div id="import-area" style="display:none;margin-bottom:14px;">
-    <div class="upload-z" id="upload-z"><input type="file" id="file-inp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])"><div style="font-size:32px;margin-bottom:8px;">📁</div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">Arrastrá tu Excel o tocá aquí</div><div style="font-size:12px;color:var(--mut2)">.xlsx · .xls · .csv</div></div>
-    <div id="import-prev" style="display:none;"><div class="card"><div class="stitle" id="import-prev-t">Vista previa</div><div id="import-prev-b"></div><div class="btn-row"><button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button><button class="btn btn-acc" onclick="confirmarImport()">Importar</button></div></div></div>
-  </div>
   <div class="tw"><table><thead><tr><th>Código</th><th>Producto</th><th>UM</th><th>Stock</th><th>Precio</th><th></th></tr></thead><tbody id="tbl-prods"></tbody></table></div>
   <div class="mc-list" id="mc-prods"></div>
 </div>
@@ -3688,11 +3732,29 @@ async function eliminarProd(id){
   saveState();renderProds();renderDash();toast('Eliminado');
 }
 
-// ═══ IMPORT EXCEL ═══
-function toggleImport(){
-  const ia=el('import-area');
-  if(ia)ia.style.display=ia.style.display==='none'?'block':'none';
+// ═══ IMPORTADOR INTELIGENTE DE STOCK ═══
+function abrirImportadorIA(){
+  pendingImport=[];
+  window._importNegativosDetectados = 0;
+  window._impIaEditando = null;
+  set('import-prev','display','none');
+  set('file-inp','val','');
+  set('ia-texto-productos','val','');
+  set('ia-foto-productos-inp','val','');
+  set('imp-ia-loading','display','none');
+  setTabImportadorIA('excel', el('imp-ia-tab-excel'));
+  openModal('modal-importador-ia');
 }
+
+function setTabImportadorIA(tab, btn){
+  ['excel','texto','foto'].forEach(function(t){
+    set('imp-ia-panel-'+t, 'display', t===tab?'block':'none');
+    var tb = el('imp-ia-tab-'+t);
+    if(tb) tb.classList.remove('on');
+  });
+  if(btn) btn.classList.add('on');
+}
+
 function handleFile(file){
   if(!file)return;
   const reader=new FileReader();
@@ -3701,16 +3763,24 @@ function handleFile(file){
       const wb=XLSX.read(ev.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('El archivo no tiene filas','err'); return; }
+      const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');};
+      const headerKeys=Object.keys(rows[0]);
+      const fN=headerKeys.find(function(k){return ['nombre del producto','nombre','descripcion','producto','articulo'].some(function(t){return norm(k).includes(norm(t));});});
+      if(fN===undefined){
+        // Ninguna columna reconocible como "nombre" — en vez de descartar todas las
+        // filas en silencio (como hacía antes), lo interpreta la IA con el layout que sea.
+        interpretarExcelConIA(rows);
+        return;
+      }
       var negativosDetectados=0;
-      pendingImport=rows.map(function(r,i){
-        const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');};
+      var nuevos=rows.map(function(r,i){
         const keys=Object.keys(r);
         const find=function(){
           const terms=[].slice.call(arguments);
           return keys.find(function(k){return terms.some(function(t){return norm(k).includes(norm(t));});});
         };
-        const fN=find('nombre del producto','nombre','descripcion','producto','articulo');
-        const nom=String(r[fN]||'').trim();
+        const nom=String(r[find('nombre del producto','nombre','descripcion','producto','articulo')]||'').trim();
         if(!nom||nom.length<2)return null;
         const numOrUndef=function(fKey){
           if(fKey===undefined) return undefined;
@@ -3719,17 +3789,216 @@ function handleFile(file){
           if(n<0){ negativosDetectados++; return undefined; }
           return n;
         };
-        return{id:Date.now()+i,cod:String(r[find('codigo de barra','codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:numOrUndef(find('stock actual','stock','cantidad','qty')),um:String(r[find('unidad de medida','unidad','um')]||'UN').trim(),precio:numOrUndef(find('precio costo','costo','precio unit')),pventa:numOrUndef(find('precio de venta','precio venta','venta')),min:numOrUndef(find('stock minimo','minimo','min stock')),max:numOrUndef(find('stock maximo','maximo','max stock')),prov:String(r[find('proveedor')]||'').trim()};
+        return{id:Date.now()+i,cod:String(r[find('codigo de barra','codigo','sku','cod')]||('PRD'+String(i+1).padStart(3,'0'))).trim(),nom:nom,cat:String(r[find('categoria','clase','rubro')]||'Otro').trim(),stock:numOrUndef(find('stock actual','stock','cantidad','qty')),um:String(r[find('unidad de medida','unidad','um')]||'UN').trim(),precio:numOrUndef(find('precio costo','costo','precio unit')),pventa:numOrUndef(find('precio de venta','precio venta','venta')),min:numOrUndef(find('stock minimo','minimo','min stock')),max:numOrUndef(find('stock maximo','maximo','max stock')),prov:String(r[find('proveedor')]||'').trim(),confianzaBaja:false,revisado:true};
       }).filter(Boolean);
-      window._importNegativosDetectados = negativosDetectados;
-      const ipt=el('import-prev-t'); if(ipt)ipt.textContent='Vista previa · '+pendingImport.length+' productos'+(negativosDetectados?' · ⚠️ '+negativosDetectados+' valores negativos ignorados':'');
-      const ipb=el('import-prev-b');
-      if(ipb)ipb.innerHTML='<div style="overflow-x:auto;max-height:160px;overflow-y:auto;"><table><thead><tr><th>Nombre</th><th>Cat.</th><th>Stock</th><th>Costo</th><th>Venta</th></tr></thead><tbody>'+pendingImport.slice(0,6).map(function(p){return'<tr><td style="font-size:12px;">'+escapeHtml(p.nom.substring(0,40))+'</td><td class="mn md">'+escapeHtml(p.cat)+'</td><td class="mn">'+(p.stock!==undefined?p.stock:'—')+'</td><td class="mn">'+(p.precio!==undefined?fmtM(p.precio):'—')+'</td><td class="mn">'+(p.pventa!==undefined?fmtM(p.pventa):'—')+'</td></tr>';}).join('')+(pendingImport.length>6?'<tr><td colspan="5" style="text-align:center;color:var(--mut2);font-size:11px;padding:8px;">... y '+(pendingImport.length-6)+' más</td></tr>':'')+'</tbody></table></div>';
-      const ipp=el('import-prev'); if(ipp)ipp.style.display='block';
+      window._importNegativosDetectados = (window._importNegativosDetectados||0) + negativosDetectados;
+      pendingImport = pendingImport.concat(nuevos);
+      renderPreviewImportadorIA();
     }catch(e){toast('Error al leer el archivo','err');}
   };
   reader.readAsArrayBuffer(file);
 }
+
+var PROMPT_PRODUCTOS_IA = 'Sos un asistente que interpreta listas de productos de un comercio (almacen, kiosco, etc.) para cargarlas a un sistema de inventario. '
+  +'Devolve SOLO un JSON valido, sin texto extra ni backticks, con este formato exacto: '
+  +'{"productos":[{"nombre":"string","codigo":"string opcional","categoria":"string opcional","precio_costo":100,"precio_venta":150,"stock":10,"confianza_baja":false}]}. '
+  +'"precio_venta" y "stock" son los datos mas importantes, tratá de identificarlos siempre que haya alguna pista razonable. '
+  +'Si tuviste que ADIVINAR o interpretar con dudas cualquier dato de un producto (nombre poco claro, precio o cantidad ambiguos, texto cortado o dificil de leer), marca "confianza_baja":true para ESE producto. '
+  +'Si un producto esta perfectamente claro, marca "confianza_baja":false. '
+  +'No inventes productos que no esten en el contenido. Devolve un producto por cada uno que identifiques, en el mismo orden en que aparecen.';
+
+// Llama a la Edge Function interpretar-productos-ia (proxy generico a Claude,
+// mismo patron que ya usa leerFacturaIA para leer facturas) y devuelve el array
+// de productos crudo que devolvio la IA, o null si no se pudo interpretar.
+function llamarIAProductos(contenido, callback){
+  set('imp-ia-loading','display','block');
+  fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:8000,
+      messages:[{role:'user', content: contenido}]
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    set('imp-ia-loading','display','none');
+    try{
+      var texto = data.content[0].text;
+      texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
+      var resultado = JSON.parse(texto);
+      callback(resultado.productos || []);
+    }catch(e){
+      toast('No pude interpretar los productos. Probá con otro formato o cargalos a mano.','err');
+      callback(null);
+    }
+  })
+  .catch(function(){
+    set('imp-ia-loading','display','none');
+    toast('Error al conectar con la IA. Intentalo de nuevo.','err');
+    callback(null);
+  });
+}
+
+function interpretarTextoProductosIA(){
+  var texto = (get('ia-texto-productos')||'').trim();
+  if(!texto){ toast('Pegá una lista de productos primero','err'); return; }
+  llamarIAProductos(
+    [{type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEsta es la lista pegada por el usuario:\n\n' + texto}],
+    function(items){ if(items) aplicarResultadoIA(items); }
+  );
+}
+
+function interpretarFotoProductosIA(input){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var base64 = ev.target.result.split(',')[1];
+    var mediaType = file.type||'image/jpeg';
+    llamarIAProductos(
+      [
+        {type:'image', source:{type:'base64', media_type:mediaType, data:base64}},
+        {type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEsta es una foto de una lista o cartel de precios.'}
+      ],
+      function(items){ if(items) aplicarResultadoIA(items); }
+    );
+  };
+  reader.readAsDataURL(file);
+}
+
+// Fallback cuando el Excel no tiene ninguna columna reconocible de "nombre" — en
+// vez de descartar todas las filas en silencio, se las manda crudas a la IA.
+function interpretarExcelConIA(rows){
+  var filas = rows.slice(0, 150); // tope razonable de filas por llamada
+  llamarIAProductos(
+    [{type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEstas son filas crudas de una planilla — no se reconocieron los encabezados de las columnas. Interpretá cada fila:\n\n' + JSON.stringify(filas)}],
+    function(items){ if(items) aplicarResultadoIA(items); }
+  );
+}
+
+// Normaliza un item devuelto por la IA al formato interno de productos, con el
+// mismo criterio anti-negativos y de "0 real se respeta" que ya usa el Excel.
+function normalizarItemIA(item, idx){
+  var negativoEnEsteItem = false;
+  function numOrUndefIA(v){
+    if(v===undefined||v===null||v==='') return undefined;
+    var n=parseFloat(v);
+    if(isNaN(n)) return undefined;
+    if(n<0){ negativoEnEsteItem=true; return undefined; }
+    return n;
+  }
+  var stock=numOrUndefIA(item.stock), precio=numOrUndefIA(item.precio_costo), pventa=numOrUndefIA(item.precio_venta);
+  if(negativoEnEsteItem) window._importNegativosDetectados = (window._importNegativosDetectados||0)+1;
+  return {
+    id: Date.now()+idx+Math.floor(Math.random()*1000),
+    cod: item.codigo ? String(item.codigo).trim() : ('PRDIA'+String(idx+1).padStart(3,'0')),
+    nom: String(item.nombre||'').trim(),
+    cat: item.categoria ? String(item.categoria).trim() : 'Otro',
+    um: 'UN',
+    stock: stock, precio: precio, pventa: pventa, min: undefined, max: undefined, prov: '',
+    confianzaBaja: !!item.confianza_baja,
+    revisado: !item.confianza_baja
+  };
+}
+
+function aplicarResultadoIA(items){
+  var nuevos = items.map(normalizarItemIA).filter(function(p){ return p.nom && p.nom.length>=2; });
+  if(!nuevos.length){ toast('La IA no pudo identificar productos en lo que le pasaste','err'); return; }
+  pendingImport = pendingImport.concat(nuevos);
+  renderPreviewImportadorIA();
+}
+
+// ═══ VISTA PREVIA (compartida por Excel / texto / foto) ═══
+function renderPreviewImportadorIA(){
+  var negMsg = window._importNegativosDetectados ? ' · ⚠️ '+window._importNegativosDetectados+' valores negativos ignorados' : '';
+  var ipt=el('import-prev-t');
+  if(ipt) ipt.textContent='Vista previa · '+pendingImport.length+' producto'+(pendingImport.length!==1?'s':'')+negMsg;
+
+  var pendientes = pendingImport.filter(function(p){ return p.confianzaBaja && !p.revisado; });
+  var avisoEl = el('imp-ia-aviso-revisar');
+  var avisoTxt = el('imp-ia-aviso-revisar-txt');
+  if(pendientes.length){
+    if(avisoEl) avisoEl.style.display='flex';
+    if(avisoTxt) avisoTxt.textContent = pendientes.length+' producto'+(pendientes.length!==1?'s':'')+' necesitan que los revises (tocalos) antes de poder importar — la IA no está segura de esos datos.';
+  } else if(avisoEl) avisoEl.style.display='none';
+
+  var ipb=el('import-prev-b');
+  if(ipb) ipb.innerHTML = '<div style="max-height:340px;overflow-y:auto;">'+pendingImport.map(function(p,idx){return renderFilaImportadorIA(p,idx);}).join('')+'</div>';
+
+  var ipp=el('import-prev'); if(ipp) ipp.style.display='block';
+}
+
+function renderFilaImportadorIA(p, idx){
+  var flagged = p.confianzaBaja && !p.revisado;
+  var editando = window._impIaEditando === idx;
+  var estilo = flagged ? 'background:var(--yel-dim);border:1px solid var(--yel);' : 'border:1px solid var(--brd);';
+  var badge = flagged ? '<span class="bdg by" style="margin-right:6px;">⚠️ Revisar</span>' : (p.confianzaBaja ? '<span class="bdg bg" style="margin-right:6px;">✓ Revisado</span>' : '');
+
+  var html = '<div style="'+estilo+'border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;" onclick="'+(editando?'':'toggleEditarFilaIA('+idx+')')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+    +'<div style="flex:1;min-width:0;">'
+    +badge+'<span style="font-size:13px;font-weight:600;">'+escapeHtml(p.nom||'(sin nombre)')+'</span>'
+    +'<div style="font-size:11px;color:var(--mut2);margin-top:2px;">'+escapeHtml(p.cat||'Otro')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.precio!==undefined?fmtM(p.precio):'—')+' · Venta: '+(p.pventa!==undefined?fmtM(p.pventa):'—')+'</div>'
+    +'</div>'
+    +'<button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();eliminarFilaImportadorIA('+idx+')" style="flex-shrink:0;">✕</button>'
+    +'</div>';
+
+  if(editando){
+    html += '<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;" onclick="event.stopPropagation();">'
+      +'<div class="fg" style="grid-column:1/-1;"><label class="fl">Nombre</label><input class="fi" id="imp-ia-edit-nom" value="'+escapeHtml(p.nom||'')+'"></div>'
+      +'<div class="fg"><label class="fl">Categoría</label><input class="fi" id="imp-ia-edit-cat" value="'+escapeHtml(p.cat||'')+'"></div>'
+      +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
+      +'<div class="fg"><label class="fl">Precio costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.precio!==undefined?p.precio:'')+'"></div>'
+      +'<div class="fg"><label class="fl">Precio venta</label><input class="fi" id="imp-ia-edit-pventa" type="number" value="'+(p.pventa!==undefined?p.pventa:'')+'"></div>'
+      +'</div>'
+      +'<button type="button" class="btn btn-grn btn-full btn-sm" style="margin-top:4px;" onclick="event.stopPropagation();confirmarEdicionFilaIA('+idx+')">✓ Listo, ya lo revisé</button>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function toggleEditarFilaIA(idx){
+  window._impIaEditando = (window._impIaEditando===idx) ? null : idx;
+  renderPreviewImportadorIA();
+}
+
+function confirmarEdicionFilaIA(idx){
+  var p = pendingImport[idx];
+  if(!p) return;
+  var nom = (get('imp-ia-edit-nom')||'').trim();
+  var cat = (get('imp-ia-edit-cat')||'').trim();
+  var stockVal = parseFloat(get('imp-ia-edit-stock'));
+  var precioVal = parseFloat(get('imp-ia-edit-precio'));
+  var pventaVal = parseFloat(get('imp-ia-edit-pventa'));
+  if(!nom){ toast('El nombre no puede quedar vacío','err'); return; }
+  if((!isNaN(stockVal)&&stockVal<0)||(!isNaN(precioVal)&&precioVal<0)||(!isNaN(pventaVal)&&pventaVal<0)){ toast('No se permiten valores negativos','err'); return; }
+  p.nom=nom; p.cat=cat||'Otro';
+  p.stock=isNaN(stockVal)?undefined:stockVal;
+  p.precio=isNaN(precioVal)?undefined:precioVal;
+  p.pventa=isNaN(pventaVal)?undefined:pventaVal;
+  p.revisado=true;
+  window._impIaEditando=null;
+  renderPreviewImportadorIA();
+}
+
+function eliminarFilaImportadorIA(idx){
+  pendingImport.splice(idx,1);
+  window._impIaEditando=null;
+  renderPreviewImportadorIA();
+}
+
+function intentarImportarIA(){
+  var pendientes = pendingImport.filter(function(p){ return p.confianzaBaja && !p.revisado; });
+  if(pendientes.length){
+    toast('Todavía hay '+pendientes.length+' producto'+(pendientes.length!==1?'s':'')+' para revisar — tocalos para confirmarlos antes de importar','err');
+    return;
+  }
+  confirmarImport();
+}
+
 function confirmarImport(){
   if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   var actualizados=0, nuevos=0;
@@ -3765,13 +4034,17 @@ function confirmarImport(){
   var negMsg = window._importNegativosDetectados ? ' · ⚠️ '+window._importNegativosDetectados+' valores negativos ignorados' : '';
   window._importNegativosDetectados = 0;
   pendingImport=[];
-  set('import-prev','display','none'); set('file-inp','val',''); set('import-area','display','none');
+  window._impIaEditando=null;
+  set('import-prev','display','none'); set('file-inp','val','');
+  set('ia-texto-productos','val',''); set('ia-foto-productos-inp','val','');
+  closeModal('modal-importador-ia');
   productos.forEach(function(p){ guardarEnNube('productos',p.id,p); });
   saveState(); renderDash(); renderProds();
   toast(nuevos+' nuevos · '+actualizados+' actualizados ✓'+negMsg);
 }
 function cancelImport(){
   pendingImport=[];
+  window._impIaEditando=null;
   set('import-prev','display','none'); set('file-inp','val','');
 }
 
