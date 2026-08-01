@@ -5887,7 +5887,7 @@ function leerFacturaIA(input){
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
     fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-gestopro-token':GP_CHAT_TOKEN},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
