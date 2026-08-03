@@ -6335,8 +6335,16 @@ function registerUser(){
   if(!nombre||!email||!pass){ if(errEl){errEl.textContent='Completa todos los campos';errEl.style.display='block';} return; }
   if(pass.length<6){ if(errEl){errEl.textContent='Contrasena minimo 6 caracteres';errEl.style.display='block';} return; }
   if(!supabaseClient){ entrarSinNube(); return; }
-  supabaseClient.auth.signUp({email:email,password:pass}).then(function(result){
+  supabaseClient.auth.signUp({email:email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname}}).then(function(result){
     if(result.error){ if(errEl){errEl.textContent=result.error.message;errEl.style.display='block';} return; }
+    try{ localStorage.setItem('gp_pending_nombre_negocio', nombre); }catch(e){}
+    if(!result.data.session){
+      // Confirmación de email requerida: todavía no hay sesión activa, no se puede crear el negocio (RLS lo bloquearía en silencio)
+      if(errEl) errEl.style.display='none';
+      mostrarLogin();
+      toast('Te enviamos un email para confirmar tu cuenta. Confirmalo y volvé a iniciar sesión ✓');
+      return;
+    }
     currentUser=result.data.user;
     config.nombre=nombre;
     crearNegocio(nombre,email).then(function(){ ocultarLogin(); toast('Bienvenido! Cuenta creada'); });
@@ -6463,7 +6471,10 @@ function crearNegocio(nombre, email){
     plan:'gratis', config:JSON.stringify(config),
     aprobado:true, fecha_registro:new Date().toISOString()
   }).select().single().then(function(result){
-    if(result.data) currentNegocioId=result.data.id;
+    if(result.data){
+      currentNegocioId=result.data.id;
+      try{ localStorage.removeItem('gp_pending_nombre_negocio'); }catch(e){}
+    }
   }).catch(function(e){ console.log('Error creating negocio:',e); });
 }
 
@@ -6478,7 +6489,9 @@ function cargarNegocio(){
         if(verificarAccesoNegocio(result.data)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
         restaurarSesionCajaLocal();
       } else {
-        return crearNegocio(config.nombre||'Mi Negocio', currentUser.email);
+        var nombrePendiente=null;
+        try{ nombrePendiente=localStorage.getItem('gp_pending_nombre_negocio'); }catch(e){}
+        return crearNegocio(nombrePendiente||config.nombre||'Mi Negocio', currentUser.email);
       }
       return sincronizarDatos();
     }).catch(function(e){ console.log('Error loading negocio:',e); });
