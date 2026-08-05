@@ -6608,15 +6608,46 @@ var supabaseClient = null;
 var currentUser = null;
 var currentNegocioId = null;
 
+// Sesión ya procesada (por user id) — evita que INITIAL_SESSION/SIGNED_IN
+// dupliquen cargarNegocio()+ocultarLogin() (y con eso los polling/intervals
+// que dispara ocultarLogin) cuando ambos eventos llegan para la misma sesión.
+var gpSesionActivaId = null;
+
 function initSupabase(){
   try{
     if(typeof supabase !== 'undefined'){
       supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
-      supabaseClient.auth.onAuthStateChange(function(event){
-        if(event === 'PASSWORD_RECOVERY'){ mostrarPantallaNuevaPassword(); }
+      supabaseClient.auth.onAuthStateChange(function(event, session){
+        if(event === 'PASSWORD_RECOVERY'){ mostrarPantallaNuevaPassword(); return; }
+        if(event === 'SIGNED_OUT'){ gpSesionActivaId = null; return; }
+        // INITIAL_SESSION cubre tanto la sesión ya guardada al cargar la página
+        // como la sesión que el propio cliente de Supabase detecta y establece
+        // de forma asíncrona desde el link de confirmación de email (tokens en
+        // el hash de la URL) — SIGNED_IN cubre logins manuales posteriores.
+        // Antes esto dependía de un único getSession() disparado al cargar la
+        // página: si la sesión del link llegaba después de ese chequeo, o en un
+        // contexto de storage distinto, el usuario quedaba en la pantalla de
+        // login sin ningún aviso.
+        if((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session && session.user){
+          manejarSesionActiva(session.user);
+        } else if(event === 'INITIAL_SESSION'){
+          setTimeout(ocultarSplash, 1800);
+        }
       });
+    } else {
+      loadState(); initAppData(); setTimeout(ocultarSplash, 1800);
     }
-  }catch(e){ console.log('Supabase init error:', e); }
+  }catch(e){
+    console.log('Supabase init error:', e);
+    loadState(); initAppData(); setTimeout(ocultarSplash, 1800);
+  }
+}
+
+function manejarSesionActiva(user){
+  if(gpSesionActivaId === user.id) return;
+  gpSesionActivaId = user.id;
+  currentUser = user;
+  cargarNegocio().then(function(){ ocultarLogin(); setTimeout(ocultarSplash, 300); });
 }
 
 // ═══ AUTH ═══
@@ -6665,7 +6696,7 @@ function mostrarRegistro(){
 // en la misma pestaña (alias/cvu/tel/emailDueno quedaban pisando la cuenta nueva).
 function resetSesionLocal(){
   if(supabaseClient) supabaseClient.auth.signOut();
-  currentUser=null; currentNegocioId=null;
+  currentUser=null; currentNegocioId=null; gpSesionActivaId=null;
   productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
   config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901',recargoDomingo:50};
   entregaEmpleadoActual=null;
@@ -6687,8 +6718,9 @@ function loginUser(){
   if(!supabaseClient){ entrarSinNube(); return; }
   supabaseClient.auth.signInWithPassword({email:email,password:pass}).then(function(result){
     if(result.error){ if(errEl){errEl.textContent='Email o contrasena incorrectos';errEl.style.display='block';} return; }
-    currentUser=result.data.user;
-    cargarNegocio().then(function(){ ocultarLogin(); });
+    // La entrada a la app (cargar negocio + ocultar login) la maneja el
+    // listener onAuthStateChange (evento SIGNED_IN) — este login también lo
+    // dispara, así que no se duplica acá.
   }).catch(function(){ entrarSinNube(); });
 }
 
@@ -6700,9 +6732,14 @@ function registerUser(){
   if(!nombre||!email||!pass){ if(errEl){errEl.textContent='Completa todos los campos';errEl.style.display='block';} return; }
   if(pass.length<6){ if(errEl){errEl.textContent='Contrasena minimo 6 caracteres';errEl.style.display='block';} return; }
   if(!supabaseClient){ entrarSinNube(); return; }
-  supabaseClient.auth.signUp({email:email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname}}).then(function(result){
+  // El nombre del negocio viaja como metadata del usuario (options.data), no por
+  // localStorage: localStorage es del navegador/dispositivo donde se llena este
+  // formulario, y con confirmación de email el usuario suele terminar de
+  // loguearse desde otro contexto (otra pestaña, el navegador in-app del cliente
+  // de mail) donde ese localStorage no existe — la metadata viaja con el user
+  // en el servidor y está disponible sin importar desde dónde se confirme/loguee.
+  supabaseClient.auth.signUp({email:email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname,data:{nombre_negocio_pendiente:nombre}}}).then(function(result){
     if(result.error){ if(errEl){errEl.textContent=result.error.message;errEl.style.display='block';} return; }
-    try{ localStorage.setItem('gp_pending_nombre_negocio', nombre); }catch(e){}
     if(!result.data.session){
       // Confirmación de email requerida: todavía no hay sesión activa, no se puede crear el negocio (RLS lo bloquearía en silencio)
       if(errEl) errEl.style.display='none';
@@ -6710,9 +6747,9 @@ function registerUser(){
       toast('Te enviamos un email para confirmar tu cuenta. Confirmalo y volvé a iniciar sesión ✓');
       return;
     }
-    currentUser=result.data.user;
-    config.nombre=nombre;
-    crearNegocio(nombre,email).then(function(){ ocultarLogin(); toast('Bienvenido! Cuenta creada'); });
+    // Sesión inmediata (confirmación de email desactivada): el listener
+    // onAuthStateChange (SIGNED_IN) carga/crea el negocio y oculta el login.
+    toast('Bienvenido! Cuenta creada');
   }).catch(function(){ entrarSinNube(); });
 }
 
@@ -6838,7 +6875,6 @@ function crearNegocio(nombre, email){
   }).select().single().then(function(result){
     if(result.data){
       currentNegocioId=result.data.id;
-      try{ localStorage.removeItem('gp_pending_nombre_negocio'); }catch(e){}
     }
   }).catch(function(e){ console.log('Error creating negocio:',e); });
 }
@@ -6854,8 +6890,10 @@ function cargarNegocio(){
         if(verificarAccesoNegocio(result.data)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
         restaurarSesionCajaLocal();
       } else {
-        var nombrePendiente=null;
-        try{ nombrePendiente=localStorage.getItem('gp_pending_nombre_negocio'); }catch(e){}
+        // Viaja en la metadata del usuario (seteada en signUp options.data), no
+        // en localStorage — así está disponible sin importar en qué navegador o
+        // pestaña termine confirmándose/logueándose el usuario.
+        var nombrePendiente = (currentUser.user_metadata && currentUser.user_metadata.nombre_negocio_pendiente) || null;
         return crearNegocio(nombrePendiente||config.nombre||'Mi Negocio', currentUser.email);
       }
       return sincronizarDatos();
@@ -7653,19 +7691,11 @@ function initApp(){
       console.log('SW registered');
     }).catch(function(e){ console.log('SW error:',e); });
   }
+  // initSupabase() se encarga de todo lo demás: crea el cliente y, vía
+  // onAuthStateChange, reacciona a INITIAL_SESSION (sesión ya guardada, o sin
+  // sesión) y a SIGNED_IN (login manual o el que llega async desde el link de
+  // confirmación de email) para cargar el negocio y ocultar login/splash.
   initSupabase();
-  if(supabaseClient){
-    supabaseClient.auth.getSession().then(function(result){
-      if(result.data&&result.data.session&&result.data.session.user){
-        currentUser=result.data.session.user;
-        cargarNegocio().then(function(){ ocultarLogin(); setTimeout(ocultarSplash, 300); });
-      } else {
-        setTimeout(ocultarSplash, 1800);
-      }
-    }).catch(function(){ loadState(); initAppData(); setTimeout(ocultarSplash, 1800); });
-  } else {
-    loadState(); initAppData(); setTimeout(ocultarSplash, 1800);
-  }
 }
 
 
