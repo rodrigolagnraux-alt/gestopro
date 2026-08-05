@@ -664,6 +664,30 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </div>
 
+<!-- MODAL IDENTIFICACION PARA PEDIDOS A ENTREGAR (PIN de empleado, sin abrir caja) -->
+<div class="ov" id="modal-pin-entregar">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🛵 Pedidos a entregar</div>
+  <div class="modal-s">Identificate con tu PIN para ver los pedidos</div>
+  <div class="fg">
+    <label class="fl">Empleado</label>
+    <select class="fi" id="entregar-cajero-sel" style="font-size:15px;" onchange="onEntregarCajeroCambia()">
+      <option value="">— Elegir —</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label class="fl">PIN</label>
+    <input class="fi" id="entregar-pin-inp" type="password" placeholder="••••" maxlength="4" inputmode="numeric" style="font-size:24px;text-align:center;letter-spacing:8px;" onkeydown="if(event.key==='Enter')confirmarPinEntregar()">
+  </div>
+  <div id="entregar-pin-error" style="display:none;color:var(--red);font-size:12px;text-align:center;margin-bottom:10px;">PIN incorrecto. Intentá de nuevo.</div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="closeModal('modal-pin-entregar')">Cancelar</button>
+    <button class="btn btn-grn" onclick="confirmarPinEntregar()">✓ Entrar</button>
+  </div>
+</div>
+</div>
+
 <!-- MODAL RETIRO DE PLATA -->
 <div class="ov" id="modal-retiro-caja">
 <div class="modal">
@@ -1287,8 +1311,22 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Email del dueño (alertas silenciosas)</label><input class="fi" id="cfg-email-dueno" placeholder="Ej: dueño@gmail.com" type="email"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa para alertas automáticas (facturas vencidas, límite de fiado)</div>
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🛒 Tienda Online</div>
+  <div class="chk-wrap"><input type="checkbox" id="cfg-tienda-abierta" checked><label for="cfg-tienda-abierta" class="fl" style="margin:0;cursor:pointer;">Tienda abierta ahora</label></div>
+  <div style="font-size:11px;color:var(--mut2);margin:4px 0 12px;">Si la apagás, tus clientes ven el menú pero no pueden hacer pedidos hasta que la vuelvas a abrir</div>
   <div class="fg"><label class="fl">Costo de envío ($)</label><input class="fi" id="cfg-costo-envio" type="number" placeholder="0" inputmode="numeric"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa como costo de envío por defecto en los pedidos delivery de tu Tienda Online</div>
+  <div class="fg" style="margin-bottom:0;">
+    <label class="fl">Orden en Tienda Online</label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="cfg-orden-menu-vinculados-wrap">
+      <input type="radio" name="cfg-orden-menu" value="vinculados" id="cfg-orden-menu-vinculados" style="margin-top:3px;">
+      <span><b style="color:var(--txt);">Vinculados primero</b><br><span style="font-size:11px;color:var(--mut2);">Los productos de tu inventario (con stock real) aparecen antes que los platos armados.</span></span>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;cursor:pointer;" id="cfg-orden-menu-armados-wrap">
+      <input type="radio" name="cfg-orden-menu" value="armados" id="cfg-orden-menu-armados" style="margin-top:3px;">
+      <span><b style="color:var(--txt);">Platos armados primero</b><br><span style="font-size:11px;color:var(--mut2);">Los platos que armaste a mano aparecen antes que los productos vinculados al inventario.</span></span>
+    </label>
+  </div>
+  <div style="height:14px;"></div>
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🏛️ Cuenta DNI</div>
   <div class="fg"><label class="fl">Alias Cuenta DNI</label><input class="fi" id="cfg-alias-dni" placeholder="Ej: mi.negocio.bna"></div>
   <div class="fg"><label class="fl">CVU Cuenta DNI</label><input class="fi" id="cfg-cvu-dni" placeholder="0000003100012345678901"></div>
@@ -1346,6 +1384,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i" onclick="go('productos',this)"><span class="sb-ico">📦</span>Productos<span class="sb-badge" id="sb-alerta">0</span></div>
     <div class="sb-i" onclick="go('menuonline',this)"><span class="sb-ico">🛒</span>Tienda Online</div>
     <div class="sb-i" id="sb-pedidos-online" onclick="go('pedidosonline',this)"><span class="sb-ico">🛎️</span>Pedidos Online<span class="sb-badge" id="sb-pedidos-online-badge" style="display:none;">0</span></div>
+    <div class="sb-i" id="sb-entregar" onclick="abrirPedidosEntregar(this)"><span class="sb-ico">🛵</span>Pedidos a entregar</div>
     <div class="sb-i" onclick="go('movimientos',this)"><span class="sb-ico">↕</span>Movimientos</div>
   </div>
   <div class="sb-sec">
@@ -1493,6 +1532,15 @@ select.fi{appearance:none;cursor:pointer;}
     <button class="ptab" id="pedonline-tab-cancelado" onclick="setTabPedidosOnline('cancelado',this)">🚫 Cancelados</button>
   </div>
   <div id="pedidosonline-lista"></div>
+</div>
+<!-- PEDIDOS A ENTREGAR (empleados con PIN, foco en delivery) -->
+<div id="pg-entregar" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div class="ptitle">🛵 Pedidos a entregar</div>
+    <div id="entregar-cajero-badge" style="font-size:12px;color:var(--mut2);"></div>
+  </div>
+  <div class="psub" style="margin-bottom:14px;">Delivery pendiente o en preparación</div>
+  <div id="entregar-lista"></div>
 </div>
   <!-- MOVIMIENTOS -->
 <div id="pg-movimientos" class="pg">
@@ -2338,6 +2386,10 @@ async function guardarConfig(){
   var telDueno=get('cfg-tel-dueno');
   var emailDueno=get('cfg-email-dueno');
   var costoEnvio=parseFloat(get('cfg-costo-envio')); costoEnvio = isNaN(costoEnvio) ? 0 : costoEnvio;
+  var tiendaAbiertaChk = el('cfg-tienda-abierta');
+  var tiendaAbierta = tiendaAbiertaChk ? tiendaAbiertaChk.checked : true;
+  var ordenMenuEl2 = document.querySelector('input[name="cfg-orden-menu"]:checked');
+  var ordenMenu = ordenMenuEl2 ? ordenMenuEl2.value : 'vinculados';
   var aliasDni=get('cfg-alias-dni');
   var cvuDni=get('cfg-cvu-dni');
   var pin=get('cfg-pin').trim();
@@ -2366,6 +2418,8 @@ async function guardarConfig(){
   if(telDueno !== snap.tel) config.tel=telDueno;
   if(emailDueno !== snap.emailDueno) config.emailDueno=emailDueno;
   if(costoEnvio !== snap.costoEnvio) config.costoEnvio=costoEnvio;
+  if(tiendaAbierta !== snap.tiendaAbierta) config.tiendaAbierta=tiendaAbierta;
+  if(ordenMenu !== snap.ordenMenu) config.ordenMenu=ordenMenu;
   if(aliasDni !== snap.aliasDni) config.aliasDni=aliasDni;
   if(cvuDni !== snap.cvuDni) config.cvuDni=cvuDni;
   if(pin !== snap.pin) config.pin=pin;
@@ -2550,6 +2604,126 @@ async function confirmarSesionCaja(){
     openModal('modal-cobrar');
     setTimeout(function(){ var p=el('pistola-input'); if(p) p.focus(); },300);
   }, 200);
+}
+
+// ═══ PEDIDOS A ENTREGAR (empleados con PIN, sin abrir caja) ═══
+var entregaEmpleadoActual = null; // {id, nombre} — identificación liviana, no toca la tabla cajas
+var entregaPinFallosSeguidos = 0;
+var _entregarNavEl = null;
+
+async function abrirPedidosEntregar(navEl){
+  if(entregaEmpleadoActual){ go('entregar', navEl); return; }
+  var sel = el('entregar-cajero-sel');
+  if(sel){
+    sel.innerHTML = '<option value="">— Elegir —</option><option value="dueno">👑 '+escapeHtml(config.nombre||'El dueño')+' (dueño)</option>';
+    if(currentNegocioId && supabaseClient){
+      var res = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+      (res.data||[]).forEach(function(e){ sel.innerHTML += '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>'; });
+    }
+  }
+  el('entregar-pin-inp').value = '';
+  el('entregar-pin-error').style.display = 'none';
+  _entregarNavEl = navEl;
+  openModal('modal-pin-entregar');
+}
+
+function onEntregarCajeroCambia(){
+  el('entregar-pin-inp').value = '';
+  el('entregar-pin-error').style.display = 'none';
+  setTimeout(function(){ el('entregar-pin-inp').focus(); }, 100);
+}
+
+async function confirmarPinEntregar(){
+  var selEl = el('entregar-cajero-sel');
+  var selVal = selEl ? selEl.value : '';
+  var pin = el('entregar-pin-inp').value.trim();
+  if(!selVal){ toast('Elegí quién entrega','err'); return; }
+  if(!pin){ toast('Ingresá el PIN','err'); return; }
+
+  var nombre = '';
+  var chk;
+  if(selVal === 'dueno'){
+    nombre = config.nombre || 'El dueño';
+    chk = await supabaseClient.rpc('verificar_pin_negocio', {p_pin: pin});
+  } else {
+    var res = await supabaseClient.from('empleados').select('id,nombre').eq('id',selVal).single();
+    nombre = res.data ? res.data.nombre : '';
+    chk = await supabaseClient.rpc('verificar_pin_empleado', {p_empleado_id: selVal, p_pin: pin});
+  }
+  var chequeo = (chk && chk.data) || {valido:false};
+
+  if(!chequeo.valido){
+    if(chequeo.bloqueado){
+      var mins = Math.ceil((chequeo.segundos_restantes||300)/60);
+      el('entregar-pin-error').textContent = '🔒 Bloqueado por '+mins+' minuto'+(mins!==1?'s':'')+' — demasiados intentos fallidos';
+    } else {
+      el('entregar-pin-error').textContent = 'PIN incorrecto. Intentá de nuevo.';
+    }
+    el('entregar-pin-error').style.display = 'block';
+    el('entregar-pin-inp').value = '';
+    el('entregar-pin-inp').focus();
+    if(!chequeo.bloqueado){
+      entregaPinFallosSeguidos++;
+      if(entregaPinFallosSeguidos >= 2){
+        notificarPinFallido(selVal==='dueno' ? 'sistema' : 'caja');
+        entregaPinFallosSeguidos = 0;
+      }
+    }
+    return;
+  }
+  entregaPinFallosSeguidos = 0;
+  entregaEmpleadoActual = { id: selVal, nombre: nombre };
+  closeModal('modal-pin-entregar');
+  go('entregar', _entregarNavEl);
+}
+
+async function renderPedidosEntregar(){
+  if(!currentNegocioId) return;
+  var cont = el('entregar-lista');
+  if(!cont) return;
+  var badge = el('entregar-cajero-badge');
+  if(badge) badge.textContent = entregaEmpleadoActual ? ('👤 '+entregaEmpleadoActual.nombre) : '';
+  cont.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:16px;text-align:center;">Cargando...</div>';
+  var res = await supabaseClient.from('pedidos').select('*').eq('negocio_id',currentNegocioId).eq('tipo_entrega','delivery').in('estado',['pendiente','preparando']).order('created_at',{ascending:true});
+  if(res.error){
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-t">No pudimos cargar los pedidos</div></div>';
+    return;
+  }
+  var data = res.data || [];
+  if(!data.length){
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🛵</div><div class="empty-t">No hay pedidos para entregar</div></div>';
+    return;
+  }
+  cont.innerHTML = data.map(renderPedidoEntregarCard).join('');
+}
+
+function renderPedidoEntregarCard(p){
+  var itemsHtml = (p.items||[]).map(function(it){
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2);padding:2px 0;"><span>'+(it.cantidad||1)+' x '+escapeHtml(it.nombre||'')+'</span></div>';
+  }).join('');
+  var fecha = p.created_at ? new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  var direccion = p.direccion || '';
+  return '<div class="card" style="margin-bottom:12px;border-color:var(--yel);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">'
+    +'<div><b style="font-family:Syne,sans-serif;">'+escapeHtml(p.cliente_nombre||'Cliente')+'</b><div style="font-size:11px;color:var(--mut2);">'+fecha+'</div></div>'
+    +bdg('by', p.estado==='preparando'?'PREPARANDO':'PENDIENTE')
+    +'</div>'
+    +'<div style="font-size:13px;margin-bottom:6px;">📍 '+escapeHtml(direccion)+'</div>'
+    +'<div style="font-size:13px;margin-bottom:8px;">📞 <a href="tel:'+escapeHtml(p.cliente_telefono||'')+'" style="color:var(--acc2);">'+escapeHtml(p.cliente_telefono||'')+'</a></div>'
+    +itemsHtml
+    +'<div style="display:flex;gap:8px;margin-top:10px;">'
+    +'<a class="btn btn-ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(direccion)+'">🗺️ Abrir ruta</a>'
+    +'<button class="btn btn-grn btn-sm" style="flex:1;" onclick="marcarPedidoEntregadoSimple(\''+p.id+'\')">✓ Entregado</button>'
+    +'</div>'
+    +'</div>';
+}
+
+async function marcarPedidoEntregadoSimple(id){
+  if(!confirm('¿Marcar este pedido como entregado?')) return;
+  var res = await supabaseClient.from('pedidos').update({estado:'entregado'}).eq('id',id);
+  if(res.error){ toast('No se pudo actualizar el pedido','err'); return; }
+  toast('✓ Pedido marcado como entregado');
+  renderPedidosEntregar();
 }
 
 function guardarSesionCajaLocal(){
@@ -5227,6 +5401,7 @@ function renderPage(id){
   else if(id==='empleados') renderEmpleados();
   else if(id==='menuonline') renderMenuOnline();
   else if(id==='pedidosonline') renderPedidosOnline();
+  else if(id==='entregar') renderPedidosEntregar();
   else if(id==='pedidos') renderPedidos();
 }
 
@@ -6322,6 +6497,7 @@ function resetSesionLocal(){
   currentUser=null; currentNegocioId=null;
   productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
   config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901',recargoDomingo:50};
+  entregaEmpleadoActual=null;
 }
 function cerrarSesion(){
   if(!confirm('Cerrar sesion?')) return;
@@ -7212,6 +7388,10 @@ function poblarFormConfig(){
   set('cfg-tel-dueno','val',config.tel||'');
   set('cfg-email-dueno','val',config.emailDueno||'');
   set('cfg-costo-envio','val',config.costoEnvio!==undefined?config.costoEnvio:'');
+  var tiendaAbiertaEl = el('cfg-tienda-abierta'); if(tiendaAbiertaEl) tiendaAbiertaEl.checked = config.tiendaAbierta!==false;
+  var ordenMenuPref = config.ordenMenu || 'vinculados';
+  var ordenMenuEl = el('cfg-orden-menu-'+ordenMenuPref);
+  if(ordenMenuEl) ordenMenuEl.checked = true;
   set('cfg-alias','val',config.alias||'');
   set('cfg-cvu','val',config.cvu||'');
   set('cfg-alias-dni','val',config.aliasDni||'');
@@ -7229,7 +7409,8 @@ function poblarFormConfig(){
     alias: config.alias||'', cvu: config.cvu||'',
     aliasDni: config.aliasDni||'', cvuDni: config.cvuDni||'',
     pin: config.pin||'', recargoDomingo: config.recargoDomingo!==undefined?config.recargoDomingo:50,
-    fiadoPrecio: config.fiadoPrecio||'original'
+    fiadoPrecio: config.fiadoPrecio||'original',
+    tiendaAbierta: config.tiendaAbierta!==false, ordenMenu: config.ordenMenu||'vinculados'
   };
 }
 
