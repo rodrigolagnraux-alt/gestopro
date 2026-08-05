@@ -478,6 +478,34 @@ select.fi{appearance:none;cursor:pointer;}
         <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Iniciá sesión</span>
       </div>
     </div>
+    <!-- Confirmar cuenta con código de 6 dígitos (signup) -->
+    <div id="confirm-form" style="display:none;">
+      <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;text-align:center;">Confirmá tu cuenta</div>
+      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 6 dígitos a <b id="confirm-email-lbl" style="color:var(--txt);"></b></div>
+      <div class="fg"><label class="fl">Código</label><input class="fi" id="confirm-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRegistro()"></div>
+      <div id="confirm-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+      <button class="btn btn-acc btn-full" onclick="confirmarCodigoRegistro()" style="font-size:15px;padding:12px;">Confirmar</button>
+      <div style="text-align:center;margin-top:12px;">
+        <span style="font-size:12px;color:var(--acc2);cursor:pointer;" onclick="reenviarCodigoRegistro()">Reenviar código</span>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Volver</span>
+      </div>
+    </div>
+    <!-- Recuperar contraseña con código de 6 dígitos -->
+    <div id="recovery-form" style="display:none;">
+      <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;text-align:center;">Recuperar contraseña</div>
+      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 6 dígitos a <b id="recovery-email-lbl" style="color:var(--txt);"></b></div>
+      <div class="fg"><label class="fl">Código</label><input class="fi" id="recovery-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRecovery()"></div>
+      <div id="recovery-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+      <button class="btn btn-acc btn-full" onclick="confirmarCodigoRecovery()" style="font-size:15px;padding:12px;">Confirmar código</button>
+      <div style="text-align:center;margin-top:12px;">
+        <span style="font-size:12px;color:var(--acc2);cursor:pointer;" onclick="reenviarCodigoRecovery()">Reenviar código</span>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Volver</span>
+      </div>
+    </div>
     <div style="text-align:center;margin-top:24px;font-size:11px;color:var(--mut);line-height:1.6;">
       Plan Gratis incluye 50 productos y funciones básicas.<br>
       Planes desde $60.000/mes.
@@ -488,7 +516,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="width:100%;max-width:380px;">
     <div style="text-align:center;margin-bottom:24px;">
       <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;">🔑 Elegí tu nueva contraseña</div>
-      <div style="font-size:12px;color:var(--mut2);margin-top:6px;">Vení desde el link que te enviamos por email</div>
+      <div style="font-size:12px;color:var(--mut2);margin-top:6px;">Código confirmado — ahora elegí tu contraseña</div>
     </div>
     <div class="fg"><label class="fl">Contraseña nueva</label><input class="fi" id="nueva-pass-1" type="password" placeholder="Mínimo 6 caracteres" style="font-size:15px;"></div>
     <div class="fg"><label class="fl">Repetir contraseña</label><input class="fi" id="nueva-pass-2" type="password" placeholder="Repetir" style="font-size:15px;" onkeydown="if(event.key==='Enter')guardarNuevaPassword()"></div>
@@ -6652,17 +6680,92 @@ function manejarSesionActiva(user){
 
 // ═══ AUTH ═══
 function mostrarLogin(){
-  var lf=el('login-form'), rf=el('register-form');
+  var lf=el('login-form'), rf=el('register-form'), cf=el('confirm-form'), rc=el('recovery-form');
   if(lf)lf.style.display='block'; if(rf)rf.style.display='none';
+  if(cf)cf.style.display='none'; if(rc)rc.style.display='none';
 }
 
+// Emails pendientes de confirmar con el código de 6 dígitos que Supabase manda
+// (signup y recuperación de contraseña) — se usan al confirmar o reenviar.
+var gpEmailPendienteConfirmar = null;
+var gpEmailPendienteRecovery = null;
+
+function mostrarConfirmarCodigo(email){
+  gpEmailPendienteConfirmar = email;
+  var lf=el('login-form'), rf=el('register-form'), cf=el('confirm-form'), rc=el('recovery-form');
+  if(lf)lf.style.display='none'; if(rf)rf.style.display='none';
+  if(rc)rc.style.display='none'; if(cf)cf.style.display='block';
+  var lbl = el('confirm-email-lbl'); if(lbl) lbl.textContent = email;
+  set('confirm-code','val','');
+  var errEl = el('confirm-error'); if(errEl) errEl.style.display='none';
+}
+
+// Verifica el código de 6 dígitos del signup (en vez de depender de que el
+// usuario clickee el link de confirmación — un link de un solo uso que un
+// escáner de seguridad de email puede pre-visitar y gastar antes de que el
+// usuario lo abra, dejándolo con "Email link is invalid or has expired").
+// verifyOtp entrega la sesión directo en la respuesta: no hay redirect ni
+// hash en la URL que parsear, así que no hay ninguna carrera posible.
+async function confirmarCodigoRegistro(){
+  var codigo = (get('confirm-code')||'').trim();
+  var errEl = el('confirm-error');
+  if(!codigo || codigo.length!==6){ if(errEl){errEl.textContent='Ingresá el código de 6 dígitos';errEl.style.display='block';} return; }
+  if(!supabaseClient || !gpEmailPendienteConfirmar) return;
+  var res = await supabaseClient.auth.verifyOtp({email:gpEmailPendienteConfirmar, token:codigo, type:'signup'});
+  if(res.error){ if(errEl){errEl.textContent='Código incorrecto o vencido';errEl.style.display='block';} return; }
+  if(errEl) errEl.style.display='none';
+  // La sesión ya quedó establecida acá — el listener onAuthStateChange
+  // (evento SIGNED_IN) carga/crea el negocio y oculta login/splash.
+}
+
+async function reenviarCodigoRegistro(){
+  if(!supabaseClient || !gpEmailPendienteConfirmar) return;
+  var res = await supabaseClient.auth.resend({type:'signup', email:gpEmailPendienteConfirmar});
+  if(res.error){ toast(res.error.message,'err'); return; }
+  toast('Te reenviamos el código ✓');
+}
+
+function mostrarConfirmarCodigoRecovery(email){
+  gpEmailPendienteRecovery = email;
+  var lf=el('login-form'), rf=el('register-form'), cf=el('confirm-form'), rc=el('recovery-form');
+  if(lf)lf.style.display='none'; if(rf)rf.style.display='none';
+  if(cf)cf.style.display='none'; if(rc)rc.style.display='block';
+  var lbl = el('recovery-email-lbl'); if(lbl) lbl.textContent = email;
+  set('recovery-code','val','');
+  var errEl = el('recovery-error'); if(errEl) errEl.style.display='none';
+}
+
+// Mismo cambio que el signup y por la misma razón: reemplaza el link de
+// recuperación de contraseña (mismo tipo de link de un solo uso, misma
+// vulnerabilidad a un pre-visiteo de un escáner de seguridad) por un código
+// de 6 dígitos tipeado a mano.
 async function olvidePassword(){
   var email = (get('login-email')||'').trim();
   if(!email){ toast('Escribí tu email arriba primero','err'); return; }
   if(!supabaseClient){ toast('No disponible sin conexión','err'); return; }
-  var res = await supabaseClient.auth.resetPasswordForEmail(email, {redirectTo: window.location.origin + window.location.pathname});
+  var res = await supabaseClient.auth.resetPasswordForEmail(email);
   if(res.error){ toast(res.error.message,'err'); return; }
-  toast('Te enviamos un email con el link para elegir una contraseña nueva ✓');
+  mostrarConfirmarCodigoRecovery(email);
+  toast('Te enviamos un código de 6 dígitos a tu email ✓');
+}
+
+async function confirmarCodigoRecovery(){
+  var codigo = (get('recovery-code')||'').trim();
+  var errEl = el('recovery-error');
+  if(!codigo || codigo.length!==6){ if(errEl){errEl.textContent='Ingresá el código de 6 dígitos';errEl.style.display='block';} return; }
+  if(!supabaseClient || !gpEmailPendienteRecovery) return;
+  var res = await supabaseClient.auth.verifyOtp({email:gpEmailPendienteRecovery, token:codigo, type:'recovery'});
+  if(res.error){ if(errEl){errEl.textContent='Código incorrecto o vencido';errEl.style.display='block';} return; }
+  if(errEl) errEl.style.display='none';
+  // Éxito -> Supabase dispara el evento PASSWORD_RECOVERY, ya manejado en
+  // onAuthStateChange (mostrarPantallaNuevaPassword()).
+}
+
+async function reenviarCodigoRecovery(){
+  if(!supabaseClient || !gpEmailPendienteRecovery) return;
+  var res = await supabaseClient.auth.resetPasswordForEmail(gpEmailPendienteRecovery);
+  if(res.error){ toast(res.error.message,'err'); return; }
+  toast('Te reenviamos el código ✓');
 }
 
 function mostrarPantallaNuevaPassword(){
@@ -6688,8 +6791,9 @@ async function guardarNuevaPassword(){
 }
 function mostrarRegistro(){
   if(currentUser) resetSesionLocal();
-  var lf=el('login-form'), rf=el('register-form');
+  var lf=el('login-form'), rf=el('register-form'), cf=el('confirm-form'), rc=el('recovery-form');
   if(lf)lf.style.display='none'; if(rf)rf.style.display='block';
+  if(cf)cf.style.display='none'; if(rc)rc.style.display='none';
 }
 // config es global y no se resetea sola entre cuentas — cerrarSesion() y
 // mostrarRegistro() la usan para no arrastrar datos de una cuenta a otra
@@ -6741,10 +6845,10 @@ function registerUser(){
   supabaseClient.auth.signUp({email:email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname,data:{nombre_negocio_pendiente:nombre}}}).then(function(result){
     if(result.error){ if(errEl){errEl.textContent=result.error.message;errEl.style.display='block';} return; }
     if(!result.data.session){
-      // Confirmación de email requerida: todavía no hay sesión activa, no se puede crear el negocio (RLS lo bloquearía en silencio)
+      // Confirmación requerida: todavía no hay sesión activa, no se puede crear el negocio (RLS lo bloquearía en silencio)
       if(errEl) errEl.style.display='none';
-      mostrarLogin();
-      toast('Te enviamos un email para confirmar tu cuenta. Confirmalo y volvé a iniciar sesión ✓');
+      mostrarConfirmarCodigo(email);
+      toast('Te enviamos un código de 6 dígitos a tu email ✓');
       return;
     }
     // Sesión inmediata (confirmación de email desactivada): el listener
