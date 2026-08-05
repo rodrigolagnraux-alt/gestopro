@@ -1394,6 +1394,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i" id="sb-fiado" onclick="goLocked('fiado',this,'basico')"><span class="sb-ico">🤝</span>Fiado<span class="sb-lock" id="lock-fiado">🔒</span><span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
+    <div class="sb-i" id="sb-cierremensual" onclick="goConPin('cierremensual',this,'basico')"><span class="sb-ico">📅</span>Cierre Mensual<span class="sb-lock" id="lock-cierremensual">🔒</span></div>
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Avanzado</div>
@@ -1808,6 +1809,22 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="card"><div class="stitle">📋 Detalle</div><div id="fin-detalle"></div></div>
 </div>
 
+<!-- CIERRE MENSUAL -->
+<div id="pg-cierremensual" class="pg">
+  <div class="ptitle">Cierre Mensual</div>
+  <div class="psub">El cierre del mes, componente por componente · <b id="cierre-periodo-lbl">Este mes</b></div>
+  <div style="font-size:11px;color:var(--mut2);background:var(--sur2);border-radius:8px;padding:8px 12px;margin-bottom:12px;">💡 Sueldos ya prorrateados por días trabajados cuando una semana de liquidación cruza el fin de mes, y consumo propio desglosado aparte de los demás gastos fijos.</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;">
+    <button class="btn btn-ghost btn-sm" onclick="cierreNavMes(-1)">&#8592;</button>
+    <div style="text-align:center;flex:1;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--txt);" id="cierre-nav-label">—</div>
+      <div style="font-size:11px;color:var(--mut2);"><span style="cursor:pointer;text-decoration:underline;color:var(--acc);" onclick="cierreIrHoy()">Ir a hoy</span></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="cierreNavMes(1)" id="cierre-nav-next">&#8594;</button>
+  </div>
+  <div class="card"><div class="stitle">📊 Desglose del cierre</div><div id="cierre-desglose"></div></div>
+</div>
+
 <!-- OC LOCKED -->
 <div id="pg-oc" class="pg">
   <div class="ptitle">Órdenes de Compra</div>
@@ -2184,7 +2201,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
+const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -5462,6 +5479,7 @@ function renderPage(id){
   else if(id==='fiado') renderFiado();
   else if(id==='resumen'){ sincronizarDatos().then(function(){ renderResumen(); }); }
   else if(id==='finanzas'){ sincronizarDatos().then(function(){ renderFinanzas(); }); }
+  else if(id==='cierremensual'){ sincronizarDatos().then(function(){ renderCierreMensual(); }); }
   else if(id==='empleados') renderEmpleados();
   else if(id==='menuonline') renderMenuOnline();
   else if(id==='pedidosonline') renderPedidosOnline();
@@ -6184,6 +6202,86 @@ async function renderFinanzas(){
     });
     dEl.innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin movimientos en este período</div></div>';
   }
+}
+
+// ═══ CIERRE MENSUAL ═══
+var cierreMesActual = new Date().getMonth();
+var cierreAnioActual = new Date().getFullYear();
+
+function cierreNavMes(delta){
+  cierreMesActual += delta;
+  if(cierreMesActual > 11){ cierreMesActual = 0; cierreAnioActual++; }
+  if(cierreMesActual < 0){ cierreMesActual = 11; cierreAnioActual--; }
+  var hoy = new Date();
+  var nb = el('cierre-nav-next');
+  if(nb) nb.disabled = (cierreAnioActual===hoy.getFullYear()&&cierreMesActual===hoy.getMonth());
+  renderCierreMensual();
+}
+function cierreIrHoy(){
+  var hoy = new Date();
+  cierreMesActual = hoy.getMonth(); cierreAnioActual = hoy.getFullYear();
+  var nb = el('cierre-nav-next'); if(nb) nb.disabled = true;
+  renderCierreMensual();
+}
+
+// El cierre se recalcula en vivo a partir de los datos históricos del mes elegido
+// (no hay un "snapshot" congelado) — igual que Resumen/Finanzas, navegar a un mes
+// pasado simplemente reaplica el mismo cálculo sobre ese rango de fechas.
+async function renderCierreMensual(){
+  var desde = new Date(cierreAnioActual, cierreMesActual, 1);
+  var hasta = new Date(cierreAnioActual, cierreMesActual + 1, 0);
+  var desdeStr = desde.toISOString().slice(0,10);
+  var hastaStr = hasta.toISOString().slice(0,10);
+  var label = desde.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+  var hoy = new Date();
+  var esHoy = (cierreAnioActual===hoy.getFullYear()&&cierreMesActual===hoy.getMonth());
+  var nl = el('cierre-nav-label'); if(nl) nl.textContent = label;
+  var nb = el('cierre-nav-next'); if(nb) nb.disabled = esHoy;
+  var lblEl = el('cierre-periodo-lbl'); if(lblEl) lblEl.textContent = label;
+  var cEl = el('cierre-desglose');
+  if(cEl) cEl.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
+
+  if(!supabaseClient || !currentNegocioId){
+    if(cEl) cEl.innerHTML = '<div class="empty"><div class="empty-ico">📅</div><div class="empty-t">Necesitás estar conectado para ver el cierre mensual</div></div>';
+    return;
+  }
+
+  var rm = await supabaseClient.from('movimientos_v2').select('tipo,monto,costo,cant,cat,origen').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
+  var movsF = rm.data || [];
+  var rf = await supabaseClient.from('facturas_v2').select('monto,monto_pagado,estado').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
+  var factsF = rf.data || [];
+
+  var totalVentas = movsF.filter(function(m){return m.tipo==='cobro';}).reduce(function(s,m){return s+(m.monto||0);},0);
+
+  var totalCompras = movsF.filter(function(m){return m.tipo==='ingreso';}).reduce(function(s,m){return s+((m.costo||0)*(m.cant||0));},0);
+  if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.monto_pagado||f.monto||0);},0);
+
+  var egresos = movsF.filter(function(m){return m.tipo==='egreso';});
+  // El cierre mensual de consumo propio se registra con cat:'GastoFijo' pero
+  // origen:'cierre_mensual' — se separa acá para no mezclarlo con gastos fijos reales.
+  var totalGF = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen!=='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalConsumoPropio = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen==='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
+
+  var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+    .eq('negocio_id',currentNegocioId).eq('pagado',true)
+    .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
+  var semanasF = rs.data || [];
+  var totalSueldos = semanasF.reduce(function(s,sm){
+    return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+  }, 0);
+
+  var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados;
+
+  if(cEl) cEl.innerHTML =
+    '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
+    '<div class="fin-row"><span>📦 Compras de mercadería</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
+    '<div class="fin-row"><span>💡 Gastos fijos pagados</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
+    (totalConsumoPropio>0?'<div class="fin-row"><span>🏠 Consumo propio</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalConsumoPropio)+'</span></div>':'')+
+    (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos (prorrateados)</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
+    (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
+    '<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia neta':'⚠️ Pérdida neta')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>';
 }
 
 function renderSimulador(){
@@ -7586,7 +7684,7 @@ function goConPin(id, navEl, req) {
     return;
   }
   // Secciones que requieren PIN
-  var seccionesPin = ['resumen', 'finanzas', 'empleados'];
+  var seccionesPin = ['resumen', 'finanzas', 'cierremensual', 'empleados'];
   var pinGuardado = config.pin || '';
   
   if(seccionesPin.includes(id) && pinGuardado && !pinSesionDesbloqueada[id]) {
