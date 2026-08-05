@@ -202,6 +202,24 @@
   .confirmacion .check {
     font-size: 48px;
   }
+  .aviso-cerrado {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .seccion-tipo {
+    padding: 18px 16px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .seccion-tipo:first-child { padding-top: 4px; }
 </style>
 </head>
 <body>
@@ -211,6 +229,7 @@
   <p>Armá tu pedido y confirmalo acá mismo</p>
 </header>
 
+<div id="aviso-cerrado"></div>
 <div id="contenido-menu"></div>
 
 <div class="barra-carrito" id="barra-carrito">
@@ -274,11 +293,26 @@ function costoEnvioActual() {
   return negocio && negocio.costo_envio ? Number(negocio.costo_envio) : 0;
 }
 
-function renderizarMenu() {
-  const cont = document.getElementById("contenido-menu");
-  cont.innerHTML = "";
+function renderAvisoCerrado() {
+  const aviso = document.getElementById("aviso-cerrado");
+  aviso.innerHTML = tiendaCerrada()
+    ? '<div class="aviso-cerrado">🔒 Cerrado por ahora, volvé pronto</div>'
+    : "";
+}
 
-  const categorias = [...new Set(items.map(i => i.categoria || "Otros"))];
+function tiendaCerrada() {
+  return !!(negocio && negocio.abierto === false);
+}
+
+function renderizarSeccion(cont, titulo, itemsSeccion) {
+  if (!itemsSeccion.length) return;
+  const tEl = document.createElement("div");
+  tEl.className = "seccion-tipo";
+  tEl.textContent = titulo;
+  cont.appendChild(tEl);
+
+  const categorias = [...new Set(itemsSeccion.map(i => i.categoria || "Otros"))];
+  const cerrada = tiendaCerrada();
 
   categorias.forEach(cat => {
     const catEl = document.createElement("div");
@@ -286,7 +320,7 @@ function renderizarMenu() {
     catEl.textContent = cat;
     cont.appendChild(catEl);
 
-    items.filter(i => (i.categoria || "Otros") === cat).forEach(item => {
+    itemsSeccion.filter(i => (i.categoria || "Otros") === cat).forEach(item => {
       const sinStock = item.stock !== null && item.stock <= 0;
       const cantidad = carrito[item.id] || 0;
       const div = document.createElement("div");
@@ -298,14 +332,32 @@ function renderizarMenu() {
           ${sinStock ? '<div class="item-sin-stock">Sin stock</div>' : ''}
         </div>
         <div class="cantidad-control">
-          <button ${sinStock ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', -1)">−</button>
+          <button ${(sinStock || cerrada) ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', -1)">−</button>
           <span class="cantidad-num">${cantidad}</span>
-          <button ${sinStock ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', 1)">+</button>
+          <button ${(sinStock || cerrada) ? "disabled" : ""} onclick="cambiarCantidad('${item.id}', 1)">+</button>
         </div>
       `;
       cont.appendChild(div);
     });
   });
+}
+
+function renderizarMenu() {
+  const cont = document.getElementById("contenido-menu");
+  cont.innerHTML = "";
+  renderAvisoCerrado();
+
+  const vinculados = items.filter(i => i.producto_id);
+  const armados = items.filter(i => !i.producto_id);
+  const ordenArmadosPrimero = negocio && negocio.orden_menu === "armados";
+
+  if (ordenArmadosPrimero) {
+    renderizarSeccion(cont, "🍽️ Platos armados", armados);
+    renderizarSeccion(cont, "📦 Productos", vinculados);
+  } else {
+    renderizarSeccion(cont, "📦 Productos", vinculados);
+    renderizarSeccion(cont, "🍽️ Platos armados", armados);
+  }
 }
 
 function cambiarCantidad(itemId, delta) {
@@ -351,6 +403,10 @@ function actualizarBarraCarrito() {
 document.getElementById("barra-carrito").addEventListener("click", abrirCheckout);
 
 function abrirCheckout() {
+  if (tiendaCerrada()) {
+    alert("La tienda está cerrada por ahora. Volvé a intentarlo más tarde.");
+    return;
+  }
   const panel = document.getElementById("panel");
   const subtotal = calcularSubtotal();
 
@@ -519,7 +575,7 @@ async function iniciar() {
   }
 
   try {
-    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre,costo_envio`);
+    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre,costo_envio,abierto,orden_menu`);
     if (negocios.length === 0) {
       cont.innerHTML = '<div class="estado-mensaje">No encontramos este negocio.</div>';
       return;
