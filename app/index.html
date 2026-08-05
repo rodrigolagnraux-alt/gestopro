@@ -6310,16 +6310,25 @@ async function guardarNuevaPassword(){
   toast('Contraseña actualizada ✓ — iniciá sesión de nuevo');
 }
 function mostrarRegistro(){
+  if(currentUser) resetSesionLocal();
   var lf=el('login-form'), rf=el('register-form');
   if(lf)lf.style.display='none'; if(rf)rf.style.display='block';
+}
+// config es global y no se resetea sola entre cuentas — cerrarSesion() y
+// mostrarRegistro() la usan para no arrastrar datos de una cuenta a otra
+// en la misma pestaña (alias/cvu/tel/emailDueno quedaban pisando la cuenta nueva).
+function resetSesionLocal(){
+  if(supabaseClient) supabaseClient.auth.signOut();
+  currentUser=null; currentNegocioId=null;
+  productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
+  config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901',recargoDomingo:50};
 }
 function cerrarSesion(){
   if(!confirm('Cerrar sesion?')) return;
   detenerPollingPedidosOnline();
-  if(supabaseClient) supabaseClient.auth.signOut();
-  currentUser=null; currentNegocioId=null;
-  productos=[]; movimientos=[]; facturas=[]; gastosFijos=[];
+  resetSesionLocal();
   var ls=el('login-screen'); if(ls)ls.style.display='flex';
+  mostrarLogin();
   toast('Sesion cerrada');
 }
 
