@@ -1147,7 +1147,10 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="ov" id="modal-importador-ia">
 <div class="modal" style="max-width:640px;">
   <div class="modal-drag"></div>
-  <div class="modal-t">🧠 Importador Inteligente de Stock</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+    <div class="modal-t">🧠 Importador Inteligente de Stock</div>
+    <button onclick="cerrarImportadorIA()" aria-label="Cerrar" style="background:none;border:none;color:var(--mut2);font-size:18px;cursor:pointer;padding:0 4px;line-height:1.4;">✕</button>
+  </div>
   <div class="modal-s">Excel, una lista pegada o una foto — elegí lo que tengas a mano</div>
 
   <div class="ptabs" style="margin-bottom:14px;">
@@ -4046,6 +4049,12 @@ function cancelImport(){
   pendingImport=[];
   window._impIaEditando=null;
   set('import-prev','display','none'); set('file-inp','val','');
+}
+function cerrarImportadorIA(){
+  pendingImport=[];
+  window._importNegativosDetectados = 0;
+  window._impIaEditando=null;
+  closeModal('modal-importador-ia');
 }
 
 // ═══ RENDER DASHBOARD ═══
