@@ -4668,7 +4668,7 @@ async function renderResumen(){
   set('res-periodo','text', label);
   var ri = el('res-ingresos'); var re = el('res-egresos'); var rb = el('res-balance');
   if(ri) ri.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
-  var movsF = [], factsF = [], cajasF = [];
+  var movsF = [], factsF = [], cajasF = [], totalSueldosSemanas = null;
   if(supabaseClient && currentNegocioId){
     var resMovs = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(resMovs.data){
@@ -4680,6 +4680,15 @@ async function renderResumen(){
     }
     var resCajas = await supabaseClient.from('cajas').select('*').eq('negocio_id',currentNegocioId).gte('fecha_apertura',desdeStr+'T00:00:00').lte('fecha_apertura',hastaStr+'T23:59:59');
     if(resCajas.data) cajasF = resCajas.data;
+    // Sueldos: semanas liquidadas que se solapan con el mes, prorrateadas por
+    // días trabajados en cada mes cuando la semana cruza el fin de mes.
+    var resSem = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+      .eq('negocio_id',currentNegocioId).eq('pagado',true)
+      .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
+    var semanasR = resSem.data || [];
+    totalSueldosSemanas = semanasR.reduce(function(s,sm){
+      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+    }, 0);
   } else {
     movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
     factsF = facturas.filter(function(f){ var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
@@ -4706,7 +4715,7 @@ async function renderResumen(){
   const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
   const esPagoFactura=function(m){ return m.desc && m.desc.indexOf('Pago factura ')===0; };
   const totalGF=egresosSueltos.filter(function(m){return m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
-  const totalSueldos=egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalSueldos=totalSueldosSemanas!==null?totalSueldosSemanas:egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const factsPag=egresosSueltos.filter(function(m){return esPagoFactura(m);}).reduce(function(s,m){return s+(m.monto||0);},0);
   const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&m.cat!=='GastoFijo'&&!m.prodId&&!esPagoFactura(m);}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
@@ -6112,15 +6121,25 @@ async function renderFinanzas(){
   var fpEl = el('fin-periodo-lbl'); if(fpEl) fpEl.textContent = label;
   var kEl = el('fin-kpis'); if(kEl) kEl.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:8px 0;">Cargando...</div>';
 
-  var movsF = [], factsF = [];
+  var movsF = [], factsF = [], totalSueldos = 0;
   if(supabaseClient && currentNegocioId){
     var rm = await supabaseClient.from('movimientos_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(rm.data) movsF = rm.data.map(function(m){return {id:m.id,tipo:m.tipo,fecha:m.fecha,monto:m.monto||0,metodo:m.metodo,desc:m.descripcion,prodId:m.prod_id,prodNom:m.prod_nom,cant:m.cant,costo:m.costo,cat:m.cat};});
     var rf = await supabaseClient.from('facturas_v2').select('*').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
     if(rf.data) factsF = rf.data.map(function(f){return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,origen:f.origen,obs:f.obs};});
+    // Sueldos: semanas liquidadas que se solapan con el mes, prorrateadas por
+    // días trabajados en cada mes cuando la semana cruza el fin de mes.
+    var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+      .eq('negocio_id',currentNegocioId).eq('pagado',true)
+      .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
+    var semanasF = rs.data || [];
+    totalSueldos = semanasF.reduce(function(s,sm){
+      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+    }, 0);
   } else {
     movsF = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
     factsF = facturas.filter(function(f){var fd=(f.fecha||'').slice(0,10);return fd>=desdeStr&&fd<=hastaStr;});
+    totalSueldos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   }
 
   var cobros = movsF.filter(function(m){return m.tipo==='cobro';});
@@ -6129,7 +6148,6 @@ async function renderFinanzas(){
   var totalCompras = ingresos.reduce(function(s,m){return s+((m.costo||0)*(m.cant||0));},0);
   if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   var totalGF = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
-  var totalSueldos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
@@ -7767,6 +7785,23 @@ function fechaLocalStr(d) {
   return y+'-'+m+'-'+dia;
 }
 
+// Reparte el monto de una semana liquidada entre los meses que cruza, proporcional
+// a los días trabajados en cada uno (ej: 5 días de julio + 2 de agosto → 5/7 y 2/7).
+// Solo afecta el cálculo de cierres/reportes mensuales — el ciclo de liquidación
+// semanal sigue pagando el monto completo de una sola vez, sin cambios.
+function prorratearSemanaEnPeriodo(semanaInicio, semanaFin, monto, desdePeriodo, hastaPeriodo) {
+  var sIni = new Date(semanaInicio+'T00:00:00');
+  var sFin = new Date(semanaFin+'T00:00:00');
+  var pIni = new Date(desdePeriodo+'T00:00:00');
+  var pFin = new Date(hastaPeriodo+'T00:00:00');
+  var totalDias = Math.round((sFin-sIni)/86400000) + 1;
+  var solapIni = sIni > pIni ? sIni : pIni;
+  var solapFin = sFin < pFin ? sFin : pFin;
+  var diasEnPeriodo = Math.round((solapFin-solapIni)/86400000) + 1;
+  if(diasEnPeriodo <= 0 || totalDias <= 0) return 0;
+  return monto * diasEnPeriodo / totalDias;
+}
+
 function getLunesActual() {
   var hoy = new Date();
   var dia = hoy.getDay();
@@ -7843,15 +7878,18 @@ async function renderReporteMes(listaEmpleados) {
   var html = '';
   for(var i=0; i<listaEmpleados.length; i++){
     var emp = listaEmpleados[i];
-    // Semanas liquidadas del mes
+    // Semanas liquidadas que caen o se solapan con el mes (incluye semanas que
+    // cruzan el fin de mes — se prorratean por días trabajados en cada mes)
     var sw = await supabaseClient.from('empleados_semanas')
-      .select('total_pagado,mercaderia')
+      .select('total_pagado,mercaderia,semana_inicio,semana_fin')
       .eq('empleado_id', emp.id)
       .eq('pagado', true)
-      .gte('semana_inicio', inicioMes)
-      .lte('semana_inicio', finMes);
+      .lte('semana_inicio', finMes)
+      .gte('semana_fin', inicioMes);
     var semanas = sw.data || [];
-    var totalSueldos = semanas.reduce(function(a,s){ return a+(s.total_pagado||0); }, 0);
+    var totalSueldos = semanas.reduce(function(a,s){
+      return a + prorratearSemanaEnPeriodo(s.semana_inicio, s.semana_fin, s.total_pagado||0, inicioMes, finMes);
+    }, 0);
 
     // Mercadería del mes
     var mr = await supabaseClient.from('empleados_mercaderia')
