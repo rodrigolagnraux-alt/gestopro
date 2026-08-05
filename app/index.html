@@ -2677,6 +2677,8 @@ async function confirmarPinEntregar(){
   go('entregar', _entregarNavEl);
 }
 
+var entregarPedidosData = [];
+
 async function renderPedidosEntregar(){
   if(!currentNegocioId) return;
   var cont = el('entregar-lista');
@@ -2690,6 +2692,7 @@ async function renderPedidosEntregar(){
     return;
   }
   var data = res.data || [];
+  entregarPedidosData = data;
   if(!data.length){
     cont.innerHTML = '<div class="empty"><div class="empty-ico">🛵</div><div class="empty-t">No hay pedidos para entregar</div></div>';
     return;
@@ -2719,10 +2722,62 @@ function renderPedidoEntregarCard(p){
 }
 
 async function marcarPedidoEntregadoSimple(id){
+  var p = entregarPedidosData.find(function(x){return String(x.id)===String(id);});
+  if(!p) return;
   if(!confirm('¿Marcar este pedido como entregado?')) return;
+
+  // Resolver ítems vinculados a productos_v2 para descontar el stock real recién
+  // ahora — mismo criterio que confirmarEntregaPedidoOnline(): el trigger que
+  // corre al crear el pedido solo descuenta menu_items.stock (platos armados),
+  // no productos_v2.stock (vinculados), que se descuenta al confirmar la entrega.
+  var mRes = await supabaseClient.from('menu_items').select('*').eq('negocio_id',currentNegocioId);
+  var menuItemsFrescos = mRes.data || [];
+  var itemsResueltos = (p.items||[]).map(function(it){
+    var mi = menuItemsFrescos.find(function(x){return String(x.id)===String(it.menu_item_id);});
+    var prod = (mi && mi.producto_id) ? productos.find(function(x){return String(x.id)===String(mi.producto_id);}) : null;
+    return {it:it, prod:prod};
+  });
+
   var res = await supabaseClient.from('pedidos').update({estado:'entregado'}).eq('id',id);
   if(res.error){ toast('No se pudo actualizar el pedido','err'); return; }
-  toast('✓ Pedido marcado como entregado');
+
+  itemsResueltos.forEach(function(x){
+    if(x.prod){
+      x.prod.stock = Math.max(0, x.prod.stock-(x.it.cantidad||1));
+      ajustarStockProducto(x.prod.id, -(x.it.cantidad||1));
+    }
+  });
+
+  // El cobro solo se registra si el pedido se pagó en efectivo (contra entrega).
+  // Si ya se pagó por Mercado Pago, el cobro ya quedó reflejado cuando se generó
+  // el pago online — acá solo cambia el estado, sin duplicar ningún movimiento.
+  if(p.metodo_pago === 'efectivo'){
+    var itemsDesc = (p.items||[]).map(function(it){ return (it.cantidad||1)+'x '+(it.nombre||''); }).join(', ');
+    var envio = p.costo_envio||0;
+    var subtotal = (p.subtotal!==undefined && p.subtotal!==null) ? p.subtotal : (p.total||0)-envio;
+    var nombreEmpleado = entregaEmpleadoActual ? entregaEmpleadoActual.nombre : null;
+    var _m = {
+      id: Date.now(), tipo:'cobro',
+      desc: '🛵 Entrega — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
+      monto: subtotal, fecha: hoy(), metodo:'efectivo', cajero: nombreEmpleado
+    };
+    movimientos.unshift(_m);
+    saveMovimiento(_m);
+    if(envio>0){
+      var _mEnvio = {
+        id: Date.now()+1, tipo:'cobro',
+        desc: '🚚 Envío — Entrega '+(p.cliente_nombre||'Cliente'),
+        monto: envio, fecha: hoy(), metodo:'efectivo', cat:'Envio', cajero: nombreEmpleado
+      };
+      movimientos.unshift(_mEnvio);
+      saveMovimiento(_mEnvio);
+    }
+    actualizarKpiCobradoLocal();
+    renderDash();
+  }
+
+  p.estado='entregado';
+  toast(p.metodo_pago==='efectivo' ? '✓ Entregado · cobro registrado' : '✓ Pedido marcado como entregado');
   renderPedidosEntregar();
 }
 
