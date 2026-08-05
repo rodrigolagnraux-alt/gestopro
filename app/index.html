@@ -7282,6 +7282,7 @@ async function pagarFiado(){
   var metodoEl = el('fd-pago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',qr:'QR / MP'};
+  var esConsumoPropio = !!c.es_consumo_propio;
 
   // Guardar movimiento en Supabase
   await supabaseClient.from('fiados_movimientos').insert({
@@ -7289,7 +7290,7 @@ async function pagarFiado(){
     cliente_id: c.id,
     tipo: 'pago',
     monto: pago,
-    descripcion: 'Pago '+metLbl[metodo],
+    descripcion: esConsumoPropio ? 'Saldo de consumo propio' : ('Pago '+metLbl[metodo]),
     fecha: hoy(),
     metodo: metLbl[metodo]
   });
@@ -7304,16 +7305,20 @@ async function pagarFiado(){
   await supabaseClient.from('fiados_clientes').update({deuda: nuevaDeuda}).eq('id',c.id);
   fiadoActualCliente.deuda = nuevaDeuda;
 
-  // Registrar como cobro en movimientos
-  var _mc = {id:Date.now(),tipo:'cobro',desc:'Pago fiado - '+c.nom,monto:pago,fecha:hoy(),metodo:metodo};
-  movimientos.unshift(_mc); saveMovimiento(_mc);
+  // Consumo propio no es un cliente real — "saldar" esa cuenta no es plata que
+  // entra a la caja, es el dueño reconociendo una deuda interna. No se registra
+  // como cobro (a diferencia de un pago de fiado real, unas líneas arriba).
+  if(!esConsumoPropio){
+    var _mc = {id:Date.now(),tipo:'cobro',desc:'Pago fiado - '+c.nom,monto:pago,fecha:hoy(),metodo:metodo};
+    movimientos.unshift(_mc); saveMovimiento(_mc);
+  }
 
   set('fd-pago','val','');
   renderHeaderFiado(fiadoActualCliente);
   renderHistorialFiado(fiadoActualCliente);
   renderFiado();
   renderDash();
-  toast('✓ Pago registrado: '+fmtM(pago));
+  toast(esConsumoPropio ? '✓ Consumo propio saldado: '+fmtM(pago) : '✓ Pago registrado: '+fmtM(pago));
 }
 
 async function eliminarClienteFiado(){
