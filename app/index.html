@@ -478,11 +478,11 @@ select.fi{appearance:none;cursor:pointer;}
         <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Iniciá sesión</span>
       </div>
     </div>
-    <!-- Confirmar cuenta con código de 6 dígitos (signup) -->
+    <!-- Confirmar cuenta con código de 8 dígitos (signup) -->
     <div id="confirm-form" style="display:none;">
       <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;text-align:center;">Confirmá tu cuenta</div>
-      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 6 dígitos a <b id="confirm-email-lbl" style="color:var(--txt);"></b></div>
-      <div class="fg"><label class="fl">Código</label><input class="fi" id="confirm-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRegistro()"></div>
+      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 8 dígitos a <b id="confirm-email-lbl" style="color:var(--txt);"></b></div>
+      <div class="fg"><label class="fl">Código</label><input class="fi" id="confirm-code" type="text" inputmode="numeric" maxlength="8" placeholder="12345678" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRegistro()"></div>
       <div id="confirm-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
       <button class="btn btn-acc btn-full" onclick="confirmarCodigoRegistro()" style="font-size:15px;padding:12px;">Confirmar</button>
       <div style="text-align:center;margin-top:12px;">
@@ -492,11 +492,11 @@ select.fi{appearance:none;cursor:pointer;}
         <span style="font-size:13px;color:var(--acc2);cursor:pointer;" onclick="mostrarLogin()">Volver</span>
       </div>
     </div>
-    <!-- Recuperar contraseña con código de 6 dígitos -->
+    <!-- Recuperar contraseña con código de 8 dígitos -->
     <div id="recovery-form" style="display:none;">
       <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;text-align:center;">Recuperar contraseña</div>
-      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 6 dígitos a <b id="recovery-email-lbl" style="color:var(--txt);"></b></div>
-      <div class="fg"><label class="fl">Código</label><input class="fi" id="recovery-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRecovery()"></div>
+      <div style="font-size:12px;color:var(--mut2);text-align:center;margin-bottom:16px;">Te enviamos un código de 8 dígitos a <b id="recovery-email-lbl" style="color:var(--txt);"></b></div>
+      <div class="fg"><label class="fl">Código</label><input class="fi" id="recovery-code" type="text" inputmode="numeric" maxlength="8" placeholder="12345678" style="font-size:20px;text-align:center;letter-spacing:4px;" onkeydown="if(event.key==='Enter')confirmarCodigoRecovery()"></div>
       <div id="recovery-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
       <button class="btn btn-acc btn-full" onclick="confirmarCodigoRecovery()" style="font-size:15px;padding:12px;">Confirmar código</button>
       <div style="text-align:center;margin-top:12px;">
@@ -6685,8 +6685,12 @@ function mostrarLogin(){
   if(cf)cf.style.display='none'; if(rc)rc.style.display='none';
 }
 
-// Emails pendientes de confirmar con el código de 6 dígitos que Supabase manda
+// Emails pendientes de confirmar con el código de 8 dígitos que Supabase manda
 // (signup y recuperación de contraseña) — se usan al confirmar o reenviar.
+// El largo real (8, no el default de 6 de Supabase) se confirmó con un código
+// real recibido por email para este proyecto — no hay una config expuesta por
+// API/SQL para leerlo, así que si Supabase cambia esto en el dashboard hay que
+// actualizar el maxlength/placeholder del input y esta validación a mano.
 var gpEmailPendienteConfirmar = null;
 var gpEmailPendienteRecovery = null;
 
@@ -6700,7 +6704,7 @@ function mostrarConfirmarCodigo(email){
   var errEl = el('confirm-error'); if(errEl) errEl.style.display='none';
 }
 
-// Verifica el código de 6 dígitos del signup (en vez de depender de que el
+// Verifica el código de 8 dígitos del signup (en vez de depender de que el
 // usuario clickee el link de confirmación — un link de un solo uso que un
 // escáner de seguridad de email puede pre-visitar y gastar antes de que el
 // usuario lo abra, dejándolo con "Email link is invalid or has expired").
@@ -6709,7 +6713,7 @@ function mostrarConfirmarCodigo(email){
 async function confirmarCodigoRegistro(){
   var codigo = (get('confirm-code')||'').trim();
   var errEl = el('confirm-error');
-  if(!codigo || codigo.length!==6){ if(errEl){errEl.textContent='Ingresá el código de 6 dígitos';errEl.style.display='block';} return; }
+  if(!codigo || codigo.length!==8){ if(errEl){errEl.textContent='Ingresá el código de 8 dígitos';errEl.style.display='block';} return; }
   if(!supabaseClient || !gpEmailPendienteConfirmar) return;
   var res = await supabaseClient.auth.verifyOtp({email:gpEmailPendienteConfirmar, token:codigo, type:'signup'});
   if(res.error){ if(errEl){errEl.textContent='Código incorrecto o vencido';errEl.style.display='block';} return; }
@@ -6738,7 +6742,7 @@ function mostrarConfirmarCodigoRecovery(email){
 // Mismo cambio que el signup y por la misma razón: reemplaza el link de
 // recuperación de contraseña (mismo tipo de link de un solo uso, misma
 // vulnerabilidad a un pre-visiteo de un escáner de seguridad) por un código
-// de 6 dígitos tipeado a mano.
+// de 8 dígitos tipeado a mano.
 async function olvidePassword(){
   var email = (get('login-email')||'').trim();
   if(!email){ toast('Escribí tu email arriba primero','err'); return; }
@@ -6746,13 +6750,13 @@ async function olvidePassword(){
   var res = await supabaseClient.auth.resetPasswordForEmail(email);
   if(res.error){ toast(res.error.message,'err'); return; }
   mostrarConfirmarCodigoRecovery(email);
-  toast('Te enviamos un código de 6 dígitos a tu email ✓');
+  toast('Te enviamos un código de 8 dígitos a tu email ✓');
 }
 
 async function confirmarCodigoRecovery(){
   var codigo = (get('recovery-code')||'').trim();
   var errEl = el('recovery-error');
-  if(!codigo || codigo.length!==6){ if(errEl){errEl.textContent='Ingresá el código de 6 dígitos';errEl.style.display='block';} return; }
+  if(!codigo || codigo.length!==8){ if(errEl){errEl.textContent='Ingresá el código de 8 dígitos';errEl.style.display='block';} return; }
   if(!supabaseClient || !gpEmailPendienteRecovery) return;
   var res = await supabaseClient.auth.verifyOtp({email:gpEmailPendienteRecovery, token:codigo, type:'recovery'});
   if(res.error){ if(errEl){errEl.textContent='Código incorrecto o vencido';errEl.style.display='block';} return; }
@@ -6848,7 +6852,7 @@ function registerUser(){
       // Confirmación requerida: todavía no hay sesión activa, no se puede crear el negocio (RLS lo bloquearía en silencio)
       if(errEl) errEl.style.display='none';
       mostrarConfirmarCodigo(email);
-      toast('Te enviamos un código de 6 dígitos a tu email ✓');
+      toast('Te enviamos un código de 8 dígitos a tu email ✓');
       return;
     }
     // Sesión inmediata (confirmación de email desactivada): el listener
