@@ -1268,6 +1268,9 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="fg" id="plato-stock-wrap"><label class="fl">Stock (opcional)</label><input class="fi" id="plato-stock" type="number" placeholder="Dejalo vacío si no querés controlar el stock"></div>
   <div id="plato-vinculado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
+  <div id="plato-receta-wrap" style="display:none;margin-bottom:12px;">
+    <button class="btn btn-ghost btn-full" type="button" onclick="abrirModalReceta(platoEditId)">🧾 Armar receta (insumos)</button>
+  </div>
   <div class="chk-wrap"><input type="checkbox" id="plato-visible" checked><label for="plato-visible" class="fl" style="margin:0;cursor:pointer;">Visible en la Tienda Online pública</label></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="closeModal('modal-plato')">Cancelar</button>
@@ -1621,6 +1624,30 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="insumo-buscar-prod-srch" placeholder="Buscar producto..." oninput="renderBuscadorProductoInsumoResultados()"></div>
   <div id="insumo-buscar-prod-lista" style="max-height:360px;overflow-y:auto;margin-top:10px;"></div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-insumo-buscar-producto')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: RECETA DE UN PRODUCTO ONLINE -->
+<div class="ov" id="modal-receta">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t" id="modal-receta-titulo">🧾 Receta</div>
+  <div class="modal-s">Los insumos se descuentan automáticamente cada vez que vendés este producto</div>
+  <button class="btn btn-ghost btn-full" type="button" onclick="abrirBuscadorInsumoReceta()" style="margin-bottom:14px;">+ Agregar insumo</button>
+  <div id="receta-lista"></div>
+  <div class="btn-row"><button class="btn btn-acc" onclick="closeModal('modal-receta')">Listo</button></div>
+</div>
+</div>
+
+<!-- MODAL: BUSCAR INSUMO PARA AGREGAR A UNA RECETA -->
+<div class="ov" id="modal-receta-buscar-insumo">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🔍 Agregar insumo a la receta</div>
+  <div class="modal-s">Elegí el insumo y la cantidad que se usa por cada unidad vendida</div>
+  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="receta-buscar-insumo-srch" placeholder="Buscar insumo..." oninput="renderRecetaBuscarInsumoResultados()"></div>
+  <div id="receta-buscar-insumo-lista" style="max-height:360px;overflow-y:auto;margin-top:10px;"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-receta-buscar-insumo')">Cerrar</button></div>
 </div>
 </div>
 
@@ -5345,11 +5372,122 @@ async function eliminarInsumo(){
   renderInsumos();
 }
 
+// ═══════════════════════════════════════════════
+// RECETAS (insumos por producto online)
+// ═══════════════════════════════════════════════
+var recetaMenuItemId = null;
+var recetaActualItems = [];
+var insumosDisponiblesReceta = [];
+
+async function cargarInsumosDisponiblesReceta(){
+  var res = await supabaseClient.from('insumos').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+  insumosDisponiblesReceta = res.data || [];
+}
+
+async function cargarRecetaActual(){
+  var res = await supabaseClient.from('recetas').select('*').eq('menu_item_id',recetaMenuItemId);
+  var rows = res.data || [];
+  recetaActualItems = rows.map(function(r){
+    var ins = insumosDisponiblesReceta.find(function(i){return String(i.id)===String(r.insumo_id);});
+    return Object.assign({}, r, { insumo_nombre: ins?ins.nombre:'(insumo eliminado)', insumo_um: ins?(ins.um||'UN'):'UN' });
+  });
+}
+
+async function abrirModalReceta(menuItemId){
+  if(!menuItemId) return;
+  recetaMenuItemId = menuItemId;
+  var it = (window._menuItemsCache||[]).find(function(x){return String(x.id)===String(menuItemId);});
+  set('modal-receta-titulo','text','🧾 Receta — '+(it?it.nombre:''));
+  await cargarInsumosDisponiblesReceta();
+  await cargarRecetaActual();
+  renderReceta();
+  openModal('modal-receta');
+}
+
+function renderReceta(){
+  var cont = el('receta-lista'); if(!cont) return;
+  if(!recetaActualItems.length){
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🧾</div><div class="empty-t">Sin insumos en esta receta</div></div>';
+    return;
+  }
+  cont.innerHTML = recetaActualItems.map(function(r){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--brd);">'
+      +'<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+escapeHtml(r.insumo_nombre)+'</div></div>'
+      +'<div style="font-size:12px;color:var(--mut2);white-space:nowrap;">'+r.cantidad+' '+escapeHtml(r.insumo_um)+' / unidad</div>'
+      +'<button class="btn btn-ghost btn-sm" onclick="editarCantidadReceta(\''+r.id+'\')" title="Editar cantidad">📓</button>'
+      +'<button class="btn btn-red btn-sm" onclick="quitarInsumoDeReceta(\''+r.id+'\')" title="Quitar">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+async function editarCantidadReceta(recetaId){
+  var r = recetaActualItems.find(function(x){return String(x.id)===String(recetaId);});
+  if(!r) return;
+  var nueva = prompt('Cantidad de "'+r.insumo_nombre+'" que se usa por cada unidad vendida ('+r.insumo_um+'):', r.cantidad);
+  if(nueva===null) return;
+  var cant = parseFloat(nueva);
+  if(!cant || cant<=0){ toast('Ingresá una cantidad válida','err'); return; }
+  var res = await supabaseClient.from('recetas').update({cantidad:cant}).eq('id',recetaId);
+  if(res.error){ toast('No se pudo actualizar la cantidad','err'); return; }
+  await cargarRecetaActual();
+  renderReceta();
+}
+
+async function quitarInsumoDeReceta(recetaId){
+  if(!confirm('¿Quitar este insumo de la receta?')) return;
+  var res = await supabaseClient.from('recetas').delete().eq('id',recetaId);
+  if(res.error){ toast('No se pudo quitar el insumo','err'); return; }
+  await cargarRecetaActual();
+  renderReceta();
+  renderRecetaBuscarInsumoResultados();
+}
+
+function abrirBuscadorInsumoReceta(){
+  set('receta-buscar-insumo-srch','val','');
+  renderRecetaBuscarInsumoResultados();
+  openModal('modal-receta-buscar-insumo');
+}
+
+function renderRecetaBuscarInsumoResultados(){
+  var cont = el('receta-buscar-insumo-lista'); if(!cont) return;
+  var q = (get('receta-buscar-insumo-srch')||'').toLowerCase().trim();
+  var yaEnReceta = recetaActualItems.map(function(r){return String(r.insumo_id);});
+  var lista = insumosDisponiblesReceta.filter(function(i){
+    if(yaEnReceta.indexOf(String(i.id))!==-1) return false;
+    if(q && i.nombre.toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  if(!lista.length){
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mut2);font-size:13px;">Sin insumos disponibles para agregar</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(function(i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--brd);">'
+      +'<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+escapeHtml(i.nombre)+'</div><div style="font-size:11px;color:var(--mut2);">'+escapeHtml(i.um||'UN')+'</div></div>'
+      +'<input class="fi" type="number" placeholder="Cant." style="width:70px;" id="receta-cant-'+i.id+'">'
+      +'<button class="btn btn-acc btn-sm" onclick="agregarInsumoAReceta(\''+i.id+'\')">+ Agregar</button>'
+      +'</div>';
+  }).join('');
+}
+
+async function agregarInsumoAReceta(insumoId){
+  var cantEl = el('receta-cant-'+insumoId);
+  var cant = parseFloat(cantEl?cantEl.value:'')||0;
+  if(cant<=0){ toast('Ingresá una cantidad válida','err'); return; }
+  var res = await supabaseClient.from('recetas').insert({negocio_id:currentNegocioId, menu_item_id:recetaMenuItemId, insumo_id:insumoId, cantidad:cant});
+  if(res.error){ toast('No se pudo agregar el insumo a la receta','err'); return; }
+  toast('Insumo agregado a la receta ✓');
+  await cargarRecetaActual();
+  renderReceta();
+  renderRecetaBuscarInsumoResultados();
+}
+
 var platoEditId = null;
 function abrirModalPlato(id){
   platoEditId = id||null;
   var stockWrap = el('plato-stock-wrap');
   var vincInfo = el('plato-vinculado-info');
+  var recetaWrap = el('plato-receta-wrap');
   if(id){
     var it = (window._menuItemsCache||[]).find(function(x){return String(x.id)===String(id);});
     if(!it) return;
@@ -5363,9 +5501,11 @@ function abrirModalPlato(id){
     if(prodVinc){
       if(stockWrap) stockWrap.style.display='none';
       if(vincInfo){ vincInfo.style.display='block'; vincInfo.innerHTML='🔗 Vinculado a <b style="color:var(--txt);">'+escapeHtml(prodVinc.nom)+'</b> — stock real: '+prodVinc.stock+' '+escapeHtml(prodVinc.um||'UN')+'. El stock se descuenta automáticamente del inventario al entregar.'; }
+      if(recetaWrap) recetaWrap.style.display='none';
     } else {
       if(stockWrap) stockWrap.style.display='';
       if(vincInfo) vincInfo.style.display='none';
+      if(recetaWrap) recetaWrap.style.display='';
     }
   } else {
     set('modal-plato-titulo','text','🆕 Nuevo producto online');
@@ -5373,6 +5513,7 @@ function abrirModalPlato(id){
     var vEl2 = el('plato-visible'); if(vEl2) vEl2.checked = true;
     if(stockWrap) stockWrap.style.display='';
     if(vincInfo) vincInfo.style.display='none';
+    if(recetaWrap) recetaWrap.style.display='none';
   }
   openModal('modal-plato');
 }
