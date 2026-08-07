@@ -6974,7 +6974,7 @@ function alertarFacturasVencidas(){
 
 }
 
-function crearNegocio(nombre, email){
+async function crearNegocio(nombre, email){
   if(!supabaseClient||!currentUser) return Promise.resolve();
   // Sincroniza el nombre en config ANTES de armar el insert: config.nombre es
   // lo que lee el modal de Configuración (poblarFormConfig) y lo que queda
@@ -6982,9 +6982,20 @@ function crearNegocio(nombre, email){
   // real en la columna "nombre" pero con el default "Mi Negocio" en config,
   // y el modal de onboarding mostraba ese default en vez del nombre recién creado.
   config.nombre = nombre;
+
+  // Señal blanda anti-abuso de trial: si el email (normalizado — ignora
+  // plus-alias y, en Gmail, los puntos) ya tuvo un negocio antes, este trial
+  // arranca en 7 días en vez de 35. No bloquea el registro, solo lo acorta —
+  // un falso positivo (alguien con un alias legítimo) sigue entrando normal.
+  var trialDias = 35;
+  try{
+    var rpcRes = await supabaseClient.rpc('trial_dias_para_usuario_actual');
+    if(!rpcRes.error && typeof rpcRes.data === 'number') trialDias = rpcRes.data;
+  }catch(e){ console.log('trial_dias_para_usuario_actual error:', e); }
+
   return supabaseClient.from('negocios').insert({
     user_id:currentUser.id, nombre:nombre, email:email,
-    plan:'gratis', config:JSON.stringify(config),
+    plan:'gratis', config:JSON.stringify(config), trial_dias:trialDias,
     aprobado:true, fecha_registro:new Date().toISOString()
   }).select().single().then(function(result){
     if(result.data){
@@ -7042,10 +7053,12 @@ function verificarAccesoNegocio(negocio){
     }
     return false;
   }
-  // plan gratis / trial
+  // plan gratis / trial — trial_dias es 35 salvo que el email (normalizado)
+  // ya haya tenido un negocio antes, en cuyo caso crearNegocio() lo dejó en 7.
   var fechaReg = negocio.fecha_registro ? new Date(negocio.fecha_registro) : new Date();
   var diasTranscurridos = Math.floor((new Date() - fechaReg) / 86400000);
-  var diasRestantes = 35 - diasTranscurridos;
+  var diasTrial = negocio.trial_dias || 35;
+  var diasRestantes = diasTrial - diasTranscurridos;
   if(diasRestantes <= 0){
     irAPaywall();
     return true;
