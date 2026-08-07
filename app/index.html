@@ -1343,6 +1343,16 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="font-size:11px;color:var(--mut2);margin:4px 0 12px;">Si la apagás, tus clientes ven el menú pero no pueden hacer pedidos hasta que la vuelvas a abrir</div>
   <div class="fg"><label class="fl">Costo de envío ($)</label><input class="fi" id="cfg-costo-envio" type="number" placeholder="0" inputmode="numeric"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa como costo de envío por defecto en los pedidos delivery de tu Tienda Online</div>
+  <div class="fg">
+    <label class="fl">Logo del negocio (se muestra arriba del menú online)</label>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img id="cfg-logo-preview" style="display:none;width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid var(--brd);">
+      <input type="file" accept="image/*" id="cfg-logo-file" style="display:none;" onchange="subirLogoNegocio(this)">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('cfg-logo-file').click()">📷 Subir logo</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="cfg-logo-quitar" style="display:none;" onclick="quitarLogoNegocio()">Quitar</button>
+    </div>
+    <div id="cfg-logo-status" style="font-size:11px;color:var(--mut2);margin-top:6px;"></div>
+  </div>
   <div class="fg" style="margin-bottom:0;">
     <label class="fl">Orden en Tienda Online</label>
     <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="cfg-orden-menu-vinculados-wrap">
@@ -7743,6 +7753,14 @@ function poblarFormConfig(){
   var fpref = config.fiadoPrecio || 'original';
   var fpEl = el('cfg-fiado-precio-'+fpref);
   if(fpEl) fpEl.checked = true;
+  var logoPreviewEl = el('cfg-logo-preview'), logoQuitarEl = el('cfg-logo-quitar');
+  if(config.logoUrl){
+    if(logoPreviewEl){ logoPreviewEl.src = config.logoUrl; logoPreviewEl.style.display = 'block'; }
+    if(logoQuitarEl) logoQuitarEl.style.display = 'inline-block';
+  } else {
+    if(logoPreviewEl) logoPreviewEl.style.display = 'none';
+    if(logoQuitarEl) logoQuitarEl.style.display = 'none';
+  }
   // Snapshot de referencia: al guardar, comparamos contra esto para saber qué campos tocó el usuario.
   _configSnapshotAlAbrir = {
     nombre: config.nombre||'', tel: config.tel||'', emailDueno: config.emailDueno||'',
@@ -7753,6 +7771,74 @@ function poblarFormConfig(){
     fiadoPrecio: config.fiadoPrecio||'original',
     tiendaAbierta: config.tiendaAbierta!==false, ordenMenu: config.ordenMenu||'vinculados'
   };
+}
+
+// Redimensiona una imagen a un tamaño razonable para logo (máx maxDim en su
+// lado más largo, mantiene proporción) antes de subirla — evita mandar fotos
+// de varios MB a Storage para algo que se muestra chico arriba del menú.
+function redimensionarImagenLogo(file, maxDim){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      URL.revokeObjectURL(url);
+      var w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob){
+        if(blob) resolve(blob); else reject(new Error('No se pudo procesar la imagen'));
+      }, 'image/png');
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('Archivo de imagen inválido')); };
+    img.src = url;
+  });
+}
+
+// Se sube y se guarda al toque (no espera al botón "Guardar" del modal) —
+// mismo path siempre (<negocio_id>/logo.png) con upsert, así reemplazar el
+// logo no deja archivos viejos huérfanos en el bucket.
+async function subirLogoNegocio(inputEl){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  if(!supabaseClient || !currentNegocioId){ toast('Sin conexión','err'); inputEl.value=''; return; }
+  var statusEl = el('cfg-logo-status');
+  if(statusEl) statusEl.textContent = 'Subiendo...';
+  try{
+    var blob = await redimensionarImagenLogo(file, 400);
+    var path = currentNegocioId + '/logo.png';
+    var res = await supabaseClient.storage.from('logos-negocios').upload(path, blob, { upsert: true, contentType: 'image/png' });
+    if(res.error){ if(statusEl) statusEl.textContent = 'Error: '+res.error.message; inputEl.value=''; return; }
+    var pub = supabaseClient.storage.from('logos-negocios').getPublicUrl(path);
+    // Cache-busting: el path no cambia al reemplazar el logo, así que sin esto
+    // el navegador/CDN podría seguir mostrando la imagen vieja.
+    var url = pub.data.publicUrl + '?t=' + Date.now();
+    config.logoUrl = url;
+    saveState();
+    var previewEl = el('cfg-logo-preview');
+    if(previewEl){ previewEl.src = url; previewEl.style.display = 'block'; }
+    var quitarEl = el('cfg-logo-quitar'); if(quitarEl) quitarEl.style.display = 'inline-block';
+    if(statusEl) statusEl.textContent = 'Logo actualizado ✓';
+    toast('Logo actualizado ✓');
+  }catch(e){
+    if(statusEl) statusEl.textContent = 'No se pudo procesar la imagen';
+  }
+  inputEl.value = '';
+}
+
+async function quitarLogoNegocio(){
+  if(!supabaseClient || !currentNegocioId) return;
+  await supabaseClient.storage.from('logos-negocios').remove([currentNegocioId + '/logo.png']);
+  config.logoUrl = null;
+  saveState();
+  var previewEl = el('cfg-logo-preview'); if(previewEl) previewEl.style.display = 'none';
+  var quitarEl = el('cfg-logo-quitar'); if(quitarEl) quitarEl.style.display = 'none';
+  var statusEl = el('cfg-logo-status'); if(statusEl) statusEl.textContent = '';
+  toast('Logo eliminado');
 }
 
 // ═══ INIT DATA ═══
