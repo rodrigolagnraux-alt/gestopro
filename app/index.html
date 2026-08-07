@@ -2893,6 +2893,7 @@ async function marcarPedidoEntregadoSimple(id){
       ajustarStockProducto(x.prod.id, -(x.it.cantidad||1));
     }
   });
+  descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
 
   // El cobro solo se registra si el pedido se pagó en efectivo (contra entrega).
   // Si ya se pagó por Mercado Pago, el cobro ya quedó reflejado cuando se generó
@@ -5887,6 +5888,7 @@ async function confirmarEntregaPedidoOnline(){
       ajustarStockProducto(x.prod.id, -(x.it.cantidad||1)); // ajuste real, atómico, del lado de Supabase
     }
   });
+  descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
 
   p.estado='entregado';
   p.metodo_pago=metodo;
@@ -7565,6 +7567,36 @@ function ajustarStockProducto(prodId, delta){
     var prod = productos.find(function(p){return String(p.id)===String(prodId);});
     if(prod) prod.stock = nuevoStock;
   }).catch(function(e){console.log('Error ajustando stock:',e);});
+}
+
+// Descuenta el stock de insumos (RPC ajustar_stock_insumo — delega a productos_v2
+// si el insumo está vinculado, o ajusta insumos.stock directo si es standalone).
+function ajustarStockInsumo(insumoId, delta){
+  if(!supabaseClient||!currentNegocioId||!delta) return;
+  supabaseClient.rpc('ajustar_stock_insumo', {p_insumo_id:String(insumoId), p_delta:delta}).then(function(res){
+    if(res.error){ console.log('Error ajustando stock de insumo:', res.error); return; }
+    var nuevoStock = res.data;
+    if(nuevoStock===null||nuevoStock===undefined) return;
+    var ins = insumos.find(function(i){return String(i.id)===String(insumoId);});
+    if(ins) ins.stock = nuevoStock;
+  }).catch(function(e){console.log('Error ajustando stock de insumo:',e);});
+}
+
+// Al vender un producto online con receta armada, descuenta cada insumo según
+// la cantidad de la receta × la cantidad vendida. itemsVendidos: [{menu_item_id, cantidad}].
+async function descontarInsumosPorVenta(itemsVendidos){
+  if(!supabaseClient||!currentNegocioId) return;
+  var menuItemIds = (itemsVendidos||[]).map(function(x){return x.menu_item_id?String(x.menu_item_id):null;}).filter(Boolean);
+  if(!menuItemIds.length) return;
+  var res = await supabaseClient.from('recetas').select('*').eq('negocio_id',currentNegocioId).in('menu_item_id',menuItemIds);
+  var recetasVenta = res.data || [];
+  if(!recetasVenta.length) return;
+  itemsVendidos.forEach(function(x){
+    var cantVendida = x.cantidad||1;
+    recetasVenta.filter(function(r){return String(r.menu_item_id)===String(x.menu_item_id);}).forEach(function(r){
+      ajustarStockInsumo(r.insumo_id, -(r.cantidad*cantVendida));
+    });
+  });
 }
 
 function guardarMovimientoNube(m){
