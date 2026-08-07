@@ -1421,6 +1421,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i on" onclick="go('dash',this)"><span class="sb-ico">◈</span>Dashboard</div>
     <div class="sb-i" onclick="go('productos',this)"><span class="sb-ico">📦</span>Productos<span class="sb-badge" id="sb-alerta">0</span></div>
     <div class="sb-i" onclick="go('menuonline',this)"><span class="sb-ico">🛒</span>Tienda Online</div>
+    <div class="sb-i" onclick="go('insumos',this)"><span class="sb-ico">🧂</span>Insumos</div>
     <div class="sb-i" id="sb-pedidos-online" onclick="go('pedidosonline',this)"><span class="sb-ico">🛎️</span>Pedidos Online<span class="sb-badge" id="sb-pedidos-online-badge" style="display:none;">0</span></div>
     <div class="sb-i" id="sb-entregar" onclick="abrirPedidosEntregar(this)"><span class="sb-ico">🛵</span>Pedidos a entregar</div>
     <div class="sb-i" onclick="go('movimientos',this)"><span class="sb-ico">↕</span>Movimientos</div>
@@ -1558,6 +1559,69 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <button class="btn btn-ghost btn-full" onclick="abrirModalPlato()" style="margin-bottom:16px;">+ Producto online sin vincular</button>
   <div id="menu-items-lista"></div>
+</div>
+
+<!-- INSUMOS -->
+<div id="pg-insumos" class="pg">
+  <div class="ptitle">Insumos</div>
+  <div class="psub" style="margin-bottom:14px;">Lo que usás para armar tus platos — vinculado a tu inventario o con stock propio</div>
+  <button class="btn btn-acc btn-full" onclick="abrirModalNuevoInsumo()" style="margin-bottom:16px;">+ Nuevo insumo</button>
+  <div id="insumos-lista"></div>
+</div>
+
+<!-- MODAL: NUEVO/EDITAR INSUMO -->
+<div class="ov" id="modal-insumo">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t" id="modal-insumo-titulo">🧂 Nuevo Insumo</div>
+  <div class="modal-s">Un ingrediente que usás en tus recetas</div>
+  <div class="fg"><label class="fl">Nombre del insumo</label><input class="fi" id="insumo-nombre" placeholder="Ej: Carne picada"></div>
+  <div class="fg"><label class="fl">Unidad</label><select class="fi" id="insumo-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div>
+
+  <div class="fg" style="margin-bottom:0;">
+    <label class="fl">Tipo de stock</label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="insumo-tipo-standalone-wrap">
+      <input type="radio" name="insumo-tipo" value="standalone" id="insumo-tipo-standalone" style="margin-top:3px;" onchange="actualizarTipoInsumo()">
+      <span><b style="color:var(--txt);">Stock propio</b><br><span style="font-size:11px;color:var(--mut2);">Este insumo tiene su propio stock, separado del inventario general.</span></span>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;cursor:pointer;" id="insumo-tipo-vinculado-wrap">
+      <input type="radio" name="insumo-tipo" value="vinculado" id="insumo-tipo-vinculado" style="margin-top:3px;" onchange="actualizarTipoInsumo()">
+      <span><b style="color:var(--txt);">Vinculado a un producto</b><br><span style="font-size:11px;color:var(--mut2);">Comparte stock con un producto que ya tenés cargado en tu inventario (📦 Productos).</span></span>
+    </label>
+  </div>
+  <div style="height:14px;"></div>
+
+  <div id="insumo-campos-standalone">
+    <div class="frow"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="insumo-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Costo $</label><input class="fi" id="insumo-costo" type="number" placeholder="0"></div></div>
+    <div class="fg"><label class="fl">Código de barras (opcional)</label><input class="fi" id="insumo-cod" placeholder="Ej: 7791234567890"></div>
+  </div>
+
+  <div id="insumo-campos-vinculado" style="display:none;">
+    <div id="insumo-producto-elegido" style="display:none;background:var(--sur2);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;">
+      <div style="color:var(--mut2);font-size:11px;">PRODUCTO VINCULADO</div>
+      <div id="insumo-producto-elegido-nombre" style="font-weight:600;"></div>
+      <div id="insumo-producto-elegido-stock" style="font-size:11px;color:var(--mut2);"></div>
+    </div>
+    <button class="btn btn-ghost btn-full" type="button" onclick="abrirBuscadorProductoInsumo()">🔍 Elegir producto de tu inventario</button>
+  </div>
+
+  <div id="insumo-btn-eliminar-wrap" style="display:none;margin-bottom:10px;">
+    <button class="btn btn-red btn-sm btn-full" onclick="eliminarInsumo()">🗑 Eliminar insumo</button>
+  </div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-insumo')">Cancelar</button><button class="btn btn-acc" onclick="guardarInsumo()">Guardar</button></div>
+</div>
+</div>
+
+<!-- MODAL: BUSCAR PRODUCTO PARA VINCULAR A UN INSUMO -->
+<div class="ov" id="modal-insumo-buscar-producto">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🔍 Elegir producto</div>
+  <div class="modal-s">Buscá el producto de tu inventario que este insumo va a compartir stock con</div>
+  <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="insumo-buscar-prod-srch" placeholder="Buscar producto..." oninput="renderBuscadorProductoInsumoResultados()"></div>
+  <div id="insumo-buscar-prod-lista" style="max-height:360px;overflow-y:auto;margin-top:10px;"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-insumo-buscar-producto')">Cerrar</button></div>
+</div>
 </div>
 
 <!-- PEDIDOS ONLINE (pedidos de clientes finales vía Tienda Online) -->
@@ -5098,6 +5162,189 @@ function copiarLinkMenu(){
   navigator.clipboard.writeText(link).then(function(){ toast('Link copiado ✓'); }).catch(function(){ toast('No se pudo copiar','err'); });
 }
 
+// ═══════════════════════════════════════════════
+// INSUMOS
+// ═══════════════════════════════════════════════
+var insumos = [];
+var insumoEditId = null;
+var insumoProductoVinculadoId = null;
+
+async function renderInsumos(){
+  var cont = el('insumos-lista'); if(!cont) return;
+  if(!supabaseClient || !currentNegocioId){ cont.innerHTML=''; return; }
+  var res = await supabaseClient.from('insumos').select('*').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+  insumos = res.data || [];
+  if(!insumos.length){
+    cont.innerHTML = '<div class="empty"><div class="empty-ico">🧂</div><div class="empty-t">Sin insumos cargados</div></div>';
+    return;
+  }
+  cont.innerHTML = insumos.map(function(i){
+    var prodVinc = i.producto_id ? productos.find(function(p){return String(p.id)===String(i.producto_id);}) : null;
+    var tipoTxt, stockTxt;
+    if(i.producto_id){
+      tipoTxt = '🔗 Vinculado'+(prodVinc?' a '+escapeHtml(prodVinc.nom):'');
+      stockTxt = prodVinc ? (prodVinc.stock+' '+escapeHtml(prodVinc.um||'UN')) : '—';
+    } else {
+      tipoTxt = '📦 Stock propio';
+      stockTxt = (i.stock||0)+' '+escapeHtml(i.um||'UN');
+    }
+    return '<div class="fiado-item" onclick="abrirModalEditarInsumo(\''+i.id+'\')">'
+      +'<div class="fiado-avatar">'+escapeHtml((i.nombre||'?').charAt(0).toUpperCase())+'</div>'
+      +'<div class="fiado-txt"><div class="fiado-nom">'+escapeHtml(i.nombre)+'</div><div class="fiado-meta">'+tipoTxt+'</div></div>'
+      +'<div class="fiado-right"><div class="fiado-deuda">'+stockTxt+'</div><div class="fiado-deuda-lbl">stock</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function limpiarFormInsumo(){
+  insumoEditId = null;
+  insumoProductoVinculadoId = null;
+  set('insumo-nombre','val','');
+  set('insumo-um','val','UN');
+  set('insumo-stock','val','');
+  set('insumo-costo','val','');
+  set('insumo-cod','val','');
+  var st=el('insumo-tipo-standalone'); if(st) st.checked=true;
+  var vi=el('insumo-tipo-vinculado'); if(vi) vi.checked=false;
+  var pe=el('insumo-producto-elegido'); if(pe) pe.style.display='none';
+  actualizarTipoInsumo();
+  var delWrap = el('insumo-btn-eliminar-wrap'); if(delWrap) delWrap.style.display='none';
+}
+
+function abrirModalNuevoInsumo(){
+  limpiarFormInsumo();
+  set('modal-insumo-titulo','text','🧂 Nuevo Insumo');
+  openModal('modal-insumo');
+}
+
+function abrirModalEditarInsumo(id){
+  var i = insumos.find(function(x){return String(x.id)===String(id);});
+  if(!i) return;
+  limpiarFormInsumo();
+  insumoEditId = i.id;
+  set('modal-insumo-titulo','text','✏️ Editar Insumo');
+  set('insumo-nombre','val', i.nombre||'');
+  set('insumo-um','val', i.um||'UN');
+  if(i.producto_id){
+    var stV=el('insumo-tipo-vinculado'); if(stV) stV.checked=true;
+    mostrarProductoElegidoInsumo(i.producto_id);
+  } else {
+    var stS=el('insumo-tipo-standalone'); if(stS) stS.checked=true;
+    set('insumo-stock','val', i.stock||0);
+    set('insumo-costo','val', i.costo||0);
+    set('insumo-cod','val', i.cod||'');
+  }
+  actualizarTipoInsumo();
+  var delWrap = el('insumo-btn-eliminar-wrap'); if(delWrap) delWrap.style.display='';
+  openModal('modal-insumo');
+}
+
+function actualizarTipoInsumo(){
+  var vinc = el('insumo-tipo-vinculado') && el('insumo-tipo-vinculado').checked;
+  var cs = el('insumo-campos-standalone'); if(cs) cs.style.display = vinc?'none':'';
+  var cv = el('insumo-campos-vinculado'); if(cv) cv.style.display = vinc?'':'none';
+}
+
+function mostrarProductoElegidoInsumo(prodId){
+  var p = productos.find(function(x){return String(x.id)===String(prodId);});
+  insumoProductoVinculadoId = prodId?String(prodId):null;
+  var wrap = el('insumo-producto-elegido');
+  if(!wrap) return;
+  if(!p){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  set('insumo-producto-elegido-nombre','text', p.nom);
+  set('insumo-producto-elegido-stock','text', 'Stock: '+p.stock+' '+(p.um||'UN'));
+}
+
+function abrirBuscadorProductoInsumo(){
+  set('insumo-buscar-prod-srch','val','');
+  renderBuscadorProductoInsumoResultados();
+  openModal('modal-insumo-buscar-producto');
+}
+
+function renderBuscadorProductoInsumoResultados(){
+  var cont = el('insumo-buscar-prod-lista'); if(!cont) return;
+  var q = (get('insumo-buscar-prod-srch')||'').toLowerCase().trim();
+  var lista = productos.filter(function(p){
+    if(q && p.nom.toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  }).slice(0,60);
+  if(!lista.length){
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mut2);font-size:13px;">Sin resultados</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(function(p){
+    var yaElegido = insumoProductoVinculadoId && String(insumoProductoVinculadoId)===String(p.id);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 8px;border-bottom:1px solid var(--brd);">'
+      +'<div><div style="font-size:13px;font-weight:600;">'+escapeHtml(p.nom)+'</div><div style="font-size:11px;color:var(--mut2);">Stock: '+(p.stock||0)+' '+escapeHtml(p.um||'UN')+'</div></div>'
+      +(yaElegido
+        ? '<span class="bdg bg" style="white-space:nowrap;">✓ Elegido</span>'
+        : '<button class="btn btn-acc btn-sm" onclick="elegirProductoParaInsumo(\''+p.id+'\')">Elegir</button>')
+      +'</div>';
+  }).join('');
+}
+
+function elegirProductoParaInsumo(prodId){
+  mostrarProductoElegidoInsumo(prodId);
+  closeModal('modal-insumo-buscar-producto');
+  renderBuscadorProductoInsumoResultados();
+}
+
+async function guardarInsumo(){
+  var nombre = get('insumo-nombre').trim();
+  if(!nombre){ toast('Ingresá el nombre del insumo','err'); return; }
+  var um = get('insumo-um')||'UN';
+  var vinc = el('insumo-tipo-vinculado') && el('insumo-tipo-vinculado').checked;
+  var payload = { negocio_id: currentNegocioId, nombre: nombre, um: um };
+  if(vinc){
+    if(!insumoProductoVinculadoId){ toast('Elegí un producto para vincular','err'); return; }
+    payload.producto_id = String(insumoProductoVinculadoId);
+    payload.stock = 0;
+    payload.costo = 0;
+    payload.cod = null;
+  } else {
+    payload.producto_id = null;
+    payload.stock = parseFloat(get('insumo-stock'))||0;
+    payload.costo = parseFloat(get('insumo-costo'))||0;
+    payload.cod = get('insumo-cod').trim()||null;
+  }
+  var res;
+  if(insumoEditId){
+    res = await supabaseClient.from('insumos').update(payload).eq('id',insumoEditId);
+  } else {
+    res = await supabaseClient.from('insumos').insert(payload);
+  }
+  if(res.error){
+    toast('No se pudo guardar el insumo','err');
+    return;
+  }
+  toast(insumoEditId ? 'Insumo actualizado ✓' : 'Insumo agregado ✓');
+  closeModal('modal-insumo');
+  renderInsumos();
+}
+
+async function eliminarInsumo(){
+  if(!insumoEditId) return;
+  if(currentNegocioId && supabaseClient){
+    var recRes = await supabaseClient.from('recetas').select('id').eq('insumo_id',insumoEditId);
+    if(recRes.data && recRes.data.length){
+      if(!confirm('⚠️ Este insumo está usado en '+recRes.data.length+' receta(s). Si lo eliminás, esas recetas van a quedar rotas.\n\nTe recomendamos quitarlo de esas recetas primero.\n\n¿Eliminar igual?')) return;
+    } else {
+      if(!confirm('¿Eliminar este insumo?')) return;
+    }
+  } else {
+    if(!confirm('¿Eliminar este insumo?')) return;
+  }
+  var res = await supabaseClient.from('insumos').delete().eq('id',insumoEditId);
+  if(res.error){
+    toast('No se pudo eliminar — probablemente está usado en una receta','err');
+    return;
+  }
+  toast('Insumo eliminado');
+  closeModal('modal-insumo');
+  renderInsumos();
+}
+
 var platoEditId = null;
 function abrirModalPlato(id){
   platoEditId = id||null;
@@ -5520,6 +5767,7 @@ function renderPage(id){
   else if(id==='cierremensual'){ sincronizarDatos().then(function(){ renderCierreMensual(); }); }
   else if(id==='empleados') renderEmpleados();
   else if(id==='menuonline') renderMenuOnline();
+  else if(id==='insumos') renderInsumos();
   else if(id==='pedidosonline') renderPedidosOnline();
   else if(id==='entregar') renderPedidosEntregar();
   else if(id==='pedidos') renderPedidos();
