@@ -6976,6 +6976,12 @@ function alertarFacturasVencidas(){
 
 function crearNegocio(nombre, email){
   if(!supabaseClient||!currentUser) return Promise.resolve();
+  // Sincroniza el nombre en config ANTES de armar el insert: config.nombre es
+  // lo que lee el modal de Configuración (poblarFormConfig) y lo que queda
+  // guardado en negocios.config — sin esto, el negocio se crea con el nombre
+  // real en la columna "nombre" pero con el default "Mi Negocio" en config,
+  // y el modal de onboarding mostraba ese default en vez del nombre recién creado.
+  config.nombre = nombre;
   return supabaseClient.from('negocios').insert({
     user_id:currentUser.id, nombre:nombre, email:email,
     plan:'gratis', config:JSON.stringify(config),
