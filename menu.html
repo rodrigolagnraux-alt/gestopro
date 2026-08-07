@@ -225,6 +225,7 @@
 <body>
 
 <header>
+  <img id="logo-negocio" style="display:none;width:64px;height:64px;border-radius:12px;object-fit:cover;margin:0 auto 10px;" alt="">
   <h1 id="nombre-negocio">Cargando...</h1>
   <p>Armá tu pedido y confirmalo acá mismo</p>
 </header>
@@ -236,6 +237,10 @@
   <span id="barra-carrito-texto">0 productos</span>
   <span id="barra-carrito-total">$0</span>
 </div>
+
+<footer style="text-align:center;padding:18px 16px;font-size:12px;color:var(--texto-suave);">
+  <a href="https://gestopro.com.ar" target="_blank" rel="noopener" style="color:var(--texto-suave);text-decoration:none;">Hecho con GestoPro 📦</a>
+</footer>
 
 <div class="overlay" id="overlay">
   <div class="panel" id="panel"></div>
@@ -575,13 +580,19 @@ async function iniciar() {
   }
 
   try {
-    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre,costo_envio,abierto,orden_menu`);
+    const negocios = await consultarSupabase(`negocios_publicos?slug=eq.${slug}&select=id,nombre,costo_envio,abierto,orden_menu,logo_url`);
     if (negocios.length === 0) {
       cont.innerHTML = '<div class="estado-mensaje">No encontramos este negocio.</div>';
       return;
     }
     negocio = negocios[0];
     document.getElementById("nombre-negocio").textContent = negocio.nombre;
+    if (negocio.logo_url) {
+      const logoEl = document.getElementById("logo-negocio");
+      logoEl.src = negocio.logo_url;
+      logoEl.alt = negocio.nombre;
+      logoEl.style.display = "block";
+    }
 
     // menu_items_publico ya calcula el stock "disponible" real: descuenta
     // lo que está reservado en pedidos pendientes/en preparación, para que
