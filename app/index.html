@@ -1205,6 +1205,14 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="modal-s">Excel, una lista pegada o una foto — elegí lo que tengas a mano</div>
 
+  <div class="fg" style="margin-bottom:14px;">
+    <label class="fl">¿Qué vas a cargar?</label>
+    <div class="ptabs">
+      <button class="ptab on" id="imp-ia-destino-productos" onclick="setDestinoImportadorIA('productos',this)">📦 Productos</button>
+      <button class="ptab" id="imp-ia-destino-insumos" onclick="setDestinoImportadorIA('insumos',this)">🧂 Insumos</button>
+    </div>
+  </div>
+
   <div class="ptabs" style="margin-bottom:14px;">
     <button class="ptab on" id="imp-ia-tab-excel" onclick="setTabImportadorIA('excel',this)">📊 Excel/CSV</button>
     <button class="ptab" id="imp-ia-tab-texto" onclick="setTabImportadorIA('texto',this)">✍️ Pegar texto</button>
@@ -1216,13 +1224,13 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
 
   <div id="imp-ia-panel-texto" style="display:none;">
-    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;">Pegá tu lista tal como la tengas — un producto por línea, con o sin precio/stock. La IA se encarga de interpretarla.</div>
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;" id="imp-ia-texto-caption">Pegá tu lista tal como la tengas — un producto por línea, con o sin precio/stock. La IA se encarga de interpretarla.</div>
     <textarea class="fi" id="ia-texto-productos" maxlength="8000" placeholder="Ej:&#10;Coca cola 2L 1500&#10;Sprite 2L 1400 stock 12&#10;Fideos Matarazzo 500g - 900" style="width:100%;min-height:140px;resize:vertical;font-family:'DM Mono',monospace;font-size:13px;padding:12px;"></textarea>
     <button class="btn btn-acc btn-full" style="margin-top:10px;" onclick="interpretarTextoProductosIA()">🧠 Interpretar con IA</button>
   </div>
 
   <div id="imp-ia-panel-foto" style="display:none;">
-    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;">Sacale una foto a una lista o cartel de precios (impreso o tipeado, no manuscrito) y la IA la interpreta.</div>
+    <div style="font-size:12px;color:var(--mut2);margin-bottom:8px;" id="imp-ia-foto-caption">Sacale una foto a una lista o cartel de precios (impreso o tipeado, no manuscrito) y la IA la interpreta.</div>
     <div class="upload-z" id="upload-z-foto-productos" onclick="el('ia-foto-productos-inp').click()">
       <input type="file" id="ia-foto-productos-inp" accept="image/*" capture="environment" style="display:none;" onchange="interpretarFotoProductosIA(this)">
       <div style="font-size:32px;margin-bottom:8px;">📷</div>
@@ -1568,7 +1576,11 @@ select.fi{appearance:none;cursor:pointer;}
 <div id="pg-insumos" class="pg">
   <div class="ptitle">Insumos</div>
   <div class="psub" style="margin-bottom:14px;">Lo que usás para armar tus platos — vinculado a tu inventario o con stock propio</div>
-  <button class="btn btn-acc btn-full" onclick="abrirModalNuevoInsumo()" style="margin-bottom:16px;">+ Nuevo insumo</button>
+  <div style="display:flex;gap:8px;margin-bottom:10px;">
+    <button class="btn btn-acc" style="flex:1;" onclick="abrirModalNuevoInsumo()">+ Nuevo insumo</button>
+    <button class="btn btn-ghost" onclick="abrirModalConsumoPropioInsumo()" title="Cuando el dueño saca un insumo del stock para uso personal">🏠 Consumo propio</button>
+  </div>
+  <button class="btn btn-ghost btn-sm" style="margin-bottom:16px;" onclick="abrirImportadorIA('insumos')">🧠 Importar insumos</button>
   <div id="insumos-lista"></div>
 </div>
 
@@ -1624,6 +1636,19 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="srch-wrap"><span class="srch-ico">🔍</span><input class="srch" id="insumo-buscar-prod-srch" placeholder="Buscar producto..." oninput="renderBuscadorProductoInsumoResultados()"></div>
   <div id="insumo-buscar-prod-lista" style="max-height:360px;overflow-y:auto;margin-top:10px;"></div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-insumo-buscar-producto')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: CONSUMO PROPIO DE UN INSUMO -->
+<div class="ov" id="modal-insumo-consumo-propio">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🏠 Consumo propio</div>
+  <div class="modal-s">Cuando el dueño se lleva un insumo del stock para uso personal — se descuenta el stock y se suma a la cuenta de Fiado "🏠 Consumo propio"</div>
+  <div class="fg"><label class="fl">Insumo</label><select class="fi" id="cpi-insumo" onchange="actualizarInfoConsumoPropioInsumo()"></select></div>
+  <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="cpi-cant" type="number" placeholder="0" style="font-size:18px;text-align:center;font-family:DM Mono,monospace;" oninput="actualizarInfoConsumoPropioInsumo()"></div>
+  <div id="cpi-info" style="font-size:12px;color:var(--mut2);background:var(--sur2);border-radius:8px;padding:10px 12px;margin-bottom:12px;"></div>
+  <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-insumo-consumo-propio')">Cancelar</button><button class="btn btn-acc" onclick="guardarConsumoPropioInsumo()">Registrar</button></div>
 </div>
 </div>
 
@@ -4112,10 +4137,13 @@ async function eliminarProd(id){
 }
 
 // ═══ IMPORTADOR INTELIGENTE DE STOCK ═══
-function abrirImportadorIA(){
+var importDestino = 'productos';
+function abrirImportadorIA(destinoInicial){
   pendingImport=[];
   window._importNegativosDetectados = 0;
   window._impIaEditando = null;
+  var destino = destinoInicial==='insumos' ? 'insumos' : 'productos';
+  setDestinoImportadorIA(destino, el(destino==='insumos' ? 'imp-ia-destino-insumos' : 'imp-ia-destino-productos'));
   set('import-prev','display','none');
   set('file-inp','val','');
   set('ia-texto-productos','val','');
@@ -4123,6 +4151,23 @@ function abrirImportadorIA(){
   set('imp-ia-loading','display','none');
   setTabImportadorIA('excel', el('imp-ia-tab-excel'));
   openModal('modal-importador-ia');
+}
+
+function setDestinoImportadorIA(destino, btn){
+  importDestino = destino;
+  var bp = el('imp-ia-destino-productos'); if(bp) bp.classList.toggle('on', destino==='productos');
+  var bi = el('imp-ia-destino-insumos'); if(bi) bi.classList.toggle('on', destino==='insumos');
+  // Cambiar de destino con una vista previa cargada mezclaría dos formatos distintos.
+  pendingImport=[];
+  window._impIaEditando=null;
+  set('import-prev','display','none');
+  var esInsumo = destino==='insumos';
+  set('imp-ia-texto-caption','text', esInsumo
+    ? 'Pegá tu lista tal como la tengas — un insumo por línea, con o sin costo/stock. La IA se encarga de interpretarla.'
+    : 'Pegá tu lista tal como la tengas — un producto por línea, con o sin precio/stock. La IA se encarga de interpretarla.');
+  set('imp-ia-foto-caption','text', esInsumo
+    ? 'Sacale una foto a una lista de insumos o remito (impreso o tipeado, no manuscrito) y la IA la interpreta.'
+    : 'Sacale una foto a una lista o cartel de precios (impreso o tipeado, no manuscrito) y la IA la interpreta.');
 }
 
 function setTabImportadorIA(tab, btn){
@@ -4145,11 +4190,37 @@ function handleFile(file){
       if(!rows.length){ toast('El archivo no tiene filas','err'); return; }
       const norm=function(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');};
       const headerKeys=Object.keys(rows[0]);
-      const fN=headerKeys.find(function(k){return ['nombre del producto','nombre','descripcion','producto','articulo'].some(function(t){return norm(k).includes(norm(t));});});
+      const nombreTerms = importDestino==='insumos' ? ['nombre del insumo','nombre','descripcion','insumo','articulo'] : ['nombre del producto','nombre','descripcion','producto','articulo'];
+      const fN=headerKeys.find(function(k){return nombreTerms.some(function(t){return norm(k).includes(norm(t));});});
       if(fN===undefined){
         // Ninguna columna reconocible como "nombre" — en vez de descartar todas las
         // filas en silencio (como hacía antes), lo interpreta la IA con el layout que sea.
         interpretarExcelConIA(rows);
+        return;
+      }
+      if(importDestino==='insumos'){
+        var negativosIns=0;
+        var nuevosIns=rows.map(function(r,i){
+          const keys=Object.keys(r);
+          const find=function(){
+            const terms=[].slice.call(arguments);
+            return keys.find(function(k){return terms.some(function(t){return norm(k).includes(norm(t));});});
+          };
+          const nom=String(r[find('nombre del insumo','nombre','descripcion','insumo','articulo')]||'').trim();
+          if(!nom||nom.length<2)return null;
+          const numOrUndef=function(fKey){
+            if(fKey===undefined) return undefined;
+            var n=parseFloat(r[fKey]);
+            if(isNaN(n)) return undefined;
+            if(n<0){ negativosIns++; return undefined; }
+            return n;
+          };
+          const codRaw = r[find('codigo de barra','codigo','sku','cod')];
+          return{_tipo:'insumo',cod:codRaw?String(codRaw).trim():'',nom:nom,um:String(r[find('unidad de medida','unidad','um')]||'UN').trim(),stock:numOrUndef(find('stock actual','stock','cantidad','qty')),costo:numOrUndef(find('costo','precio costo','precio unit')),confianzaBaja:false,revisado:true};
+        }).filter(Boolean);
+        window._importNegativosDetectados = (window._importNegativosDetectados||0) + negativosIns;
+        pendingImport = pendingImport.concat(nuevosIns);
+        renderPreviewImportadorIA();
         return;
       }
       var negativosDetectados=0;
@@ -4178,19 +4249,40 @@ function handleFile(file){
   reader.readAsArrayBuffer(file);
 }
 
+// Instrucción de detección de código de barras compartida por ambos prompts —
+// misma redacción para productos e insumos, para que se comporten igual: si
+// hay un código visible en la fuente (tira de números, renglón "código"/"cod"/
+// "EAN"/"barcode") lo toma, y si no hay ninguno, lo deja vacío — nunca inventa uno.
+var PROMPT_DETECCION_CODIGO_IA = 'Prestá especial atención a los códigos de barras: si en la fuente (foto, planilla o texto) hay un código de barras visible para algún ítem — una tira larga de números, o un dato marcado como "código"/"cod"/"EAN"/"barcode" — identificalo y devolvelo en "codigo". Si un ítem no tiene ningún código visible, dejá "codigo" vacío o no lo incluyas — NUNCA inventes uno.';
+
 var PROMPT_PRODUCTOS_IA = 'Sos un asistente que interpreta listas de productos de un comercio (almacen, kiosco, etc.) para cargarlas a un sistema de inventario. '
   +'Devolve SOLO un JSON valido, sin texto extra ni backticks, con este formato exacto: '
   +'{"productos":[{"nombre":"string","codigo":"string opcional","categoria":"string opcional","precio_costo":100,"precio_venta":150,"stock":10,"confianza_baja":false}]}. '
   +'"precio_venta" y "stock" son los datos mas importantes, tratá de identificarlos siempre que haya alguna pista razonable. '
+  +PROMPT_DETECCION_CODIGO_IA+' '
   +'Si tuviste que ADIVINAR o interpretar con dudas cualquier dato de un producto (nombre poco claro, precio o cantidad ambiguos, texto cortado o dificil de leer), marca "confianza_baja":true para ESE producto. '
   +'Si un producto esta perfectamente claro, marca "confianza_baja":false. '
   +'No inventes productos que no esten en el contenido. Devolve un producto por cada uno que identifiques, en el mismo orden en que aparecen.';
 
+var PROMPT_INSUMOS_IA = 'Sos un asistente que interpreta listas de insumos/ingredientes de un comercio (lo que se usa para armar platos — carne, pan, verdura, etc. — no lo que se vende directo) para cargarlos a un sistema de inventario. '
+  +'Devolve SOLO un JSON valido, sin texto extra ni backticks, con este formato exacto: '
+  +'{"insumos":[{"nombre":"string","codigo":"string opcional","unidad":"string opcional","costo":100,"stock":10,"confianza_baja":false}]}. '
+  +'"unidad" es la unidad de medida (UN, KG, LT, etc.) — si no hay ninguna pista, dejala vacía. "costo" y "stock" son los datos mas importantes, tratá de identificarlos siempre que haya alguna pista razonable. '
+  +PROMPT_DETECCION_CODIGO_IA+' '
+  +'Si tuviste que ADIVINAR o interpretar con dudas cualquier dato de un insumo (nombre poco claro, costo o cantidad ambiguos, texto cortado o dificil de leer), marca "confianza_baja":true para ESE insumo. '
+  +'Si un insumo esta perfectamente claro, marca "confianza_baja":false. '
+  +'No inventes insumos que no esten en el contenido. Devolve un insumo por cada uno que identifiques, en el mismo orden en que aparecen.';
+
+function construirPromptIA(destino){
+  return destino==='insumos' ? PROMPT_INSUMOS_IA : PROMPT_PRODUCTOS_IA;
+}
+
 // Llama a la Edge Function interpretar-productos-ia (proxy generico a Claude,
 // mismo patron que ya usa leerFacturaIA para leer facturas) y devuelve el array
-// de productos crudo que devolvio la IA, o null si no se pudo interpretar.
+// de productos/insumos crudo que devolvio la IA, o null si no se pudo interpretar.
 function llamarIAProductos(contenido, callback){
   set('imp-ia-loading','display','block');
+  var destino = importDestino;
   fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-gestopro-token':GP_CHAT_TOKEN},
@@ -4207,9 +4299,9 @@ function llamarIAProductos(contenido, callback){
       var texto = data.content[0].text;
       texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
       var resultado = JSON.parse(texto);
-      callback(resultado.productos || []);
+      callback(destino==='insumos' ? (resultado.insumos||[]) : (resultado.productos||[]));
     }catch(e){
-      toast('No pude interpretar los productos. Probá con otro formato o cargalos a mano.','err');
+      toast('No pude interpretar los '+(destino==='insumos'?'insumos':'productos')+'. Probá con otro formato o cargalos a mano.','err');
       callback(null);
     }
   })
@@ -4222,9 +4314,9 @@ function llamarIAProductos(contenido, callback){
 
 function interpretarTextoProductosIA(){
   var texto = (get('ia-texto-productos')||'').trim();
-  if(!texto){ toast('Pegá una lista de productos primero','err'); return; }
+  if(!texto){ toast('Pegá una lista de '+(importDestino==='insumos'?'insumos':'productos')+' primero','err'); return; }
   llamarIAProductos(
-    [{type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEsta es la lista pegada por el usuario:\n\n' + texto}],
+    [{type:'text', text: construirPromptIA(importDestino) + '\n\nEsta es la lista pegada por el usuario:\n\n' + texto}],
     function(items){ if(items) aplicarResultadoIA(items); }
   );
 }
@@ -4239,7 +4331,7 @@ function interpretarFotoProductosIA(input){
     llamarIAProductos(
       [
         {type:'image', source:{type:'base64', media_type:mediaType, data:base64}},
-        {type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEsta es una foto de una lista o cartel de precios.'}
+        {type:'text', text: construirPromptIA(importDestino) + (importDestino==='insumos' ? '\n\nEsta es una foto de una lista de insumos o remito.' : '\n\nEsta es una foto de una lista o cartel de precios.')}
       ],
       function(items){ if(items) aplicarResultadoIA(items); }
     );
@@ -4252,7 +4344,7 @@ function interpretarFotoProductosIA(input){
 function interpretarExcelConIA(rows){
   var filas = rows.slice(0, 150); // tope razonable de filas por llamada
   llamarIAProductos(
-    [{type:'text', text: PROMPT_PRODUCTOS_IA + '\n\nEstas son filas crudas de una planilla — no se reconocieron los encabezados de las columnas. Interpretá cada fila:\n\n' + JSON.stringify(filas)}],
+    [{type:'text', text: construirPromptIA(importDestino) + '\n\nEstas son filas crudas de una planilla — no se reconocieron los encabezados de las columnas. Interpretá cada fila:\n\n' + JSON.stringify(filas)}],
     function(items){ if(items) aplicarResultadoIA(items); }
   );
 }
@@ -4282,25 +4374,53 @@ function normalizarItemIA(item, idx){
   };
 }
 
+// Igual que normalizarItemIA pero para insumos — sin cat/pventa/min/max/prov, y
+// sin inventar un código de barras cuando la IA no encontró ninguno (a diferencia
+// de productos, que sí completa con un correlativo interno "PRDIA...").
+function normalizarItemInsumoIA(item, idx){
+  var negativoEnEsteItem = false;
+  function numOrUndefIA(v){
+    if(v===undefined||v===null||v==='') return undefined;
+    var n=parseFloat(v);
+    if(isNaN(n)) return undefined;
+    if(n<0){ negativoEnEsteItem=true; return undefined; }
+    return n;
+  }
+  var stock=numOrUndefIA(item.stock), costo=numOrUndefIA(item.costo);
+  if(negativoEnEsteItem) window._importNegativosDetectados = (window._importNegativosDetectados||0)+1;
+  return {
+    _tipo: 'insumo',
+    cod: item.codigo ? String(item.codigo).trim() : '',
+    nom: String(item.nombre||'').trim(),
+    um: item.unidad ? String(item.unidad).trim().toUpperCase() : 'UN',
+    stock: stock, costo: costo,
+    confianzaBaja: !!item.confianza_baja,
+    revisado: !item.confianza_baja
+  };
+}
+
 function aplicarResultadoIA(items){
-  var nuevos = items.map(normalizarItemIA).filter(function(p){ return p.nom && p.nom.length>=2; });
-  if(!nuevos.length){ toast('La IA no pudo identificar productos en lo que le pasaste','err'); return; }
+  var esInsumo = importDestino==='insumos';
+  var normalizador = esInsumo ? normalizarItemInsumoIA : normalizarItemIA;
+  var nuevos = items.map(normalizador).filter(function(p){ return p.nom && p.nom.length>=2; });
+  if(!nuevos.length){ toast('La IA no pudo identificar '+(esInsumo?'insumos':'productos')+' en lo que le pasaste','err'); return; }
   pendingImport = pendingImport.concat(nuevos);
   renderPreviewImportadorIA();
 }
 
 // ═══ VISTA PREVIA (compartida por Excel / texto / foto) ═══
 function renderPreviewImportadorIA(){
+  var etiqueta = importDestino==='insumos' ? 'insumo' : 'producto';
   var negMsg = window._importNegativosDetectados ? ' · ⚠️ '+window._importNegativosDetectados+' valores negativos ignorados' : '';
   var ipt=el('import-prev-t');
-  if(ipt) ipt.textContent='Vista previa · '+pendingImport.length+' producto'+(pendingImport.length!==1?'s':'')+negMsg;
+  if(ipt) ipt.textContent='Vista previa · '+pendingImport.length+' '+etiqueta+(pendingImport.length!==1?'s':'')+negMsg;
 
   var pendientes = pendingImport.filter(function(p){ return p.confianzaBaja && !p.revisado; });
   var avisoEl = el('imp-ia-aviso-revisar');
   var avisoTxt = el('imp-ia-aviso-revisar-txt');
   if(pendientes.length){
     if(avisoEl) avisoEl.style.display='flex';
-    if(avisoTxt) avisoTxt.textContent = pendientes.length+' producto'+(pendientes.length!==1?'s':'')+' necesitan que los revises (tocalos) antes de poder importar — la IA no está segura de esos datos.';
+    if(avisoTxt) avisoTxt.textContent = pendientes.length+' '+etiqueta+(pendientes.length!==1?'s':'')+' necesitan que los revises (tocalos) antes de poder importar — la IA no está segura de esos datos.';
   } else if(avisoEl) avisoEl.style.display='none';
 
   var ipb=el('import-prev-b');
@@ -4310,28 +4430,40 @@ function renderPreviewImportadorIA(){
 }
 
 function renderFilaImportadorIA(p, idx){
+  var esInsumo = p._tipo==='insumo';
   var flagged = p.confianzaBaja && !p.revisado;
   var editando = window._impIaEditando === idx;
   var estilo = flagged ? 'background:var(--yel-dim);border:1px solid var(--yel);' : 'border:1px solid var(--brd);';
   var badge = flagged ? '<span class="bdg by" style="margin-right:6px;">⚠️ Revisar</span>' : (p.confianzaBaja ? '<span class="bdg bg" style="margin-right:6px;">✓ Revisado</span>' : '');
 
+  var metaTxt = esInsumo
+    ? escapeHtml(p.um||'UN')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.costo!==undefined?fmtM(p.costo):'—')+(p.cod?' · Cód: '+escapeHtml(p.cod):'')
+    : escapeHtml(p.cat||'Otro')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.precio!==undefined?fmtM(p.precio):'—')+' · Venta: '+(p.pventa!==undefined?fmtM(p.pventa):'—');
+
   var html = '<div style="'+estilo+'border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;" onclick="'+(editando?'':'toggleEditarFilaIA('+idx+')')+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
     +'<div style="flex:1;min-width:0;">'
     +badge+'<span style="font-size:13px;font-weight:600;">'+escapeHtml(p.nom||'(sin nombre)')+'</span>'
-    +'<div style="font-size:11px;color:var(--mut2);margin-top:2px;">'+escapeHtml(p.cat||'Otro')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.precio!==undefined?fmtM(p.precio):'—')+' · Venta: '+(p.pventa!==undefined?fmtM(p.pventa):'—')+'</div>'
+    +'<div style="font-size:11px;color:var(--mut2);margin-top:2px;">'+metaTxt+'</div>'
     +'</div>'
     +'<button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();eliminarFilaImportadorIA('+idx+')" style="flex-shrink:0;">✕</button>'
     +'</div>';
 
   if(editando){
     html += '<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;" onclick="event.stopPropagation();">'
-      +'<div class="fg" style="grid-column:1/-1;"><label class="fl">Nombre</label><input class="fi" id="imp-ia-edit-nom" value="'+escapeHtml(p.nom||'')+'"></div>'
-      +'<div class="fg"><label class="fl">Categoría</label><input class="fi" id="imp-ia-edit-cat" value="'+escapeHtml(p.cat||'')+'"></div>'
-      +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
-      +'<div class="fg"><label class="fl">Precio costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.precio!==undefined?p.precio:'')+'"></div>'
-      +'<div class="fg"><label class="fl">Precio venta</label><input class="fi" id="imp-ia-edit-pventa" type="number" value="'+(p.pventa!==undefined?p.pventa:'')+'"></div>'
-      +'</div>'
+      +'<div class="fg" style="grid-column:1/-1;"><label class="fl">Nombre</label><input class="fi" id="imp-ia-edit-nom" value="'+escapeHtml(p.nom||'')+'"></div>';
+    if(esInsumo){
+      html += '<div class="fg"><label class="fl">Unidad</label><input class="fi" id="imp-ia-edit-um" value="'+escapeHtml(p.um||'UN')+'"></div>'
+        +'<div class="fg"><label class="fl">Código de barras</label><input class="fi" id="imp-ia-edit-cod" value="'+escapeHtml(p.cod||'')+'"></div>'
+        +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
+        +'<div class="fg"><label class="fl">Costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.costo!==undefined?p.costo:'')+'"></div>';
+    } else {
+      html += '<div class="fg"><label class="fl">Categoría</label><input class="fi" id="imp-ia-edit-cat" value="'+escapeHtml(p.cat||'')+'"></div>'
+        +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
+        +'<div class="fg"><label class="fl">Precio costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.precio!==undefined?p.precio:'')+'"></div>'
+        +'<div class="fg"><label class="fl">Precio venta</label><input class="fi" id="imp-ia-edit-pventa" type="number" value="'+(p.pventa!==undefined?p.pventa:'')+'"></div>';
+    }
+    html += '</div>'
       +'<button type="button" class="btn btn-grn btn-full btn-sm" style="margin-top:4px;" onclick="event.stopPropagation();confirmarEdicionFilaIA('+idx+')">✓ Listo, ya lo revisé</button>';
   }
 
@@ -4348,12 +4480,24 @@ function confirmarEdicionFilaIA(idx){
   var p = pendingImport[idx];
   if(!p) return;
   var nom = (get('imp-ia-edit-nom')||'').trim();
-  var cat = (get('imp-ia-edit-cat')||'').trim();
   var stockVal = parseFloat(get('imp-ia-edit-stock'));
   var precioVal = parseFloat(get('imp-ia-edit-precio'));
-  var pventaVal = parseFloat(get('imp-ia-edit-pventa'));
   if(!nom){ toast('El nombre no puede quedar vacío','err'); return; }
-  if((!isNaN(stockVal)&&stockVal<0)||(!isNaN(precioVal)&&precioVal<0)||(!isNaN(pventaVal)&&pventaVal<0)){ toast('No se permiten valores negativos','err'); return; }
+  if((!isNaN(stockVal)&&stockVal<0)||(!isNaN(precioVal)&&precioVal<0)){ toast('No se permiten valores negativos','err'); return; }
+  if(p._tipo==='insumo'){
+    var umVal = (get('imp-ia-edit-um')||'').trim();
+    var codVal = (get('imp-ia-edit-cod')||'').trim();
+    p.nom=nom; p.um=umVal||'UN'; p.cod=codVal;
+    p.stock=isNaN(stockVal)?undefined:stockVal;
+    p.costo=isNaN(precioVal)?undefined:precioVal;
+    p.revisado=true;
+    window._impIaEditando=null;
+    renderPreviewImportadorIA();
+    return;
+  }
+  var cat = (get('imp-ia-edit-cat')||'').trim();
+  var pventaVal = parseFloat(get('imp-ia-edit-pventa'));
+  if(!isNaN(pventaVal)&&pventaVal<0){ toast('No se permiten valores negativos','err'); return; }
   p.nom=nom; p.cat=cat||'Otro';
   p.stock=isNaN(stockVal)?undefined:stockVal;
   p.precio=isNaN(precioVal)?undefined:precioVal;
@@ -4370,15 +4514,17 @@ function eliminarFilaImportadorIA(idx){
 }
 
 function intentarImportarIA(){
+  var etiqueta = importDestino==='insumos' ? 'insumo' : 'producto';
   var pendientes = pendingImport.filter(function(p){ return p.confianzaBaja && !p.revisado; });
   if(pendientes.length){
-    toast('Todavía hay '+pendientes.length+' producto'+(pendientes.length!==1?'s':'')+' para revisar — tocalos para confirmarlos antes de importar','err');
+    toast('Todavía hay '+pendientes.length+' '+etiqueta+(pendientes.length!==1?'s':'')+' para revisar — tocalos para confirmarlos antes de importar','err');
     return;
   }
   confirmarImport();
 }
 
-function confirmarImport(){
+async function confirmarImport(){
+  if(importDestino==='insumos'){ await confirmarImportInsumos(); return; }
   if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   var actualizados=0, nuevos=0;
   pendingImport.forEach(function(imp){
@@ -4420,6 +4566,46 @@ function confirmarImport(){
   productos.forEach(function(p){ guardarEnNube('productos',p.id,p); });
   saveState(); renderDash(); renderProds();
   toast(nuevos+' nuevos · '+actualizados+' actualizados ✓'+negMsg);
+}
+
+// Import de insumos: a diferencia de productos (array local + upsert), insumos.id
+// lo genera la base (uuid) — se resuelve existente/nuevo contra Supabase directo,
+// mismo criterio de "match por código o nombre" que ya usa confirmarImport().
+async function confirmarImportInsumos(){
+  if(!currentNegocioId || !supabaseClient){ toast('Sin conexión','err'); return; }
+  var res = await supabaseClient.from('insumos').select('*').eq('negocio_id',currentNegocioId).eq('activo',true);
+  var existentes = res.data || [];
+  var actualizados=0, nuevos=0;
+  for(var k=0;k<pendingImport.length;k++){
+    var imp = pendingImport[k];
+    var existente = existentes.find(function(i){
+      return (imp.cod && i.cod===imp.cod) || (String(i.nombre||'').trim().toLowerCase()===imp.nom.trim().toLowerCase());
+    });
+    var payload = {
+      negocio_id: currentNegocioId,
+      nombre: imp.nom,
+      um: imp.um||'UN',
+      cod: imp.cod||null,
+      costo: imp.costo!==undefined ? imp.costo : (existente?existente.costo:0),
+      stock: imp.stock!==undefined ? imp.stock : (existente?existente.stock:0)
+    };
+    if(existente){
+      await supabaseClient.from('insumos').update(payload).eq('id',existente.id);
+      actualizados++;
+    } else {
+      await supabaseClient.from('insumos').insert(Object.assign({producto_id:null},payload));
+      nuevos++;
+    }
+  }
+  var negMsgIns = window._importNegativosDetectados ? ' · ⚠️ '+window._importNegativosDetectados+' valores negativos ignorados' : '';
+  window._importNegativosDetectados = 0;
+  pendingImport=[];
+  window._impIaEditando=null;
+  set('import-prev','display','none'); set('file-inp','val','');
+  set('ia-texto-productos','val',''); set('ia-foto-productos-inp','val','');
+  closeModal('modal-importador-ia');
+  renderInsumos();
+  toast(nuevos+' nuevos · '+actualizados+' actualizados ✓'+negMsgIns);
 }
 function cancelImport(){
   pendingImport=[];
@@ -5370,6 +5556,71 @@ async function eliminarInsumo(){
   }
   toast('Insumo eliminado');
   closeModal('modal-insumo');
+  renderInsumos();
+}
+
+// Valor de referencia de una unidad del insumo para cargarlo a la cuenta de
+// consumo propio: si está vinculado, el precio de venta del producto real
+// (es lo mismo que tomar ese producto); si es standalone, su costo cargado.
+function valorUnitarioInsumo(i){
+  if(i.producto_id){
+    var p = productos.find(function(x){return String(x.id)===String(i.producto_id);});
+    return p ? (p.pventa||p.precio||0) : 0;
+  }
+  return i.costo||0;
+}
+
+function stockDisponibleInsumo(i){
+  if(i.producto_id){
+    var p = productos.find(function(x){return String(x.id)===String(i.producto_id);});
+    return p ? (p.stock||0) : 0;
+  }
+  return i.stock||0;
+}
+
+function abrirModalConsumoPropioInsumo(){
+  if(!insumos.length){ toast('Primero cargá algún insumo','err'); return; }
+  var sel = el('cpi-insumo'); if(!sel) return;
+  sel.innerHTML = insumos.map(function(i){ return '<option value="'+i.id+'">'+escapeHtml(i.nombre)+'</option>'; }).join('');
+  set('cpi-cant','val','');
+  actualizarInfoConsumoPropioInsumo();
+  openModal('modal-insumo-consumo-propio');
+}
+
+function actualizarInfoConsumoPropioInsumo(){
+  var sel = el('cpi-insumo'); var info = el('cpi-info'); if(!sel||!info) return;
+  var i = insumos.find(function(x){return String(x.id)===String(sel.value);});
+  if(!i){ info.textContent=''; return; }
+  var cant = parseFloat(get('cpi-cant'))||0;
+  var stockDisp = stockDisponibleInsumo(i);
+  var valorUnit = valorUnitarioInsumo(i);
+  info.innerHTML = '📦 Stock disponible: <b style="color:var(--txt);">'+stockDisp+' '+escapeHtml(i.um||'UN')+'</b>'
+    + (valorUnit>0 ? ' · Se suma <b style="color:var(--txt);">'+fmtM(valorUnit*cant)+'</b> a la cuenta de Fiado' : ' · Sin costo cargado — no se va a sumar nada a la cuenta');
+}
+
+async function guardarConsumoPropioInsumo(){
+  var sel = el('cpi-insumo'); if(!sel||!sel.value){ toast('Elegí un insumo','err'); return; }
+  var i = insumos.find(function(x){return String(x.id)===String(sel.value);});
+  if(!i){ toast('Insumo no encontrado','err'); return; }
+  var cant = parseFloat(get('cpi-cant'))||0;
+  if(cant<=0){ toast('Ingresá una cantidad válida','err'); return; }
+  var stockDisp = stockDisponibleInsumo(i);
+  if(cant>stockDisp){ toast('Stock insuficiente. Disponible: '+stockDisp+' '+(i.um||'UN'),'err'); return; }
+
+  var r = await obtenerOCrearCuentaConsumoPropio();
+  if(!r.id){ toast('No se pudo crear/obtener la cuenta de consumo propio','err'); return; }
+
+  ajustarStockInsumo(i.id, -cant);
+
+  var valorUnit = valorUnitarioInsumo(i);
+  var monto = valorUnit*cant;
+  var detalle = [{ insumoId:i.id, nom:i.nombre, cant:cant, um:i.um||'UN', precioVenta:valorUnit }];
+  await registrarFiadoCliente(r.id, monto, '🏠 Consumo propio — '+cant+' '+(i.um||'UN')+' de '+i.nombre, detalle);
+
+  closeModal('modal-insumo-consumo-propio');
+  var msg = '🏠 Registrado: '+cant+' '+(i.um||'UN')+' de '+i.nombre;
+  if(r.creada) msg += ' · Se creó la cuenta de consumo propio';
+  toast(msg);
   renderInsumos();
 }
 
@@ -7655,21 +7906,32 @@ function saveGastoFijo(g){ saveState(); guardarEnNube('gastos_fijos',g.id,g); }
 var fiadoActualId = null;
 var fiadoActualCliente = null; // objeto completo del cliente actual
 
-async function crearConsumoPropio(){
-  if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+// Devuelve {id, creada} de la cuenta de Fiado "🏠 Consumo propio" del negocio,
+// creándola si todavía no existe. Punto único usado por cualquier flujo que
+// registre consumo propio (mercadería general desde Fiado, insumos desde
+// Insumos, etc.) — nunca una baja de stock desconectada de esta cuenta.
+async function obtenerOCrearCuentaConsumoPropio(){
+  if(!currentNegocioId) return {id:null, creada:false};
   var res = await supabaseClient.from('fiados_clientes').select('id').eq('negocio_id',currentNegocioId).eq('es_consumo_propio',true).maybeSingle();
-  if(res.data){ abrirDetalleFiado(res.data.id); return; }
+  if(res.data) return {id:res.data.id, creada:false};
   var ins = await supabaseClient.from('fiados_clientes').insert({
     negocio_id: currentNegocioId,
     nom: '🏠 Consumo propio',
     nota: 'Lo que el dueño/familia saca del stock para uso personal.',
     deuda: 0, limite: 0, es_consumo_propio: true
   }).select().single();
-  if(ins.data){
+  return {id: ins.data?ins.data.id:null, creada:true};
+}
+
+async function crearConsumoPropio(){
+  if(!currentNegocioId){ toast('Sin conexión','err'); return; }
+  var r = await obtenerOCrearCuentaConsumoPropio();
+  if(!r.id) return;
+  if(r.creada){
     toast('🏠 Cuenta de consumo propio creada. Usá Cobrar → Fiado y elegí esta cuenta.');
     renderFiado();
-    abrirDetalleFiado(ins.data.id);
   }
+  abrirDetalleFiado(r.id);
 }
 
 async function guardarClienteFiado(){
