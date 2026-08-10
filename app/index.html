@@ -7658,15 +7658,25 @@ async function crearNegocio(nombre, email){
 
 function cargarNegocio(){
   if(!supabaseClient||!currentUser) return Promise.resolve();
-  return supabaseClient.from('negocios').select('*').eq('user_id',currentUser.id).single()
+  // OJO: esto usaba .single(), que devuelve data:null tanto si no hay ninguna
+  // fila como si hay más de una para ese user_id. Ante cualquier duplicado ya
+  // existente (por lo que sea: una carrera, un reintento), este código
+  // interpretaba "no tiene negocio" y creaba OTRO con crearNegocio() en cada
+  // login — generando más duplicados sin parar. Con un select simple, "hay
+  // filas" siempre gana sobre "crear una nueva", sin importar cuántas haya.
+  return supabaseClient.from('negocios').select('*').eq('user_id',currentUser.id)
+    .order('fecha_registro',{ascending:true,nullsFirst:false})
     .then(function(result){
-      if(result.data){
-        currentNegocioId=result.data.id;
-        if(result.data.config){ try{ config=Object.assign(config,JSON.parse(result.data.config)); }catch(e){} }
-        planActual=result.data.plan||'gratis';
-        if(verificarAccesoNegocio(result.data)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
+      var filas = result.data || [];
+      if(filas.length > 1) console.log('negocios duplicados para este usuario:', filas.length);
+      if(filas.length > 0){
+        var negocio = filas[0];
+        currentNegocioId=negocio.id;
+        if(negocio.config){ try{ config=Object.assign(config,JSON.parse(negocio.config)); }catch(e){} }
+        planActual=negocio.plan||'gratis';
+        if(verificarAccesoNegocio(negocio)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
         restaurarSesionCajaLocal();
-      } else {
+      } else if(!result.error){
         // Viaja en la metadata del usuario (seteada en signUp options.data), no
         // en localStorage — así está disponible sin importar en qué navegador o
         // pestaña termine confirmándose/logueándose el usuario.
