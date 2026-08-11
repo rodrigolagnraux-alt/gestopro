@@ -695,6 +695,47 @@
   function generarLinkPago() {
     var p = pendingPlan;
     var esAnual = p.periodo === 'anual';
+
+    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + p.nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + p.precio + '). Email: ' + userEmail + '. Por favor activame la cuenta si todavía no se activó sola.');
+    document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
+
+    var btn = document.getElementById('modal-mp-link');
+    btn.textContent = '⏳ Generando link...';
+    btn.style.pointerEvents = 'none';
+
+    if (esAnual) {
+      // El anual sigue siendo siempre pago único (checkout manual).
+      generarLinkPagoManual();
+      return;
+    }
+
+    // Mensual: primero probamos débito automático (preapproval). Si el negocio
+    // ya tiene un plan pago activo (venía pagando con el checkout manual de
+    // siempre), el backend rechaza el alta de preapproval y caemos al checkout
+    // manual de toda la vida — a esos no los migramos.
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/mp-crear-preapproval', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, plan: p.nombre.toLowerCase() })
+    })
+    .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+    .then(function(res){
+      if (res.ok && res.data.url) {
+        btn.href = res.data.url;
+        btn.textContent = '💳 Suscribirme con Mercado Pago';
+        btn.style.pointerEvents = 'auto';
+      } else {
+        generarLinkPagoManual();
+      }
+    })
+    .catch(function(){
+      generarLinkPagoManual();
+    });
+  }
+
+  function generarLinkPagoManual() {
+    var p = pendingPlan;
+    var esAnual = p.periodo === 'anual';
     var plan = p.nombre.toLowerCase();
     var btn = document.getElementById('modal-mp-link');
     btn.textContent = '⏳ Generando link...';
@@ -734,9 +775,6 @@
         btn.style.pointerEvents = 'auto';
       }
     });
-
-    var msg = encodeURIComponent('Hola Rodrigo! Acabo de pagar el Plan ' + p.nombre + (esAnual ? ' Anual' : '') + ' de GestoPro (' + p.precio + '). Email: ' + userEmail + '. Por favor activame la cuenta si todavía no se activó sola.');
-    document.getElementById('modal-wa-link').href = 'https://wa.me/5492473410437?text=' + msg;
   }
 
   function cerrarModal() {
