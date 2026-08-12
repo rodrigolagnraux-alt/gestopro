@@ -1,0 +1,15 @@
+{
+  "name": "gestopro-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Suite E2E de GestoPro con Playwright. Por default corre 100% mockeado (sin red real, sin costo, sin tocar datos). Ver README.md para correr contra el backend real.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:mobile": "playwright test --project=mobile-mock",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}
