@@ -110,7 +110,7 @@ test.describe('Facturas IA: lectura exitosa', () => {
     expect(state.db.facturas_v2[0].prov).toBe('Distribuidora del Sur');
   });
 
-  test('una línea sin producto vinculado en el inventario se descarta silenciosamente al guardar', async ({ page }) => {
+  test('una línea sin producto vinculado se marca visiblemente y se avisa al descartarla al guardar', async ({ page }) => {
     const state = await entrarAIngresoFactura(page, {
       productos: [productoSemilla({ stock: 20 })],
       edgeFunctionHandlers: {
@@ -131,14 +131,23 @@ test.describe('Facturas IA: lectura exitosa', () => {
     // La IA detectó 2 líneas — el toast lo confirma con el conteo bruto.
     await expect(page.locator('#toast')).toContainText(/2 productos/i, { timeout: 8000 });
     // La 2da línea no tiene ningún producto de inventario que coincida con el
-    // nombre detectado, así que su <select> queda en el placeholder vacío.
-    await expect(page.locator('#ing-lineas select').nth(1)).toHaveValue('');
+    // nombre detectado — el placeholder del <select> debe mostrar ESE
+    // nombre (no un "— Elegir producto —" genérico) para que el usuario
+    // sepa qué quedó sin vincular.
+    const selectSinVincular = page.locator('#ing-lineas select').nth(1);
+    await expect(selectSinVincular).toHaveValue('');
+    await expect(selectSinVincular.locator('option:checked')).toContainText('Producto Nuevo Que No Existe');
 
     await page.locator('#modal-ingreso button:has-text("Confirmar ingreso")').click();
 
-    // Solo 1 de las 2 líneas detectadas se guarda — la otra se pierde sin
-    // ningún aviso puntual de cuál fue ("descartada silenciosamente").
-    await expect(page.locator('#toast')).toContainText(/1 producto\(s\) ingresados/i, { timeout: 5000 });
+    // Solo 1 de las 2 líneas detectadas se guarda — la otra se descarta, y el
+    // toast ahora lo dice explícitamente en vez de un mensaje de éxito
+    // genérico que no menciona la pérdida.
+    const toast = page.locator('#toast');
+    await expect(toast).toHaveClass(/\berr\b/);
+    await expect(toast).toContainText(/1 producto\(s\) ingresados/i, { timeout: 5000 });
+    await expect(toast).toContainText(/1 NO se cargaron/i);
+    await expect(toast).toContainText('Producto Nuevo Que No Existe');
     expect(state.db.productos_v2.length).toBe(1); // no se creó ningún producto nuevo
     await expect.poll(() => state.db.productos_v2[0]?.stock, { timeout: 5000 }).toBe(30);
   });

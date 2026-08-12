@@ -97,7 +97,7 @@ test.describe('Modales: bloquean la interacción con el fondo', () => {
 });
 
 test.describe('Manejo de errores: red caída', () => {
-  test('si falla la carga del negocio tras el login, la app no queda colgada en el splash', async ({ page }) => {
+  test('si falla la carga del negocio tras el login, la app avisa con un toast en vez de quedarse en $0 en silencio', async ({ page }) => {
     const db = createDb();
     await loginConSesionSemilla(page, { db });
     // Sin esto el negocio cargaría normal — lo interceptamos para simular
@@ -106,16 +106,11 @@ test.describe('Manejo de errores: red caída', () => {
     await page.route('**/rest/v1/negocios*', (route) => route.abort('failed'));
     await irAApp(page);
 
-    // cargarNegocio() atrapa el error en un .catch() que solo hace
-    // console.log — la promesa se resuelve igual, así que ocultarLogin()
-    // se ejecuta y el splash desaparece.
+    // cargarNegocio() atrapa el error y resuelve igual, así que
+    // ocultarLogin() se ejecuta y el splash desaparece — pero ahora, a
+    // diferencia de antes, muestra un toast explícito en vez de dejar al
+    // usuario en un dashboard en $0 indistinguible de "sin datos".
     await page.locator('#login-screen').waitFor({ state: 'hidden', timeout: 15000 });
-
-    // Hallazgo real de UX: no hay NINGÚN toast ni mensaje de error visible
-    // para el usuario — el dashboard queda montado pero sin negocio cargado
-    // (currentNegocioId nunca se seteó), mostrando KPIs en $0 sin ninguna
-    // pista de que en realidad hubo una falla de red y no "no hay datos".
-    const toastVisible = await page.locator('#toast.on').isVisible().catch(() => false);
-    expect(toastVisible, 'la app no muestra ningún aviso de error ante esta falla de red — queda en $0 silenciosamente').toBe(false);
+    await expect(page.locator('#toast')).toContainText(/No se pudo cargar tu negocio/i, { timeout: 8000 });
   });
 });

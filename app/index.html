@@ -1926,20 +1926,6 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="locked" id="pventa-lock-wrap"><div class="card" style="min-height:260px;display:flex;align-items:center;justify-content:center;"><div style="text-align:center;color:var(--mut2);"><div style="font-size:48px;margin-bottom:12px;">🛒</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px;">Punto de Venta</div><div style="font-size:12px;">Código de barras · Cobrá · Stock automático</div></div></div><div class="lock-ov"><div class="lock-ico">🔒</div><div class="lock-t">Plan Pro</div><div class="lock-s">Punto de venta con código de barras, cobro automático y descuento de stock</div><button class="btn btn-acc btn-sm" onclick="openModal('modal-plan')" style="margin-top:8px;">Ver planes</button></div></div>
 </div>
 
-<!-- MODAL CAMBIO DE PRECIOS -->
-<div class="ov" id="modal-precios">
-<div class="modal">
-  <div class="modal-drag"></div>
-  <div class="modal-t">📊 Precios actualizados</div>
-  <div class="modal-s">El costo cambio · Los precios de venta se actualizaron manteniendo tu margen</div>
-  <div id="precios-lista" style="max-height:400px;overflow-y:auto;"></div>
-  <div class="btn-row">
-    <button class="btn btn-ghost" onclick="closeModal('modal-precios')">Cerrar</button>
-    <button class="btn btn-acc" onclick="closeModal('modal-precios');go('productos',null);">Ver productos</button>
-  </div>
-</div>
-</div>
-
 <!-- FLUJO FINANCIERO -->
 <div id="pg-finanzas" class="pg">
   <div class="ptitle">Flujo Financiero</div>
@@ -3567,7 +3553,13 @@ function agregarLineaIngreso(){
 function renderLineas(){
   const cont=el('ing-lineas'); if(!cont) return;
   cont.innerHTML=lineasIngreso.map(function(l){
-    var opts='<option value="">— Elegir producto —</option>';
+    // Si la IA detectó un nombre que no matchea ningún producto del
+    // inventario, mostramos ese nombre en el placeholder en vez de un
+    // "— Elegir producto —" genérico — sin esto el usuario no tiene forma de
+    // saber qué línea quedó sin vincular (y esa línea se descarta en
+    // silencio al confirmar, ver confirmarIngresoFactura()).
+    var placeholderTxt = (!l.prodId && l.prodNom) ? '⚠️ "'+escapeHtml(l.prodNom)+'" — sin vincular' : '— Elegir producto —';
+    var opts='<option value="">'+placeholderTxt+'</option>';
     productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+escapeHtml(p.nom)+'</option>'; });
     opts+='<option value="__nuevo__">+ Producto nuevo...</option>';
     var sub=l.cant&&l.precio?fmtM(l.cant*l.precio):'—';
@@ -3711,6 +3703,13 @@ function selPagoFact(tipo,selEl){
 function confirmarIngresoFactura(){
   const prov=get('ing-prov').trim();
   const lineasValidas=lineasIngreso.filter(function(l){return l.prodId&&l.cant>0;});
+  // Líneas con contenido (nombre detectado por IA, cantidad o precio
+  // cargados) que van a quedar afuera por no tener un producto vinculado —
+  // se descartan del ingreso, así que hay que avisarlas explícitamente en
+  // vez de un toast de éxito genérico que no menciona la pérdida.
+  const lineasDescartadas=lineasIngreso.filter(function(l){
+    return !(l.prodId&&l.cant>0) && (l.prodNom||l.cant>0||l.precio>0);
+  });
   if(!prov){toast('Ingresá el proveedor','err');return;}
   if(!lineasValidas.length){toast('Agregá al menos un producto con cantidad','err');return;}
   const total=calcTotal();
@@ -3764,7 +3763,10 @@ function confirmarIngresoFactura(){
   }
   pagoFactura='pendiente';
   closeModal('modal-ingreso'); saveState(); renderDash(); // ingreso guardado
-  if(cambiosPrecio.length>0){
+  if(lineasDescartadas.length>0){
+    var nombresDescartados=lineasDescartadas.map(function(l){return l.prodNom||'(sin nombre)';}).join(', ');
+    toast('⚠️ '+lineasValidas.length+' producto(s) ingresados · '+lineasDescartadas.length+' NO se cargaron por no tener producto vinculado: '+nombresDescartados,'err');
+  } else if(cambiosPrecio.length>0){
     setTimeout(function(){mostrarResumenPrecios(cambiosPrecio);},400);
   } else {
     toast('✓ '+lineasValidas.length+' producto(s) ingresados'+(total>0?' · Factura '+estadoFact:''));
@@ -7004,37 +7006,6 @@ function renderSimulador(){
   sEl.innerHTML=html;
 }
 
-// === PRECIO ACTUALIZADO AL INGRESAR ===
-function mostrarResumenPrecios(cambios){
-  var modalEl=el('modal-precios');
-  if(!modalEl) return;
-  var html='';
-  cambios.forEach(function(ch){
-    var difPct=ch.costoAntes>0?Math.round((ch.costoNuevo-ch.costoAntes)/ch.costoAntes*100):0;
-    var subio=ch.costoNuevo>ch.costoAntes;
-    html+='<div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:10px;">'
-      +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;margin-bottom:8px;">'+ch.nom+'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-      +'<div style="background:var(--sur3);border-radius:6px;padding:8px;text-align:center;">'
-      +'<div style="font-size:9px;color:var(--mut2);font-family:DM Mono,monospace;margin-bottom:4px;">PRECIO ANTERIOR</div>'
-      +'<div style="font-size:10px;color:var(--mut2);">Costo: '+fmtM(ch.costoAntes)+'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--mut2);">'+fmtM(ch.ventaAntes)+'</div>'
-      +'</div>'
-      +'<div style="background:'+(subio?'var(--red-dim)':'var(--grn-dim)')+';border:1px solid '+(subio?'var(--red)':'var(--grn)')+';border-radius:6px;padding:8px;text-align:center;">'
-      +'<div style="font-size:9px;font-family:DM Mono,monospace;margin-bottom:4px;color:'+(subio?'var(--red)':'var(--grn)')+';">NUEVO '+(subio?'↑ +'+difPct+'%':'↓ '+Math.abs(difPct)+'%')+'</div>'
-      +'<div style="font-size:10px;color:var(--mut2);">Costo: '+fmtM(ch.costoNuevo)+'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+(subio?'var(--red)':'var(--grn)')+';">'+fmtM(ch.ventaNuevo)+'</div>'
-      +'</div>'
-      +'</div>'
-      +'<div style="margin-top:8px;font-size:11px;color:var(--mut2);text-align:center;">Margen mantenido: <b style="color:var(--acc2);">'+Math.round(ch.margen)+'%</b></div>'
-      +'</div>';
-  });
-  var listEl=el('precios-lista');
-  if(listEl) listEl.innerHTML=html;
-  modalEl.classList.add('on');
-}
-
-
 // ═══ PRECIOS Y MÁRGENES ═══
 var cambiosPrecioActuales = [];
 
@@ -7682,9 +7653,20 @@ function cargarNegocio(){
         // pestaña termine confirmándose/logueándose el usuario.
         var nombrePendiente = (currentUser.user_metadata && currentUser.user_metadata.nombre_negocio_pendiente) || null;
         return crearNegocio(nombrePendiente||config.nombre||'Mi Negocio', currentUser.email);
+      } else {
+        // La consulta resolvió pero con error (ej. sin conexión, permiso
+        // denegado) — antes esto quedaba en silencio (solo console.log) y el
+        // usuario terminaba viendo un dashboard vacío en $0, indistinguible
+        // de un negocio nuevo sin datos. Avisamos explícitamente.
+        console.log('Error cargando negocio:', result.error);
+        toast('⚠️ No se pudo cargar tu negocio — revisá tu conexión e intentá de nuevo','err');
+        return;
       }
       return sincronizarDatos();
-    }).catch(function(e){ console.log('Error loading negocio:',e); });
+    }).catch(function(e){
+      console.log('Error loading negocio:',e);
+      toast('⚠️ No se pudo cargar tu negocio — revisá tu conexión e intentá de nuevo','err');
+    });
 }
 
 // ═══ PAYWALL / TRIAL ═══
