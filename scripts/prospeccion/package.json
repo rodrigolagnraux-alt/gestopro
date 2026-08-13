@@ -1,0 +1,13 @@
+{
+  "name": "gestopro-prospeccion",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Motor de prospección inbound de GestoPro — ver SKILL.md.",
+  "scripts": {
+    "prospectar": "node scraper-places.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "dotenv": "^16"
+  }
+}
