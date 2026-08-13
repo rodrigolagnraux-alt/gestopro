@@ -1,18 +1,25 @@
-// Consulta Google Places API (New) — Text Search — por ciudad + rubro, y
-// guarda cada resultado en prospectos_locales (Supabase, service_role).
-// Nunca scrapea Maps/Instagram directo: ver SKILL.md.
+// Consulta Nominatim (OpenStreetMap) por ciudad + rubro, y guarda cada
+// resultado en prospectos_locales (Supabase, service_role). $0 sin
+// excepciones: sin API key, sin tarjeta, sin registro. Nunca scrapea
+// Maps/Instagram directo: ver SKILL.md.
 //
-// FieldMask limitado a campos tier Essentials/Pro (id, displayName,
-// formattedAddress, location) — evita a propósito los campos tier
-// Enterprise (rating, userRatingCount, internationalPhoneNumber,
-// websiteUri), que son más caros y no hacen falta para este primer paso.
-// El teléfono se resuelve más adelante, aparte, solo para los prospectos
-// que ya filtramos (ver nota en SKILL.md / generar-link-wa.js).
+// Nominatim no da teléfono ni un campo de "nombre de negocio" separado
+// (solo display_name, la dirección completa formateada) — cobertura de
+// comercios en OSM es más floja que la de Google Maps, es la contrapartida
+// de que sea gratis sin condiciones. El teléfono se resuelve más adelante,
+// aparte, con otra fuente a definir, solo para los prospectos ya filtrados.
+//
+// Política de uso de Nominatim (dura, no opcional): máximo 1 request/seg y
+// User-Agent identificable obligatorio, si no bloquea. Esta versión hace
+// una sola consulta por corrida, así que no necesita esperar entre
+// llamadas — pero cualquier código futuro que loopee varias ciudades/rubros
+// en una sola corrida (ej. orchestrator.js) SÍ tiene que esperar ≥1s entre
+// cada llamada a este endpoint.
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-const PLACES_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
-const FIELD_MASK = 'places.id,places.displayName,places.formattedAddress,places.location';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const USER_AGENT = 'GestoPro-Prospeccion (contacto@gestopro.com.ar)';
 
 function parseArgs(argv) {
   const args = {};
@@ -23,35 +30,39 @@ function parseArgs(argv) {
   return args;
 }
 
-async function buscarComercios(ciudad, rubro, apiKey) {
-  const res = await fetch(PLACES_SEARCH_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': FIELD_MASK,
-    },
-    body: JSON.stringify({ textQuery: `${rubro} en ${ciudad}` }),
+async function buscarComercios(ciudad, rubro) {
+  const url = new URL(NOMINATIM_URL);
+  url.searchParams.set('q', `${rubro} en ${ciudad}`);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('addressdetails', '1');
+
+  const res = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
   });
 
-  const data = await res.json();
   if (!res.ok) {
-    throw new Error(`Places API respondió ${res.status}: ${JSON.stringify(data)}`);
+    throw new Error(`Nominatim respondió ${res.status}: ${await res.text()}`);
   }
-  // Nota: Text Search devuelve hasta 20 resultados por página (nextPageToken
-  // para más) — esta primera versión solo trae la primera página.
-  return data.places || [];
+  return res.json();
 }
 
-function mapearProspecto(place, ciudad, rubro) {
+function mapearProspecto(result, ciudad, rubro) {
+  // Nominatim no separa "nombre del negocio" de la dirección — display_name
+  // es todo junto ("Nombre, Calle Número, Ciudad, ..."). El primer segmento
+  // suele ser el nombre del lugar cuando está tageado en OSM; si no, queda
+  // el primer tramo de la dirección — mejor esfuerzo, no garantizado.
+  const nombre = (result.display_name || '').split(',')[0].trim() || null;
   return {
-    place_id: place.id,
+    // osm_type+osm_id es el identificador estable de Nominatim — el
+    // place_id que devuelve la API es un id interno de su base que puede
+    // cambiar entre actualizaciones, no sirve para deduplicar en el tiempo.
+    place_id: `${result.osm_type}/${result.osm_id}`,
     ciudad,
     rubro,
-    nombre: place.displayName ? place.displayName.text : null,
-    direccion: place.formattedAddress || null,
-    lat: place.location ? place.location.latitude : null,
-    lng: place.location ? place.location.longitude : null,
+    nombre,
+    direccion: result.display_name || null,
+    lat: result.lat ? parseFloat(result.lat) : null,
+    lng: result.lon ? parseFloat(result.lon) : null,
   };
 }
 
@@ -62,10 +73,9 @@ async function main() {
     process.exit(1);
   }
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!apiKey || !supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseKey) {
     console.error('Faltan variables de entorno — revisá .env contra .env.example');
     process.exit(1);
   }
@@ -73,14 +83,14 @@ async function main() {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   console.log(`Buscando "${rubro}" en "${ciudad}"...`);
-  const places = await buscarComercios(ciudad, rubro, apiKey);
-  console.log(`Places API devolvió ${places.length} resultado(s).`);
+  const resultados = await buscarComercios(ciudad, rubro);
+  console.log(`Nominatim devolvió ${resultados.length} resultado(s).`);
 
   let guardados = 0;
   let errores = 0;
-  for (const place of places) {
-    if (!place.id) continue;
-    const prospecto = mapearProspecto(place, ciudad, rubro);
+  for (const result of resultados) {
+    if (!result.osm_id) continue;
+    const prospecto = mapearProspecto(result, ciudad, rubro);
     const { error } = await supabase
       .from('prospectos_locales')
       .upsert(prospecto, { onConflict: 'place_id', ignoreDuplicates: false });
