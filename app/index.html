@@ -1456,6 +1456,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="sb-sec">
     <div class="sb-lbl">Mi Negocio</div>
     <div class="sb-i" id="sb-empleados" onclick="goConPin('empleados',this,'business')"><span class="sb-ico">👥</span>Empleados<span class="sb-lock" id="lock-empleados">🔒</span></div>
+    <div class="sb-i" id="sb-facturacion" onclick="go('facturacion',this)"><span class="sb-ico">🧾</span>Facturación electrónica</div>
   </div>
   <div class="sb-foot">
     <div class="plan-box">
@@ -2073,6 +2074,46 @@ select.fi{appearance:none;cursor:pointer;}
       <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;">🛒 Mercadería llevada este mes</div>
       <div id="emp-merc-mes-lista"></div>
     </div>
+  </div>
+</div>
+
+<!-- FACTURACIÓN ELECTRÓNICA (AFIP/ARCA) -->
+<div id="pg-facturacion" class="pg">
+  <div class="ptitle">🧾 Facturación electrónica</div>
+  <div class="psub">Datos fiscales y certificado digital para emitir comprobantes con CAE de AFIP/ARCA</div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
+    <span class="bdg" id="fe-bdg-cert" style="background:var(--red-dim);color:var(--red);">● Certificado no cargado</span>
+    <span class="bdg" id="fe-bdg-ambiente" style="background:var(--acc-dim);color:var(--acc2);">Ambiente: Homologación</span>
+  </div>
+
+  <div class="card">
+    <div class="stitle">Datos fiscales</div>
+    <div class="fg"><label class="fl">CUIT</label><input class="fi" id="fe-cuit" placeholder="20345678901" inputmode="numeric" maxlength="11"></div>
+    <div class="fg"><label class="fl">Razón social</label><input class="fi" id="fe-razon-social" placeholder="Tal como figura en AFIP"></div>
+    <div class="fg">
+      <label class="fl">Condición frente al IVA</label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="fe-condicion-monotributo-wrap">
+        <input type="radio" name="fe-condicion-iva" value="monotributo" id="fe-condicion-monotributo" style="margin-top:3px;">
+        <span><b style="color:var(--txt);">Monotributo</b><br><span style="font-size:11px;color:var(--mut2);">Emite Factura C, sin desglose de IVA.</span></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;cursor:pointer;" id="fe-condicion-ri-wrap">
+        <input type="radio" name="fe-condicion-iva" value="responsable_inscripto" id="fe-condicion-ri" style="margin-top:3px;">
+        <span><b style="color:var(--txt);">Responsable Inscripto</b><br><span style="font-size:11px;color:var(--mut2);">Emite Factura A o B, con desglose de IVA.</span></span>
+      </label>
+    </div>
+    <div class="fg" style="margin-bottom:0;"><label class="fl">Punto de venta</label><input class="fi" id="fe-punto-venta" type="number" placeholder="Ej: 4" inputmode="numeric"></div>
+    <div style="font-size:11px;color:var(--mut2);margin-top:8px;">Tiene que ser un punto de venta <b>exclusivo para GestoPro</b>, del sistema "Factura Electrónica - Web Services" — se crea desde tu Clave Fiscal en ARCA, en "Administración de Puntos de Venta y Domicilios".</div>
+    <div class="btn-row" style="margin-top:14px;"><button class="btn btn-acc" onclick="guardarFacturacionConfig()">💾 Guardar datos fiscales</button></div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <div class="stitle">Certificado digital</div>
+    <div style="font-size:12px;color:var(--mut2);line-height:1.6;margin-bottom:12px;">Lo generás vos mismo desde tu Clave Fiscal (Nivel 3), en "Administración de Certificados Digitales" de ARCA. Cuando tengas los dos archivos, pegá su contenido acá tal cual — incluidas las líneas BEGIN/END.</div>
+    <div class="fg"><label class="fl">Certificado (.crt)</label><textarea class="fi" id="fe-certificado" rows="5" style="font-family:'DM Mono',monospace;font-size:11px;resize:vertical;" placeholder="-----BEGIN CERTIFICATE-----"></textarea></div>
+    <div class="fg" style="margin-bottom:0;"><label class="fl">Clave privada (.key)</label><textarea class="fi" id="fe-clave-privada" rows="5" style="font-family:'DM Mono',monospace;font-size:11px;resize:vertical;" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></div>
+    <div style="background:var(--yel-dim);border:1px solid var(--brd2);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--txt);">⚠️ Guardá una copia tuya de estos archivos en un lugar seguro — una vez cargada acá, la clave privada no se vuelve a mostrar.</div>
+    <div class="btn-row" style="margin-top:14px;"><button class="btn btn-acc" id="fe-btn-guardar-cert" onclick="guardarCredencialesAfip()">🔐 Guardar certificado</button></div>
   </div>
 </div>
 
@@ -6167,8 +6208,105 @@ function renderPage(id){
   else if(id==='pedidosonline') renderPedidosOnline();
   else if(id==='entregar') renderPedidosEntregar();
   else if(id==='pedidos') renderPedidos();
+  else if(id==='facturacion') renderFacturacion();
 }
 
+// ═══ FACTURACIÓN ELECTRÓNICA (AFIP/ARCA) ═══
+async function renderFacturacion(){
+  if(!supabaseClient || !currentNegocioId) return;
+  var res = await supabaseClient.from('facturacion_config').select('*').eq('negocio_id', currentNegocioId).maybeSingle();
+  var cfg = res.data || null;
+
+  set('fe-cuit','val', cfg && cfg.cuit ? cfg.cuit : '');
+  set('fe-razon-social','val', cfg && cfg.razon_social ? cfg.razon_social : '');
+  set('fe-punto-venta','val', cfg && cfg.punto_venta ? cfg.punto_venta : '');
+
+  var condicion = cfg ? cfg.condicion_iva : null;
+  var elMono = el('fe-condicion-monotributo'), elRi = el('fe-condicion-ri');
+  if(elMono) elMono.checked = condicion === 'monotributo';
+  if(elRi) elRi.checked = condicion === 'responsable_inscripto';
+
+  actualizarBadgeCertificado(!!(cfg && cfg.certificado_cargado));
+  var bAmb = el('fe-bdg-ambiente');
+  if(bAmb) bAmb.textContent = 'Ambiente: ' + ((cfg && cfg.ambiente === 'produccion') ? 'Producción' : 'Homologación');
+}
+
+function actualizarBadgeCertificado(cargado){
+  var b = el('fe-bdg-cert');
+  if(!b) return;
+  if(cargado){
+    b.textContent = '● Certificado cargado';
+    b.style.background = 'var(--grn-dim)';
+    b.style.color = 'var(--grn)';
+  }else{
+    b.textContent = '● Certificado no cargado';
+    b.style.background = 'var(--red-dim)';
+    b.style.color = 'var(--red)';
+  }
+}
+
+async function guardarFacturacionConfig(){
+  if(!currentNegocioId) return;
+  var cuit = get('fe-cuit').replace(/\D/g,'');
+  var razonSocial = get('fe-razon-social').trim();
+  var puntoVenta = parseInt(get('fe-punto-venta'), 10);
+  var condicionEl = document.querySelector('input[name="fe-condicion-iva"]:checked');
+  var condicionIva = condicionEl ? condicionEl.value : null;
+
+  if(cuit.length !== 11){ toast('El CUIT debe tener 11 dígitos','err'); return; }
+  if(!condicionIva){ toast('Elegí tu condición frente al IVA','err'); return; }
+  if(!puntoVenta || puntoVenta <= 0){ toast('Ingresá un punto de venta válido','err'); return; }
+
+  var res = await supabaseClient.from('facturacion_config').upsert({
+    negocio_id: currentNegocioId,
+    cuit: cuit,
+    razon_social: razonSocial || null,
+    condicion_iva: condicionIva,
+    punto_venta: puntoVenta
+  });
+  if(res.error){ toast('No se pudo guardar: '+res.error.message,'err'); return; }
+  toast('Datos fiscales guardados ✓');
+}
+
+async function guardarCredencialesAfip(){
+  if(!currentNegocioId) return;
+  var certificado = get('fe-certificado').trim();
+  var clavePrivada = get('fe-clave-privada').trim();
+  if(!certificado || !clavePrivada){ toast('Pegá el certificado y la clave privada','err'); return; }
+
+  var btn = el('fe-btn-guardar-cert');
+  if(btn){ btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  try{
+    var sesionRes = await supabaseClient.auth.getSession();
+    var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+    if(!token){ toast('Sesión vencida — volvé a iniciar sesión','err'); return; }
+
+    var resp = await fetch(SUPA_URL + '/functions/v1/afip-wsfe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        accion: 'guardar_credenciales',
+        negocio_id: currentNegocioId,
+        certificado_pem: certificado,
+        clave_privada_pem: clavePrivada
+      })
+    });
+    var data = await resp.json();
+    if(!data || !data.ok){
+      toast((data && data.error) || 'No se pudo guardar el certificado','err');
+      return;
+    }
+    set('fe-certificado','val','');
+    set('fe-clave-privada','val','');
+    actualizarBadgeCertificado(true);
+    toast('Certificado guardado ✓');
+  }catch(e){
+    toast('Error de conexión al guardar el certificado','err');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = '🔐 Guardar certificado'; }
+  }
+}
 
 // ═══ ESCÁNER ═══
 var scannerStream = null;
