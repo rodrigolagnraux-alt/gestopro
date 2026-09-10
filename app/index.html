@@ -2102,16 +2102,43 @@ select.fi{appearance:none;cursor:pointer;}
         <span><b style="color:var(--txt);">Responsable Inscripto</b><br><span style="font-size:11px;color:var(--mut2);">Emite Factura A o B, con desglose de IVA.</span></span>
       </label>
     </div>
-    <div class="fg" style="margin-bottom:0;"><label class="fl">Punto de venta</label><input class="fi" id="fe-punto-venta" type="number" placeholder="Ej: 4" inputmode="numeric"></div>
-    <div style="font-size:11px;color:var(--mut2);margin-top:8px;">Tiene que ser un punto de venta <b>exclusivo para GestoPro</b>, del sistema "Factura Electrónica - Web Services" — se crea desde tu Clave Fiscal en ARCA, en "Administración de Puntos de Venta y Domicilios".</div>
+    <div class="fg"><label class="fl">Punto de venta</label><input class="fi" id="fe-punto-venta" type="number" placeholder="Ej: 4" inputmode="numeric"></div>
+    <div style="font-size:11px;color:var(--mut2);margin-top:-8px;margin-bottom:14px;">Tiene que ser un punto de venta <b>exclusivo para GestoPro</b>, del sistema "Factura Electrónica - Web Services" — se crea desde tu Clave Fiscal en ARCA, en "Administración de Puntos de Venta y Domicilios".</div>
+
+    <div class="fg" style="margin-bottom:0;">
+      <label class="fl">Ambiente</label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:8px;cursor:pointer;" id="fe-ambiente-homologacion-wrap">
+        <input type="radio" name="fe-ambiente" value="homologacion" id="fe-ambiente-homologacion" style="margin-top:3px;" onchange="onCambioAmbienteFacturacion()">
+        <span><b style="color:var(--txt);">Homologación</b><br><span style="font-size:11px;color:var(--mut2);">Ambiente de pruebas de ARCA — los comprobantes no tienen validez fiscal real.</span></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--red);background:var(--red-dim);border-radius:8px;cursor:pointer;" id="fe-ambiente-produccion-wrap">
+        <input type="radio" name="fe-ambiente" value="produccion" id="fe-ambiente-produccion" style="margin-top:3px;" onchange="onCambioAmbienteFacturacion()">
+        <span><b style="color:var(--red);">Producción</b><br><span style="font-size:11px;color:var(--mut2);">Comprobantes fiscales reales, con validez legal ante ARCA.</span></span>
+      </label>
+    </div>
+    <div id="fe-confirm-produccion-wrap" style="display:none;background:var(--red-dim);border:1px solid var(--red);border-radius:8px;padding:12px;margin-top:10px;">
+      <div class="chk-wrap"><input type="checkbox" id="fe-confirm-produccion"><label for="fe-confirm-produccion" style="margin:0;cursor:pointer;color:var(--txt);font-size:12px;line-height:1.5;">Confirmo que quiero facturar en producción — esto genera comprobantes fiscales reales.</label></div>
+    </div>
+    <div style="font-size:11px;color:var(--mut2);margin-top:10px;">Esto es una traba adicional por negocio: aunque esté en Producción acá, solo se factura de verdad si además el ambiente general de GestoPro también está en Producción.</div>
+
     <div class="btn-row" style="margin-top:14px;"><button class="btn btn-acc" onclick="guardarFacturacionConfig()">💾 Guardar datos fiscales</button></div>
   </div>
 
   <div class="card" style="margin-top:14px;">
     <div class="stitle">Certificado digital</div>
-    <div style="font-size:12px;color:var(--mut2);line-height:1.6;margin-bottom:12px;">Lo generás vos mismo desde tu Clave Fiscal (Nivel 3), en "Administración de Certificados Digitales" de ARCA. Cuando tengas los dos archivos, pegá su contenido acá tal cual — incluidas las líneas BEGIN/END.</div>
-    <div class="fg"><label class="fl">Certificado (.crt)</label><textarea class="fi" id="fe-certificado" rows="5" style="font-family:'DM Mono',monospace;font-size:11px;resize:vertical;" placeholder="-----BEGIN CERTIFICATE-----"></textarea></div>
-    <div class="fg" style="margin-bottom:0;"><label class="fl">Clave privada (.key)</label><textarea class="fi" id="fe-clave-privada" rows="5" style="font-family:'DM Mono',monospace;font-size:11px;resize:vertical;" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></div>
+    <div style="font-size:12px;color:var(--mut2);line-height:1.6;margin-bottom:12px;">Lo generás vos mismo desde tu Clave Fiscal (Nivel 3), en "Administración de Certificados Digitales" de ARCA. Cuando tengas los dos archivos, subilos acá.</div>
+    <div class="fg">
+      <label class="fl">Certificado (.crt)</label>
+      <input type="file" accept=".crt,.pem,.cer" id="fe-certificado-file" style="display:none;" onchange="onArchivoCertificadoElegido(this,'fe-certificado')">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('fe-certificado-file').click()">📎 Elegir archivo .crt</button>
+      <span id="fe-certificado-nombre" style="font-size:11px;color:var(--mut2);margin-left:8px;"></span>
+    </div>
+    <div class="fg" style="margin-bottom:0;">
+      <label class="fl">Clave privada (.key)</label>
+      <input type="file" accept=".key,.pem" id="fe-clave-privada-file" style="display:none;" onchange="onArchivoCertificadoElegido(this,'fe-clave-privada')">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('fe-clave-privada-file').click()">📎 Elegir archivo .key</button>
+      <span id="fe-clave-privada-nombre" style="font-size:11px;color:var(--mut2);margin-left:8px;"></span>
+    </div>
     <div style="background:var(--yel-dim);border:1px solid var(--brd2);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--txt);">⚠️ Guardá una copia tuya de estos archivos en un lugar seguro — una vez cargada acá, la clave privada no se vuelve a mostrar.</div>
     <div class="btn-row" style="margin-top:14px;"><button class="btn btn-acc" id="fe-btn-guardar-cert" onclick="guardarCredencialesAfip()">🔐 Guardar certificado</button></div>
   </div>
@@ -6212,6 +6239,9 @@ function renderPage(id){
 }
 
 // ═══ FACTURACIÓN ELECTRÓNICA (AFIP/ARCA) ═══
+var feCertificadoTexto = null;
+var feClavePrivadaTexto = null;
+
 async function renderFacturacion(){
   if(!supabaseClient || !currentNegocioId) return;
   var res = await supabaseClient.from('facturacion_config').select('*').eq('negocio_id', currentNegocioId).maybeSingle();
@@ -6226,9 +6256,24 @@ async function renderFacturacion(){
   if(elMono) elMono.checked = condicion === 'monotributo';
   if(elRi) elRi.checked = condicion === 'responsable_inscripto';
 
+  var ambiente = (cfg && cfg.ambiente === 'produccion') ? 'produccion' : 'homologacion';
+  var elHomo = el('fe-ambiente-homologacion'), elProd = el('fe-ambiente-produccion');
+  if(elHomo) elHomo.checked = ambiente === 'homologacion';
+  if(elProd) elProd.checked = ambiente === 'produccion';
+  var chkConfirm = el('fe-confirm-produccion');
+  if(chkConfirm) chkConfirm.checked = false;
+  onCambioAmbienteFacturacion();
+
+  feCertificadoTexto = null;
+  feClavePrivadaTexto = null;
+  set('fe-certificado-nombre','text','');
+  set('fe-clave-privada-nombre','text','');
+  var fileCert = el('fe-certificado-file'), fileKey = el('fe-clave-privada-file');
+  if(fileCert) fileCert.value = '';
+  if(fileKey) fileKey.value = '';
+
   actualizarBadgeCertificado(!!(cfg && cfg.certificado_cargado));
-  var bAmb = el('fe-bdg-ambiente');
-  if(bAmb) bAmb.textContent = 'Ambiente: ' + ((cfg && cfg.ambiente === 'produccion') ? 'Producción' : 'Homologación');
+  actualizarBadgeAmbiente(ambiente);
 }
 
 function actualizarBadgeCertificado(cargado){
@@ -6245,6 +6290,59 @@ function actualizarBadgeCertificado(cargado){
   }
 }
 
+function actualizarBadgeAmbiente(ambiente){
+  var b = el('fe-bdg-ambiente');
+  if(!b) return;
+  if(ambiente === 'produccion'){
+    b.textContent = 'Ambiente: Producción';
+    b.style.background = 'var(--red-dim)';
+    b.style.color = 'var(--red)';
+  }else{
+    b.textContent = 'Ambiente: Homologación';
+    b.style.background = 'var(--acc-dim)';
+    b.style.color = 'var(--acc2)';
+  }
+}
+
+function onCambioAmbienteFacturacion(){
+  var elProd = el('fe-ambiente-produccion');
+  var wrap = el('fe-confirm-produccion-wrap');
+  var enProduccion = !!(elProd && elProd.checked);
+  if(wrap) wrap.style.display = enProduccion ? 'block' : 'none';
+  if(!enProduccion){
+    var chk = el('fe-confirm-produccion');
+    if(chk) chk.checked = false;
+  }
+}
+
+// Lee el archivo elegido como texto y valida el formato PEM esperado antes
+// de guardarlo en memoria — recién al hacer clic en "Guardar certificado" se
+// manda al backend, nunca antes.
+function onArchivoCertificadoElegido(inputEl, target){
+  var file = inputEl.files && inputEl.files[0];
+  var nombreSpan = el(target + '-nombre');
+  if(!file){ if(nombreSpan) nombreSpan.textContent=''; return; }
+
+  var reader = new FileReader();
+  reader.onload = function(){
+    var texto = String(reader.result || '').trim();
+    var esperado = target === 'fe-certificado' ? 'BEGIN CERTIFICATE' : 'BEGIN PRIVATE KEY';
+    if(!texto.includes(esperado)){
+      toast('El archivo "'+file.name+'" no tiene el formato esperado ('+esperado+')','err');
+      inputEl.value = '';
+      if(nombreSpan) nombreSpan.textContent = '';
+      if(target === 'fe-certificado') feCertificadoTexto = null; else feClavePrivadaTexto = null;
+      return;
+    }
+    if(target === 'fe-certificado') feCertificadoTexto = texto; else feClavePrivadaTexto = texto;
+    if(nombreSpan) nombreSpan.textContent = '✓ ' + file.name;
+  };
+  reader.onerror = function(){
+    toast('No se pudo leer el archivo "'+file.name+'"','err');
+  };
+  reader.readAsText(file);
+}
+
 async function guardarFacturacionConfig(){
   if(!currentNegocioId) return;
   var cuit = get('fe-cuit').replace(/\D/g,'');
@@ -6252,27 +6350,36 @@ async function guardarFacturacionConfig(){
   var puntoVenta = parseInt(get('fe-punto-venta'), 10);
   var condicionEl = document.querySelector('input[name="fe-condicion-iva"]:checked');
   var condicionIva = condicionEl ? condicionEl.value : null;
+  var ambienteEl = document.querySelector('input[name="fe-ambiente"]:checked');
+  var ambiente = ambienteEl ? ambienteEl.value : 'homologacion';
 
   if(cuit.length !== 11){ toast('El CUIT debe tener 11 dígitos','err'); return; }
   if(!condicionIva){ toast('Elegí tu condición frente al IVA','err'); return; }
   if(!puntoVenta || puntoVenta <= 0){ toast('Ingresá un punto de venta válido','err'); return; }
+  if(ambiente === 'produccion'){
+    var chkConfirm = el('fe-confirm-produccion');
+    if(!chkConfirm || !chkConfirm.checked){
+      toast('Confirmá el checkbox para poder guardar en ambiente de Producción','err');
+      return;
+    }
+  }
 
   var res = await supabaseClient.from('facturacion_config').upsert({
     negocio_id: currentNegocioId,
     cuit: cuit,
     razon_social: razonSocial || null,
     condicion_iva: condicionIva,
-    punto_venta: puntoVenta
+    punto_venta: puntoVenta,
+    ambiente: ambiente
   });
   if(res.error){ toast('No se pudo guardar: '+res.error.message,'err'); return; }
+  actualizarBadgeAmbiente(ambiente);
   toast('Datos fiscales guardados ✓');
 }
 
 async function guardarCredencialesAfip(){
   if(!currentNegocioId) return;
-  var certificado = get('fe-certificado').trim();
-  var clavePrivada = get('fe-clave-privada').trim();
-  if(!certificado || !clavePrivada){ toast('Pegá el certificado y la clave privada','err'); return; }
+  if(!feCertificadoTexto || !feClavePrivadaTexto){ toast('Elegí los dos archivos: certificado y clave privada','err'); return; }
 
   var btn = el('fe-btn-guardar-cert');
   if(btn){ btn.disabled = true; btn.textContent = 'Guardando...'; }
@@ -6288,8 +6395,8 @@ async function guardarCredencialesAfip(){
       body: JSON.stringify({
         accion: 'guardar_credenciales',
         negocio_id: currentNegocioId,
-        certificado_pem: certificado,
-        clave_privada_pem: clavePrivada
+        certificado_pem: feCertificadoTexto,
+        clave_privada_pem: feClavePrivadaTexto
       })
     });
     var data = await resp.json();
@@ -6297,8 +6404,13 @@ async function guardarCredencialesAfip(){
       toast((data && data.error) || 'No se pudo guardar el certificado','err');
       return;
     }
-    set('fe-certificado','val','');
-    set('fe-clave-privada','val','');
+    feCertificadoTexto = null;
+    feClavePrivadaTexto = null;
+    set('fe-certificado-nombre','text','');
+    set('fe-clave-privada-nombre','text','');
+    var fileCert = el('fe-certificado-file'), fileKey = el('fe-clave-privada-file');
+    if(fileCert) fileCert.value = '';
+    if(fileKey) fileKey.value = '';
     actualizarBadgeCertificado(true);
     toast('Certificado guardado ✓');
   }catch(e){
