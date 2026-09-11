@@ -760,7 +760,20 @@ select.fi{appearance:none;cursor:pointer;}
   <div id="fv-ya-facturada" style="display:none;background:var(--grn-dim);border:1px solid var(--brd2);border-radius:8px;padding:12px;font-size:12px;color:var(--txt);line-height:1.6;margin-bottom:12px;">
     Esta venta ya tiene un comprobante emitido.
     <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--grn);margin-top:6px;" id="fv-cae-existente"></div>
-    <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cerrar</button></div>
+
+    <div id="fv-anular-wrap" style="display:none;">
+      <div class="fg" style="margin-top:12px;margin-bottom:0;"><label class="fl">Motivo de anulación (opcional)</label><input class="fi" id="fv-motivo-anulacion" placeholder="Ej: Devolución, error de carga..."></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cerrar</button>
+        <button class="btn btn-red" id="fv-btn-anular" onclick="anularFacturaVenta()">❌ Anular venta (Nota de Crédito)</button>
+      </div>
+    </div>
+
+    <div id="fv-anulada-msg" style="display:none;">
+      Esta venta ya fue anulada con una Nota de Crédito.
+      <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--red);margin-top:6px;" id="fv-cae-nc"></div>
+      <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cerrar</button></div>
+    </div>
   </div>
 
   <div id="fv-form">
@@ -6465,11 +6478,13 @@ async function guardarCredencialesAfip(){
 var facturaVentaMovId = null;
 var facturaVentaConfig = null;
 var facturaVentaMonto = 0;
+var facturaVentaFacturaId = null;
 
 async function abrirModalFacturarVenta(movId, monto){
   if(!supabaseClient || !currentNegocioId) return;
   facturaVentaMovId = movId;
   facturaVentaConfig = null;
+  facturaVentaFacturaId = null;
   facturaVentaMonto = parseFloat(monto) || 0;
 
   set('fv-monto-display','text', facturaVentaMonto.toLocaleString('es-AR'));
@@ -6477,6 +6492,8 @@ async function abrirModalFacturarVenta(movId, monto){
   set('fv-tipo-display','text','—');
   el('fv-sin-config').style.display = 'none';
   el('fv-ya-facturada').style.display = 'none';
+  el('fv-anular-wrap').style.display = 'none';
+  el('fv-anulada-msg').style.display = 'none';
   el('fv-form').style.display = 'none';
   openModal('modal-facturar-venta');
 
@@ -6487,16 +6504,65 @@ async function abrirModalFacturarVenta(movId, monto){
     return;
   }
 
-  var facturaRes = await supabaseClient.from('facturas_electronicas').select('cae, numero_comprobante, tipo_comprobante, estado').eq('movimiento_id', String(movId)).eq('negocio_id', currentNegocioId).eq('estado', 'autorizado').maybeSingle();
+  var facturaRes = await supabaseClient.from('facturas_electronicas').select('id, cae, numero_comprobante, tipo_comprobante, estado').eq('movimiento_id', String(movId)).eq('negocio_id', currentNegocioId).eq('estado', 'autorizado').maybeSingle();
   if(facturaRes.data && facturaRes.data.cae){
+    facturaVentaFacturaId = facturaRes.data.id;
     set('fv-cae-existente','text', 'CAE: '+facturaRes.data.cae+' · Comprobante N° '+facturaRes.data.numero_comprobante);
     el('fv-ya-facturada').style.display = 'block';
+
+    var ncRes = await supabaseClient.from('notas_credito').select('cae, numero_comprobante').eq('factura_electronica_id', facturaVentaFacturaId).eq('estado', 'autorizado').maybeSingle();
+    if(ncRes.data && ncRes.data.cae){
+      set('fv-cae-nc','text', 'Nota de Crédito CAE: '+ncRes.data.cae+' · Comprobante N° '+ncRes.data.numero_comprobante);
+      el('fv-anulada-msg').style.display = 'block';
+    }else{
+      set('fv-motivo-anulacion','val','');
+      el('fv-anular-wrap').style.display = 'block';
+    }
     return;
   }
 
   facturaVentaConfig = cfg;
   set('fv-tipo-display','text', cfg.condicion_iva === 'monotributo' ? 'Factura C (Monotributo, sin desglose de IVA)' : 'Factura B (Responsable Inscripto, IVA 21% general)');
   el('fv-form').style.display = 'block';
+}
+
+async function anularFacturaVenta(){
+  if(!facturaVentaFacturaId || !currentNegocioId) return;
+  var motivo = get('fv-motivo-anulacion').trim();
+
+  var btn = el('fv-btn-anular');
+  if(btn){ btn.disabled = true; btn.textContent = 'Anulando...'; }
+
+  try{
+    var sesionRes = await supabaseClient.auth.getSession();
+    var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+    if(!token){ toast('Sesión vencida — volvé a iniciar sesión','err'); return; }
+
+    var resp = await fetch(SUPA_URL + '/functions/v1/afip-wsfe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        accion: 'emitir_nota_credito',
+        negocio_id: currentNegocioId,
+        factura_electronica_id: facturaVentaFacturaId,
+        motivo: motivo || undefined
+      })
+    });
+    var data = await resp.json();
+    if(!data || !data.ok){
+      toast((data && data.error) || 'No se pudo anular la venta','err');
+      return;
+    }
+    var nc = data.notaCredito || {};
+    set('fv-cae-nc','text', 'Nota de Crédito CAE: '+nc.cae+' · Comprobante N° '+nc.numero_comprobante);
+    el('fv-anular-wrap').style.display = 'none';
+    el('fv-anulada-msg').style.display = 'block';
+    toast('Venta anulada ✓ Nota de Crédito emitida');
+  }catch(e){
+    toast('Error de conexión al anular la venta','err');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = '❌ Anular venta (Nota de Crédito)'; }
+  }
 }
 
 async function emitirFacturaVenta(){
