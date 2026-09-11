@@ -745,6 +745,46 @@ select.fi{appearance:none;cursor:pointer;}
 </div>
 </div>
 
+<!-- MODAL FACTURAR VENTA (AFIP) -->
+<div class="ov" id="modal-facturar-venta">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">🧾 Facturar venta</div>
+  <div class="modal-s" id="fv-subtitulo">Emitir comprobante electrónico con CAE de AFIP</div>
+
+  <div id="fv-sin-config" style="display:none;background:var(--yel-dim);border:1px solid var(--brd2);border-radius:8px;padding:12px;font-size:12px;color:var(--txt);line-height:1.6;margin-bottom:12px;">
+    Todavía no tenés la facturación electrónica configurada (CUIT, punto de venta y certificado). Andá a <b>Facturación electrónica</b> en el menú para completarla.
+    <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cerrar</button></div>
+  </div>
+
+  <div id="fv-ya-facturada" style="display:none;background:var(--grn-dim);border:1px solid var(--brd2);border-radius:8px;padding:12px;font-size:12px;color:var(--txt);line-height:1.6;margin-bottom:12px;">
+    Esta venta ya tiene un comprobante emitido.
+    <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--grn);margin-top:6px;" id="fv-cae-existente"></div>
+    <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cerrar</button></div>
+  </div>
+
+  <div id="fv-form">
+    <div class="fg">
+      <label class="fl">Monto a facturar</label>
+      <div style="font-family:'DM Mono',monospace;font-size:22px;text-align:center;color:var(--txt);padding:8px;">$<span id="fv-monto-display">0</span></div>
+    </div>
+    <div class="fg" id="fv-tipo-wrap">
+      <label class="fl">Tipo de comprobante</label>
+      <div style="font-size:13px;color:var(--mut2);padding:9px 13px;background:var(--sur2);border:1px solid var(--brd2);border-radius:8px;" id="fv-tipo-display">—</div>
+    </div>
+    <div class="fg" style="margin-bottom:0;">
+      <label class="fl">DNI o CUIT del comprador (opcional)</label>
+      <input class="fi" id="fv-doc-nro" placeholder="Dejalo vacío para Consumidor Final" inputmode="numeric">
+    </div>
+    <div style="font-size:11px;color:var(--mut2);margin-top:8px;">El IVA se calcula asumiendo la alícuota general (21%) sobre el total — si vendiste algo con otra alícuota, revisá el monto antes de emitir.</div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-facturar-venta')">Cancelar</button>
+      <button class="btn btn-acc" id="fv-btn-emitir" onclick="emitirFacturaVenta()">🧾 Emitir factura</button>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- MODAL EDITAR CLIENTE FIADO -->
 <div class="ov" id="modal-editar-fiado">
 <div class="modal" style="max-width:440px;">
@@ -4784,6 +4824,7 @@ function renderMovItem(m){
       +'<div class="mov-meta">'+fmtF(m.fecha)+' '+fmtHora(m.createdAt)+' · '+(metLbl2[m.metodo]||m.metodo||'')+'</div>'
       +'</div>'
       +'<div class="mov-right"><div class="mov-monto mc-cobro">'+fmtM(m.monto)+'</div><div class="mov-tipo-lbl">COBRO</div></div>'
+      +'<button class="btn btn-ghost btn-sm" style="margin-left:6px;flex:none;" title="Facturar (AFIP)" onclick="event.stopPropagation();abrirModalFacturarVenta(\''+escapeHtml(String(m.id))+'\','+(parseFloat(m.monto)||0)+')">🧾</button>'
       +'</div>';
   }
   if(m.tipo==='ingreso'){
@@ -6417,6 +6458,105 @@ async function guardarCredencialesAfip(){
     toast('Error de conexión al guardar el certificado','err');
   }finally{
     if(btn){ btn.disabled = false; btn.innerHTML = '🔐 Guardar certificado'; }
+  }
+}
+
+// ═══ FACTURAR VENTA (emitir comprobante AFIP para un movimiento de cobro) ═══
+var facturaVentaMovId = null;
+var facturaVentaConfig = null;
+var facturaVentaMonto = 0;
+
+async function abrirModalFacturarVenta(movId, monto){
+  if(!supabaseClient || !currentNegocioId) return;
+  facturaVentaMovId = movId;
+  facturaVentaConfig = null;
+  facturaVentaMonto = parseFloat(monto) || 0;
+
+  set('fv-monto-display','text', facturaVentaMonto.toLocaleString('es-AR'));
+  set('fv-doc-nro','val','');
+  set('fv-tipo-display','text','—');
+  el('fv-sin-config').style.display = 'none';
+  el('fv-ya-facturada').style.display = 'none';
+  el('fv-form').style.display = 'none';
+  openModal('modal-facturar-venta');
+
+  var cfgRes = await supabaseClient.from('facturacion_config').select('*').eq('negocio_id', currentNegocioId).maybeSingle();
+  var cfg = cfgRes.data || null;
+  if(!cfg || !cfg.certificado_cargado || !cfg.activo || !cfg.cuit || !cfg.punto_venta || !cfg.condicion_iva){
+    el('fv-sin-config').style.display = 'block';
+    return;
+  }
+
+  var facturaRes = await supabaseClient.from('facturas_electronicas').select('cae, numero_comprobante, tipo_comprobante, estado').eq('movimiento_id', String(movId)).eq('negocio_id', currentNegocioId).eq('estado', 'autorizado').maybeSingle();
+  if(facturaRes.data && facturaRes.data.cae){
+    set('fv-cae-existente','text', 'CAE: '+facturaRes.data.cae+' · Comprobante N° '+facturaRes.data.numero_comprobante);
+    el('fv-ya-facturada').style.display = 'block';
+    return;
+  }
+
+  facturaVentaConfig = cfg;
+  set('fv-tipo-display','text', cfg.condicion_iva === 'monotributo' ? 'Factura C (Monotributo, sin desglose de IVA)' : 'Factura B (Responsable Inscripto, IVA 21% general)');
+  el('fv-form').style.display = 'block';
+}
+
+async function emitirFacturaVenta(){
+  if(!facturaVentaConfig || !facturaVentaMovId || !currentNegocioId) return;
+  if(!facturaVentaMonto || facturaVentaMonto <= 0){ toast('Monto inválido para facturar','err'); return; }
+
+  var docNroRaw = get('fv-doc-nro').replace(/\D/g,'');
+  var docTipo = 99, docNro = '0';
+  if(docNroRaw.length === 11){ docTipo = 80; docNro = docNroRaw; }
+  else if(docNroRaw.length > 0){ docTipo = 96; docNro = docNroRaw; }
+
+  var importeTotal = facturaVentaMonto;
+  var tipoComprobante = facturaVentaConfig.condicion_iva === 'monotributo' ? 11 : 6;
+  var importeNeto, importeIva, ivaDesglose;
+  if(tipoComprobante === 11){
+    importeNeto = importeTotal; importeIva = 0; ivaDesglose = [];
+  }else{
+    importeNeto = Math.round((importeTotal/1.21)*100)/100;
+    importeIva = Math.round((importeTotal-importeNeto)*100)/100;
+    ivaDesglose = [{id:5, baseImp:importeNeto, importe:importeIva}];
+  }
+
+  var btn = el('fv-btn-emitir');
+  if(btn){ btn.disabled = true; btn.textContent = 'Emitiendo...'; }
+
+  try{
+    var sesionRes = await supabaseClient.auth.getSession();
+    var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+    if(!token){ toast('Sesión vencida — volvé a iniciar sesión','err'); return; }
+
+    var resp = await fetch(SUPA_URL + '/functions/v1/afip-wsfe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        accion: 'emitir_factura',
+        negocio_id: currentNegocioId,
+        movimiento_id: String(facturaVentaMovId),
+        tipo_comprobante: tipoComprobante,
+        doc_tipo: docTipo,
+        doc_nro: docNro,
+        importe_neto: importeNeto,
+        importe_iva: importeIva,
+        importe_total: importeTotal,
+        iva_desglose: ivaDesglose
+      })
+    });
+    var data = await resp.json();
+    if(!data || !data.ok){
+      toast((data && data.error) || 'No se pudo emitir la factura','err');
+      return;
+    }
+    var factura = data.factura || {};
+    set('fv-cae-existente','text', 'CAE: '+factura.cae+' · Comprobante N° '+factura.numero_comprobante);
+    el('fv-form').style.display = 'none';
+    el('fv-ya-facturada').style.display = 'block';
+    toast('Factura emitida ✓ CAE: '+factura.cae);
+  }catch(e){
+    toast('Error de conexión al emitir la factura','err');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = '🧾 Emitir factura'; }
   }
 }
 
