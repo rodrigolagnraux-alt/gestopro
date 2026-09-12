@@ -1048,6 +1048,7 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="fg"><label class="fl">Fecha</label><input class="fi" id="ing-fecha" type="date"></div>
       <div class="fg"><label class="fl">Vencimiento pago</label><input class="fi" id="ing-venc" type="date"></div>
     </div>
+    <div style="font-size:11px;color:var(--mut2);margin-top:-8px;">Obligatorio si la factura queda "pendiente" — sin esto no te podemos avisar cuando se acerque la fecha de pago.</div>
   </div>
 
   <!-- TABLA DE PRODUCTOS -->
@@ -3877,14 +3878,8 @@ function selPagoFact(tipo,selEl){
   }
 }
 function confirmarIngresoFactura(){
-  // Proveedor es opcional a propósito: si es un ajuste de stock (contar lo
-  // que ya tenías, una donación, etc.) y no hay ninguna compra real detrás,
-  // no tiene sentido obligar a poner un nombre. Sin proveedor, tampoco se
-  // genera la factura/cuenta por pagar más abajo — no hay ninguna deuda
-  // real que registrar si no hubo una compra a alguien.
   const provInput=get('ing-prov').trim();
-  const esAjusteStock=!provInput;
-  const prov=provInput || 'Ajuste de stock';
+  const vencInput=get('ing-venc')||'';
   const lineasValidas=lineasIngreso.filter(function(l){return l.prodId&&l.cant>0;});
   // Líneas con contenido (nombre detectado por IA, cantidad o precio
   // cargados) que van a quedar afuera por no tener un producto vinculado —
@@ -3894,9 +3889,26 @@ function confirmarIngresoFactura(){
     return !(l.prodId&&l.cant>0) && (l.prodNom||l.cant>0||l.precio>0);
   });
   if(!lineasValidas.length){toast('Agregá al menos un producto con cantidad','err');return;}
+
+  // Ajuste de stock puro: sin proveedor, sin vencimiento, y la forma de pago
+  // quedó en el default "pendiente" — ninguna señal de que haya plata real
+  // de por medio, así que no se genera factura/deuda ni egreso más abajo.
+  // Cualquier otra combinación (nombraste a alguien, pusiste vencimiento, o
+  // elegiste una forma de pago real) sí es una operación con plata real.
+  const esAjusteStock = !provInput && pagoFactura==='pendiente' && !vencInput;
+  const prov = provInput || 'Proveedor sin especificar';
+  const estadoFact=pagoFactura==='pendiente'?'pendiente':'pagada';
+
+  // Si va a quedar como deuda pendiente, tiene que tener vencimiento — sin
+  // eso, alertarFacturasVencidas() nunca la agarra y la deuda se puede
+  // pasar de largo sin que nadie se entere.
+  if(!esAjusteStock && estadoFact==='pendiente' && !vencInput){
+    toast('Las facturas que quedan pendientes necesitan fecha de vencimiento, para poder avisarte cuando haya que pagar','err');
+    return;
+  }
+
   const total=calcTotal();
   const fecha=get('ing-fecha')||hoy();
-  const estadoFact=pagoFactura==='pendiente'?'pendiente':'pagada';
   const metodoLbl={pendiente:'',efectivo:' · Pagada en efectivo',transferencia:' · Pagada por transferencia',cheque:' · Pagada con cheque'};
   var origenLbl = pagoFactura==='efectivo' ? (origenPagoFact==='bolsillo' ? ' · Del bolsillo' : ' · De la caja') : '';
   var cambiosPrecio = [];
