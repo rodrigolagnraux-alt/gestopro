@@ -1041,7 +1041,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="background:var(--sur2);border-radius:8px;padding:14px;margin-bottom:14px;">
     <div class="stitle" style="margin-bottom:10px;">🧾 Datos de la factura</div>
     <div class="frow">
-      <div class="fg"><label class="fl">Proveedor</label><input class="fi" id="ing-prov" placeholder="Nombre del proveedor"></div>
+      <div class="fg"><label class="fl">Proveedor (opcional)</label><input class="fi" id="ing-prov" list="dl-proveedores" placeholder="Ej: Coca-Cola — vacío si es un ajuste de stock" autocomplete="off"><datalist id="dl-proveedores"></datalist></div>
       <div class="fg"><label class="fl">N° Factura</label><input class="fi" id="ing-num" placeholder="0001-00045678"></div>
     </div>
     <div class="frow">
@@ -1059,6 +1059,7 @@ select.fi{appearance:none;cursor:pointer;}
         <button class="btn btn-ghost btn-sm" onclick="agregarLineaIngreso()">+ Manual</button>
       </div>
     </div>
+    <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;">💡 Cargá el <b style="color:var(--txt);">precio unitario</b> o, si preferís, el <b style="color:var(--acc2);">total que pagaste por esa línea</b> — con cualquiera de los dos alcanza, GestoPro calcula el otro solo.</div>
     <!-- En celular esta tabla no entra en el ancho de pantalla (6 columnas con
          anchos fijos) — scrollea horizontal adentro de este contenedor propio
          en vez de romper el ancho del modal entero. -->
@@ -1068,11 +1069,12 @@ select.fi{appearance:none;cursor:pointer;}
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Producto</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Cant.</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Precio unit.</span>
-      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--acc2);text-transform:uppercase;letter-spacing:1px;">Total línea $</span>
+      <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--acc2);text-transform:uppercase;letter-spacing:1px;">o el total $</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Subtotal</span>
       <span></span>
     </div>
     <div id="ing-lineas" style="min-width:560px;"></div>
+    <datalist id="dl-productos-ing"></datalist>
     </div>
     <!-- TOTAL -->
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-top:2px solid var(--brd2);margin-top:8px;">
@@ -3685,6 +3687,7 @@ function confirmarCobro(){
 // ═══ INGRESO ═══
 function abrirIngreso(){
   lineasIngreso=[]; pagoFactura='pendiente';
+  cargarDatalistProveedores();
   set('ing-prov','val',''); set('ing-num','val','');
   set('ing-fecha','val',hoy()); set('ing-venc','val','');
   set('ing-margen-global','val','');
@@ -3702,20 +3705,24 @@ function agregarLineaIngreso(){
 }
 function renderLineas(){
   const cont=el('ing-lineas'); if(!cont) return;
+  var dl=el('dl-productos-ing');
+  if(dl) dl.innerHTML=productos.map(function(p){ return '<option value="'+escapeHtml(p.nom)+'">'; }).join('');
   cont.innerHTML=lineasIngreso.map(function(l){
-    // Si la IA detectó un nombre que no matchea ningún producto del
-    // inventario, mostramos ese nombre en el placeholder en vez de un
-    // "— Elegir producto —" genérico — sin esto el usuario no tiene forma de
-    // saber qué línea quedó sin vincular (y esa línea se descarta en
-    // silencio al confirmar, ver confirmarIngresoFactura()).
-    var placeholderTxt = (!l.prodId && l.prodNom) ? '⚠️ "'+escapeHtml(l.prodNom)+'" — sin vincular' : '— Elegir producto —';
-    var opts='<option value="">'+placeholderTxt+'</option>';
-    productos.forEach(function(p){ opts+='<option value="'+p.id+'"'+(l.prodId==p.id?' selected':'')+'>'+escapeHtml(p.nom)+'</option>'; });
-    opts+='<option value="__nuevo__">+ Producto nuevo...</option>';
+    // Igual que antes con el <select>: si la IA detectó un nombre que no
+    // matchea ningún producto del inventario, se ve tal cual lo tipeó/leyó —
+    // sin esto el usuario no tiene forma de saber qué línea quedó sin
+    // vincular (y esa línea se descarta en silencio al confirmar, ver
+    // confirmarIngresoFactura()). El botón "+" para crear producto nuevo
+    // solo aparece cuando la línea no está vinculada a ningún producto.
+    var prodActual = l.prodId ? productos.find(function(p){return p.id==l.prodId;}) : null;
+    var valorInput = prodActual ? prodActual.nom : (l.prodNom||'');
     var sub=l.cant&&l.precio?fmtM(l.cant*l.precio):'—';
     var totalLinea = l.totalLinea || '';
     return '<div style="display:grid;grid-template-columns:2fr 80px 100px 100px 80px 28px;gap:6px;margin-bottom:6px;align-items:center;" data-lid="'+l.id+'">'
-      +'<select class="fi" style="font-size:12px;padding:7px 8px;" onchange="selLinProd('+l.id+',this.value)">'+opts+'</select>'
+      +'<div style="display:flex;gap:4px;">'
+      +'<input class="fi" list="dl-productos-ing" placeholder="Buscar producto..." value="'+escapeHtml(valorInput)+'" style="font-size:12px;padding:7px 8px;flex:1;min-width:0;" data-lid="'+l.id+'" oninput="selLinProdNombre(this)">'
+      +(!l.prodId?'<button type="button" title="Crear como producto nuevo" style="background:var(--acc-dim);border:1px solid var(--acc2);border-radius:6px;color:var(--acc2);font-size:15px;width:28px;flex:none;" onclick="crearProdDesdeLineaIngreso('+l.id+')">+</button>':'')
+      +'</div>'
       +'<input class="fi" type="number" placeholder="0" value="'+(l.cant||'')+'" style="font-size:13px;padding:7px 8px;text-align:center;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="cant" oninput="updLineaEvt(this)">'
       +'<div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--mut2);font-size:12px;">$</span>'
       +'<input class="fi" type="number" placeholder="0" value="'+(l.precio||'')+'" style="font-size:13px;padding:7px 8px 7px 20px;font-family:DM Mono,monospace;" data-lid="'+l.id+'" data-field="precio" oninput="updLineaEvt(this)"></div>'
@@ -3747,31 +3754,39 @@ function updLineaEvt(inp){
   var field=inp.dataset.field;
   updLinea(lid,field,inp.value);
 }
-function selLinProd(id,val){
+// Busca por nombre exacto (case-insensitive) contra el catálogo, igual que
+// selProdCobroNombre() en Cobrar — si no matchea nada, la línea queda sin
+// vincular (mismo tratamiento que un nombre detectado por IA sin match:
+// se avisa al confirmar, ver confirmarIngresoFactura(), nunca se descarta
+// en silencio sin avisar).
+function selLinProdNombre(inp){
+  var lid=parseInt(inp.dataset.lid);
+  var l=lineasIngreso.find(function(l){return l.id===lid;});
+  if(!l) return;
+  var nombre=inp.value.trim();
+  l.prodNom=nombre;
+  var prod=productos.find(function(p){return p.nom.toLowerCase()===nombre.toLowerCase();});
+  if(prod){ l.prodId=prod.id; l.prodNom=prod.nom; if(prod.precio)l.precio=prod.precio; renderLineas(); }
+  else if(l.prodId){ l.prodId=''; renderLineas(); }
+}
+function crearProdDesdeLineaIngreso(id){
   const l=lineasIngreso.find(function(l){return l.id===id;});
   if(!l)return;
-  if(val==='__nuevo__'){
-    prodNuevoDesdeLinea = id;
-    openModal('modal-prod');
-    set('p-nom','val','');
-    if(l.precio) set('p-precio','val',l.precio);
-    // Si el nombre de la línea parece un código de barras, buscar en Open Food Facts
-    var posibleCod = (l.prodNom||'').trim();
-    if(/^\d{8,14}$/.test(posibleCod)){
-      buscarEnOpenFoodFacts(posibleCod, function(nombreReal){
-        var inp = el('p-nom');
-        if(inp && nombreReal) inp.value = nombreReal;
-        else if(inp && !inp.value) inp.value = posibleCod;
-      });
-    } else if(l.prodNom) {
-      set('p-nom','val',l.prodNom);
-    }
-    return;
+  prodNuevoDesdeLinea = id;
+  openModal('modal-prod');
+  set('p-nom','val','');
+  if(l.precio) set('p-precio','val',l.precio);
+  // Si el nombre de la línea parece un código de barras, buscar en Open Food Facts
+  var posibleCod = (l.prodNom||'').trim();
+  if(/^\d{8,14}$/.test(posibleCod)){
+    buscarEnOpenFoodFacts(posibleCod, function(nombreReal){
+      var inp = el('p-nom');
+      if(inp && nombreReal) inp.value = nombreReal;
+      else if(inp && !inp.value) inp.value = posibleCod;
+    });
+  } else if(l.prodNom) {
+    set('p-nom','val',l.prodNom);
   }
-  const prod=productos.find(function(p){return p.id==val;});
-  if(prod){ l.prodId=prod.id; l.prodNom=prod.nom; if(prod.precio)l.precio=prod.precio; }
-  else{ l.prodId=''; l.prodNom=''; }
-  renderLineas();
 }
 function updLinea(id,field,val){
   const l=lineasIngreso.find(function(l){return l.id===id;});
@@ -3791,20 +3806,31 @@ function aplicarMargenGlobal(){
   lineasIngreso.forEach(function(l){if(l.prodId)l.margen=global;});
   calcPreciosVenta();
 }
+// El margen que se previsualiza acá tiene que ser EXACTAMENTE el mismo que
+// después aplica confirmarIngresoFactura() (margen tipeado en esta línea >
+// margen actual del producto según su precio/pventa vigentes > 30% por
+// default) — antes esta vista mostraba "sin margen" cuando en realidad al
+// confirmar SÍ se recalculaba el precio de venta, lo cual generaba
+// sorpresas ("no toqué nada y me cambió el precio").
 function calcPreciosVenta(){
   const cont=el('ing-precios-sugeridos'); if(!cont)return;
   const lineasConProd=lineasIngreso.filter(function(l){return l.prodId&&l.precio>0;});
   if(!lineasConProd.length){cont.innerHTML='';return;}
-  cont.innerHTML='<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ajustá el % por producto:</div>'
+  cont.innerHTML='<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Así queda el precio de venta si confirmás (ajustá el % si querés otro):</div>'
     +lineasConProd.map(function(l){
       const prod=productos.find(function(p){return p.id==l.prodId;});
-      const pventa=l.margen>0?Math.ceil(l.precio*(1+l.margen/100)):0;
+      const precioAnterior=prod?(prod.precio||0):0;
+      const pventaAnterior=prod?(prod.pventa||0):0;
+      const margenHeredado = precioAnterior>0 && pventaAnterior>0 ? Math.round((pventaAnterior-precioAnterior)/precioAnterior*100) : null;
+      const margenActual = l.margen>0 ? l.margen : (margenHeredado!==null ? margenHeredado : 30);
+      const pventa=Math.ceil(l.precio*(1+margenActual/100));
+      const origenLbl = l.margen>0 ? 'tu %' : (margenHeredado!==null ? 'margen actual, sin cambios' : '30% sugerido — nuevo producto');
       return '<div style="display:grid;grid-template-columns:1fr 70px 28px 90px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);">'
         +'<div><div style="font-size:12.5px;font-weight:500;">'+(prod?prod.nom:'')+'</div>'
         +'<div style="font-size:10px;color:var(--mut2);font-family:DM Mono,monospace;">Costo: '+fmtM(l.precio)+'/un</div></div>'
-        +'<div style="display:flex;align-items:center;gap:4px;"><input class="fi" type="number" value="'+(l.margen||'')+'" placeholder="0" style="width:100%;font-size:14px;text-align:center;font-family:DM Mono,monospace;padding:5px 4px;" oninput="updMargenLinea('+l.id+',this.value)"><span style="font-size:12px;color:var(--mut2);">%</span></div>'
+        +'<div style="display:flex;align-items:center;gap:4px;"><input class="fi" type="number" value="'+margenActual+'" placeholder="0" style="width:100%;font-size:14px;text-align:center;font-family:DM Mono,monospace;padding:5px 4px;" oninput="updMargenLinea('+l.id+',this.value)"><span style="font-size:12px;color:var(--mut2);">%</span></div>'
         +'<span style="font-size:13px;color:var(--mut2);">→</span>'
-        +'<div style="text-align:right;">'+(pventa>0?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;color:var(--grn);">'+fmtM(pventa)+'</div><div style="font-size:9px;color:var(--mut2);">precio de venta</div>':'<div style="font-size:11px;color:var(--mut2);">sin margen</div>')+'</div>'
+        +'<div style="text-align:right;"><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;color:var(--grn);">'+fmtM(pventa)+'</div><div style="font-size:9px;color:var(--mut2);">'+origenLbl+'</div></div>'
         +'</div>';
     }).join('');
 }
@@ -3851,7 +3877,14 @@ function selPagoFact(tipo,selEl){
   }
 }
 function confirmarIngresoFactura(){
-  const prov=get('ing-prov').trim();
+  // Proveedor es opcional a propósito: si es un ajuste de stock (contar lo
+  // que ya tenías, una donación, etc.) y no hay ninguna compra real detrás,
+  // no tiene sentido obligar a poner un nombre. Sin proveedor, tampoco se
+  // genera la factura/cuenta por pagar más abajo — no hay ninguna deuda
+  // real que registrar si no hubo una compra a alguien.
+  const provInput=get('ing-prov').trim();
+  const esAjusteStock=!provInput;
+  const prov=provInput || 'Ajuste de stock';
   const lineasValidas=lineasIngreso.filter(function(l){return l.prodId&&l.cant>0;});
   // Líneas con contenido (nombre detectado por IA, cantidad o precio
   // cargados) que van a quedar afuera por no tener un producto vinculado —
@@ -3860,7 +3893,6 @@ function confirmarIngresoFactura(){
   const lineasDescartadas=lineasIngreso.filter(function(l){
     return !(l.prodId&&l.cant>0) && (l.prodNom||l.cant>0||l.precio>0);
   });
-  if(!prov){toast('Ingresá el proveedor','err');return;}
   if(!lineasValidas.length){toast('Agregá al menos un producto con cantidad','err');return;}
   const total=calcTotal();
   const fecha=get('ing-fecha')||hoy();
@@ -3894,7 +3926,7 @@ function confirmarIngresoFactura(){
     }
     prod.stock+=l.cant; // optimista, para feedback inmediato en pantalla
     ajustarStockProducto(prod.id,l.cant); // ajuste real, atómico, del lado de Supabase
-    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
+    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:esAjusteStock?'Ajuste de stock':'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
   if(cambiosPrecio.length>0){
@@ -3902,7 +3934,7 @@ function confirmarIngresoFactura(){
       mostrarResumenPrecios(cambiosPrecio);
     },500);
   }
-  if(total>0){
+  if(total>0 && !esAjusteStock){
     const _fi={id:Date.now(),num:get('ing-num').trim()||('FAC-'+Date.now()),prov:prov,fecha:fecha,venc:get('ing-venc')||'',monto:total,estado:estadoFact,origen:pagoFactura==='efectivo'?origenPagoFact:'',obs:lineasValidas.length+' producto(s): '+lineasValidas.map(function(l){const p=productos.find(function(pr){return pr.id==l.prodId;});return p?p.nom:'';}).join(', ')+metodoLbl[pagoFactura]+origenLbl}; facturas.unshift(_fi); saveFactura(_fi);
     if(estadoFact==='pagada'){
       var origenEgresoFact = pagoFactura==='efectivo' ? origenPagoFact : '';
@@ -3919,7 +3951,7 @@ function confirmarIngresoFactura(){
   } else if(cambiosPrecio.length>0){
     setTimeout(function(){mostrarResumenPrecios(cambiosPrecio);},400);
   } else {
-    toast('✓ '+lineasValidas.length+' producto(s) ingresados'+(total>0?' · Factura '+estadoFact:''));
+    toast('✓ '+lineasValidas.length+' producto(s) ingresados'+(total>0 && !esAjusteStock?' · Factura '+estadoFact:''));
   }
 }
 
@@ -4189,6 +4221,18 @@ async function cargarSelectProveedores(seleccionado){
   });
   html += '<option value="__nuevo_prov__">+ Nuevo proveedor...</option>';
   sel.innerHTML = html;
+}
+
+// A diferencia de p-prov (select, elige entre existentes), ing-prov sigue
+// siendo texto libre — el datalist solo sugiere lo que ya se usó antes, sin
+// impedir tipear un proveedor nuevo con un solo campo, sin pasos extra.
+async function cargarDatalistProveedores(){
+  var dl = el('dl-proveedores');
+  if(!dl || !currentNegocioId || !supabaseClient) return;
+  try{
+    var res = await supabaseClient.from('proveedores').select('nombre').eq('negocio_id',currentNegocioId).order('nombre');
+    dl.innerHTML = (res.data||[]).map(function(r){ return '<option value="'+escapeHtml(r.nombre)+'">'; }).join('');
+  }catch(e){}
 }
 
 function abrirNuevoProveedorInline(){
