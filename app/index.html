@@ -8989,11 +8989,15 @@ async function renderFiado(){
     var inicial = c.nom.charAt(0).toUpperCase();
     var col = colors[c.nom.charCodeAt(0) % colors.length];
     var saldado = c.deuda <= 0;
+    // "Consumo propio" no es un cliente real, es la cuenta interna donde se
+    // registra lo que el dueño saca del stock — se la distingue acá para que
+    // no se confunda con una deuda real de alguien que le compró al negocio.
+    var metaTxt = c.es_consumo_propio ? 'Uso interno — no es un cliente' : (c.tel?'📞 '+escapeHtml(c.tel):'Cliente');
     return '<div class="fiado-item" onclick="abrirDetalleFiado(\''+c.id+'\')">'+
       '<div class="fiado-avatar" style="background:'+col+'20;color:'+col+';">'+escapeHtml(inicial)+'</div>'+
       '<div class="fiado-txt">'+
         '<div class="fiado-nom">'+escapeHtml(c.nom)+'</div>'+
-        '<div class="fiado-meta">'+(c.tel?'📞 '+escapeHtml(c.tel):'Cliente')+(c.nota?' · '+escapeHtml(c.nota):'')+'</div>'+
+        '<div class="fiado-meta">'+metaTxt+(c.nota?' · '+escapeHtml(c.nota):'')+'</div>'+
       '</div>'+
       '<div class="fiado-right">'+
         '<div class="fiado-deuda'+(saldado?' saldado':'')+'">'+(saldado?'✓ Saldado':fmtM(c.deuda))+'</div>'+
