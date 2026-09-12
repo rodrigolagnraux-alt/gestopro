@@ -2760,6 +2760,7 @@ function abrirCobrar(){
     abrirSesionCaja();
     return;
   }
+  sincronizarStockLigero();
   // Limpiar todo completamente
   lineasCobro=[];
   set('cobrar-monto','val','0');
@@ -3687,6 +3688,7 @@ function confirmarCobro(){
 
 // ═══ INGRESO ═══
 function abrirIngreso(){
+  sincronizarStockLigero();
   lineasIngreso=[]; pagoFactura='pendiente';
   cargarDatalistProveedores();
   set('ing-prov','val',''); set('ing-num','val','');
@@ -8333,6 +8335,28 @@ function sincronizarDatos(){
     recalcularEstadoGastosFijos();
     console.log('Datos sincronizados');
   }).catch(function(e){ console.log('Sync error:',e); });
+}
+
+// Refresca solo el stock (productos_v2) en segundo plano, sin trabar la
+// pantalla. El array productos se lee "en vivo" en todos lados (buscador de
+// Cobrar, líneas de Ingreso, validaciones al confirmar), así que apenas esto
+// resuelve, el resto de la app ya está viendo el número actualizado — sin
+// esperar a que alguien navegue a Movimientos/Resumen para que se sincronice.
+// Se llama al abrir Cobrar e Ingreso, los dos momentos en que un stock
+// desactualizado (por una venta/ingreso hecho en otro dispositivo) más
+// puede confundir a quien está manejando la caja.
+function sincronizarStockLigero(){
+  if(!supabaseClient||!currentNegocioId) return;
+  supabaseClient.from('productos_v2').select('*').eq('negocio_id',currentNegocioId).then(function(r){
+    if(r.data&&r.data.length){
+      productos = r.data.map(function(p){
+        return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
+          stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+      });
+      renderDash();
+    }
+  }).catch(function(e){ console.log('Error sincronizando stock:',e); });
 }
 
 function recalcularEstadoGastosFijos(){
