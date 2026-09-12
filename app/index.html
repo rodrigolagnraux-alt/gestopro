@@ -1390,6 +1390,23 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
 </div>
 </div>
+  <!-- ONBOARDING: solo lo mínimo para arrancar, el resto de Configuración queda para después -->
+<div class="ov" id="modal-onboarding">
+<div class="modal">
+  <div class="modal-drag"></div>
+  <div class="modal-t">👋 ¡Bienvenido a GestoPro!</div>
+  <div class="modal-s">Completá estos 3 datos y arrancás — el resto de la configuración (Tienda Online, Mercado Pago, etc.) lo dejás para cuando quieras, desde el ⚙️ de arriba.</div>
+  <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="onb-nombre" placeholder="Ej: Almacén Don Juan"></div>
+  <div class="fg"><label class="fl">Teléfono del dueño (WhatsApp)</label><input class="fi" id="onb-tel" placeholder="Ej: 2473410437" type="tel" inputmode="numeric"></div>
+  <div class="fg" style="margin-bottom:0;"><label class="fl">Email del dueño (alertas silenciosas)</label><input class="fi" id="onb-email" placeholder="Ej: dueño@gmail.com" type="email"></div>
+  <div style="font-size:11px;color:var(--mut2);margin-top:8px;">Se usa para alertas automáticas (facturas vencidas, límite de fiado)</div>
+  <div class="btn-row" style="margin-top:14px;">
+    <button class="btn btn-ghost" onclick="closeModal('modal-onboarding')">Completar después</button>
+    <button class="btn btn-acc" onclick="guardarOnboarding()">Guardar y arrancar</button>
+  </div>
+</div>
+</div>
+
   <!-- CONFIG ALIAS MODAL -->
 <div class="ov" id="modal-config">
 <div class="modal" style="max-height:88vh;overflow-y:auto;">
@@ -7958,18 +7975,32 @@ function ocultarLogin(){
 function verificarOnboarding(){
   if(localStorage.getItem('gp_onboarding_mostrado')) return;
   try{ localStorage.setItem('gp_onboarding_mostrado','1'); }catch(e){}
-  var faltaNombre = !config.nombre;
+  var faltaNombre = !config.nombre || config.nombre === 'Mi Negocio';
   var faltaTel = !config.tel;
   var faltaEmail = !config.emailDueno;
   if(!faltaNombre && !faltaTel && !faltaEmail) return;
-  var banner = el('cfg-onboarding-banner');
-  if(banner) banner.style.display='block';
-  openModal('modal-config');
+
+  set('onb-nombre','val', faltaNombre ? '' : config.nombre);
+  set('onb-tel','val', config.tel || '');
+  set('onb-email','val', config.emailDueno || '');
+  openModal('modal-onboarding');
   setTimeout(function(){
-    var focusId = faltaNombre ? 'cfg-nombre' : (faltaTel ? 'cfg-tel-dueno' : 'cfg-email-dueno');
+    var focusId = faltaNombre ? 'onb-nombre' : (faltaTel ? 'onb-tel' : 'onb-email');
     var fEl = el(focusId);
     if(fEl) fEl.focus();
   }, 200);
+}
+
+function guardarOnboarding(){
+  var nombre = get('onb-nombre').trim();
+  var tel = get('onb-tel').trim();
+  var email = get('onb-email').trim();
+  if(nombre) config.nombre = nombre;
+  if(tel) config.tel = tel;
+  if(email) config.emailDueno = email;
+  closeModal('modal-onboarding');
+  saveState();
+  toast('¡Listo! Ya podés usar GestoPro ✓');
 }
 
 function alertarFacturasVencidas(){
