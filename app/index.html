@@ -161,6 +161,7 @@ select.fi{appearance:none;cursor:pointer;}
 .modal-s{font-size:12px;color:var(--mut2);margin-bottom:18px;}
 
 /* COBRAR MODAL */
+.cobrar-grid{display:grid;grid-template-columns:3fr 2fr;gap:20px;}
 .cobrar-total{text-align:center;margin-bottom:20px;}
 .cobrar-total-lbl{font-size:12px;color:var(--mut2);margin-bottom:4px;}
 .cobrar-total-num{font-family:"Syne",sans-serif;font-size:48px;font-weight:800;color:var(--grn);line-height:1;}
@@ -304,6 +305,7 @@ select.fi{appearance:none;cursor:pointer;}
   .action-ico{font-size:26px;}
   .action-lbl{font-size:12px;}
   .cobrar-total-num{font-size:40px;}
+  .cobrar-grid{grid-template-columns:1fr;gap:0;}
   .pay-methods{gap:8px;}
   .pay-ico{font-size:22px;}
   .pay-lbl{font-size:11px;}
@@ -876,7 +878,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-s">Escaneá o agregá los productos vendidos — descuenta stock automáticamente</div>
   <!-- Input oculto para pistola lectora — siempre enfocado -->
   <input id="pistola-input" type="text" autocomplete="off" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;" oninput="onPistolaInput(this)">
-  <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;">
+  <div class="cobrar-grid">
   <div>
 
   <!-- PRODUCTOS VENDIDOS -->
