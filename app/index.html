@@ -3058,18 +3058,22 @@ async function marcarPedidoEntregadoSimple(id){
       ajustarStockProducto(x.prod.id, -(x.it.cantidad||1));
     }
   });
-  descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
+  var itemsDesc = (p.items||[]).map(function(it){ return (it.cantidad||1)+'x '+(it.nombre||''); }).join(', ');
+  var costoInsumosVenta = await descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
+  if(costoInsumosVenta>0){
+    var _mCosto = { id:Date.now(), tipo:'egreso', cat:'CostoInsumos', desc:'🧂 Insumos usados — '+(itemsDesc||'pedido'), monto:costoInsumosVenta, fecha:hoy() };
+    movimientos.unshift(_mCosto); saveMovimiento(_mCosto);
+  }
 
   // El cobro solo se registra si el pedido se pagó en efectivo (contra entrega).
   // Si ya se pagó por Mercado Pago, el cobro ya quedó reflejado cuando se generó
   // el pago online — acá solo cambia el estado, sin duplicar ningún movimiento.
   if(p.metodo_pago === 'efectivo'){
-    var itemsDesc = (p.items||[]).map(function(it){ return (it.cantidad||1)+'x '+(it.nombre||''); }).join(', ');
     var envio = p.costo_envio||0;
     var subtotal = (p.subtotal!==undefined && p.subtotal!==null) ? p.subtotal : (p.total||0)-envio;
     var nombreEmpleado = entregaEmpleadoActual ? entregaEmpleadoActual.nombre : null;
     var _m = {
-      id: Date.now(), tipo:'cobro',
+      id: Date.now()+1, tipo:'cobro',
       desc: '🛵 Entrega — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
       monto: subtotal, fecha: hoy(), metodo:'efectivo', cajero: nombreEmpleado
     };
@@ -3077,7 +3081,7 @@ async function marcarPedidoEntregadoSimple(id){
     saveMovimiento(_m);
     if(envio>0){
       var _mEnvio = {
-        id: Date.now()+1, tipo:'cobro',
+        id: Date.now()+2, tipo:'cobro',
         desc: '🚚 Envío — Entrega '+(p.cliente_nombre||'Cliente'),
         monto: envio, fecha: hoy(), metodo:'efectivo', cat:'Envio', cajero: nombreEmpleado
       };
@@ -5783,6 +5787,18 @@ function valorUnitarioInsumo(i){
   return i.costo||0;
 }
 
+// Costo real (no precio de venta) de una unidad del insumo — lo que efectivamente
+// costó comprarlo. Se usa para calcular cuánto costó preparar un plato vendido y
+// que ese costo se refleje como gasto en Finanzas/Cierre Mensual (antes, vender
+// un plato entraba entero como ingreso sin restar nunca el costo de sus insumos).
+function costoUnitarioInsumo(i){
+  if(i.producto_id){
+    var p = productos.find(function(x){return String(x.id)===String(i.producto_id);});
+    return p ? (p.precio||0) : 0;
+  }
+  return i.costo||0;
+}
+
 function stockDisponibleInsumo(i){
   if(i.producto_id){
     var p = productos.find(function(x){return String(x.id)===String(i.producto_id);});
@@ -6352,7 +6368,11 @@ async function confirmarEntregaPedidoOnline(){
       ajustarStockProducto(x.prod.id, -(x.it.cantidad||1)); // ajuste real, atómico, del lado de Supabase
     }
   });
-  descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
+  var costoInsumosVenta = await descontarInsumosPorVenta((p.items||[]).map(function(it){ return {menu_item_id:it.menu_item_id, cantidad:it.cantidad||1}; }));
+  if(costoInsumosVenta>0){
+    var _mCosto = { id:Date.now()+3, tipo:'egreso', cat:'CostoInsumos', desc:'🧂 Insumos usados — '+(itemsDesc||'pedido'), monto:costoInsumosVenta, fecha:hoy() };
+    movimientos.unshift(_mCosto); saveMovimiento(_mCosto);
+  }
 
   p.estado='entregado';
   p.metodo_pago=metodo;
@@ -7394,19 +7414,21 @@ async function renderFinanzas(){
   if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.montoPagado||f.monto||0);},0);
   var totalGF = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalCostoInsumos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
-  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados;
+  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados - totalCostoInsumos;
 
   if(kEl) kEl.innerHTML =
     '<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'+
-    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados)+'</div><div class="kd">total egresos</div></div>'+
+    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados+totalCostoInsumos)+'</div><div class="kd">total egresos</div></div>'+
     '<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
 
   var rEl = el('fin-resultado');
   if(rEl) rEl.innerHTML =
     '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
     '<div class="fin-row"><span>📦 Costo mercadería comprada</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
+    (totalCostoInsumos>0?'<div class="fin-row"><span>🧂 Costo insumos (platos vendidos)</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCostoInsumos)+'</span></div>':'')+
     '<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
     (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
@@ -7490,6 +7512,7 @@ async function renderCierreMensual(){
   var totalGF = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen!=='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalConsumoPropio = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen==='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalCostoInsumos = egresos.filter(function(m){return m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
 
   var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
     .eq('negocio_id',currentNegocioId).eq('pagado',true)
@@ -7499,11 +7522,12 @@ async function renderCierreMensual(){
     return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
   }, 0);
 
-  var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados;
+  var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados - totalCostoInsumos;
 
   if(cEl) cEl.innerHTML =
     '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
     '<div class="fin-row"><span>📦 Compras de mercadería</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
+    (totalCostoInsumos>0?'<div class="fin-row"><span>🧂 Costo insumos (platos vendidos)</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCostoInsumos)+'</span></div>':'')+
     '<div class="fin-row"><span>💡 Gastos fijos pagados</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalConsumoPropio>0?'<div class="fin-row"><span>🏠 Consumo propio</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalConsumoPropio)+'</span></div>':'')+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos (prorrateados)</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
@@ -8428,19 +8452,31 @@ function ajustarStockInsumo(insumoId, delta){
 
 // Al vender un producto online con receta armada, descuenta cada insumo según
 // la cantidad de la receta × la cantidad vendida. itemsVendidos: [{menu_item_id, cantidad}].
+// Descuenta el stock de insumos según la receta de cada plato vendido y devuelve
+// el costo total de esos insumos (para registrarlo como gasto real en Finanzas).
+// Trae los insumos frescos de Supabase en vez de usar el array global `insumos`
+// porque ese array solo se carga al abrir la pantalla Insumos — puede estar
+// vacío si el pedido se entrega desde otra pantalla (ej. "Pedidos a entregar").
 async function descontarInsumosPorVenta(itemsVendidos){
-  if(!supabaseClient||!currentNegocioId) return;
+  if(!supabaseClient||!currentNegocioId) return 0;
   var menuItemIds = (itemsVendidos||[]).map(function(x){return x.menu_item_id?String(x.menu_item_id):null;}).filter(Boolean);
-  if(!menuItemIds.length) return;
+  if(!menuItemIds.length) return 0;
   var res = await supabaseClient.from('recetas').select('*').eq('negocio_id',currentNegocioId).in('menu_item_id',menuItemIds);
   var recetasVenta = res.data || [];
-  if(!recetasVenta.length) return;
+  if(!recetasVenta.length) return 0;
+  var insumoIds = recetasVenta.map(function(r){return String(r.insumo_id);});
+  var resIns = await supabaseClient.from('insumos').select('id,producto_id,costo').eq('negocio_id',currentNegocioId).in('id',insumoIds);
+  var insumosFrescos = resIns.data || [];
+  var costoTotal = 0;
   itemsVendidos.forEach(function(x){
     var cantVendida = x.cantidad||1;
     recetasVenta.filter(function(r){return String(r.menu_item_id)===String(x.menu_item_id);}).forEach(function(r){
+      var insumo = insumosFrescos.find(function(i){return String(i.id)===String(r.insumo_id);});
+      if(insumo) costoTotal += costoUnitarioInsumo(insumo) * (r.cantidad||0) * cantVendida;
       ajustarStockInsumo(r.insumo_id, -(r.cantidad*cantVendida));
     });
   });
+  return costoTotal;
 }
 
 function guardarMovimientoNube(m){
