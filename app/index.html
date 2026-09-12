@@ -1244,6 +1244,11 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-drag"></div>
   <div class="modal-t">📦 Nuevo Producto</div>
   <div class="modal-s">Agregá un producto o insumo al inventario</div>
+  <div style="background:var(--acc-dim);border:1px solid var(--acc2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--txt);display:flex;align-items:center;gap:10px;">
+    <span style="font-size:18px;">🧠</span>
+    <span style="flex:1;">¿Tenés varios productos para cargar? El <b>Importador IA</b> los suma todos de una — pegás una lista, subís un Excel, o sacás una foto.</span>
+    <span style="color:var(--acc2);font-weight:700;white-space:nowrap;cursor:pointer;" onclick="closeModal('modal-prod');abrirImportadorIA();">Probar →</span>
+  </div>
   <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><div style="display:flex;gap:6px;"><input class="fi" id="p-cod" placeholder="PRD001" onblur="buscarNombrePorCodigo(this.value)" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm" onclick="escanearParaNuevoProducto()" style="white-space:nowrap;padding:0 12px;">📷</button></div></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
   <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
