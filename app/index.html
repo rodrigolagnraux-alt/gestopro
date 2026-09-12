@@ -5727,22 +5727,30 @@ async function guardarInsumo(){
   var um = get('insumo-um')||'UN';
   var vinc = el('insumo-tipo-vinculado') && el('insumo-tipo-vinculado').checked;
   var payload = { negocio_id: currentNegocioId, nombre: nombre, um: um };
+  var nuevoStock = 0;
   if(vinc){
     if(!insumoProductoVinculadoId){ toast('Elegí un producto para vincular','err'); return; }
     payload.producto_id = String(insumoProductoVinculadoId);
-    payload.stock = 0;
     payload.costo = 0;
     payload.cod = null;
   } else {
     payload.producto_id = null;
-    payload.stock = parseFloat(get('insumo-stock'))||0;
+    nuevoStock = parseFloat(get('insumo-stock'))||0;
     payload.costo = parseFloat(get('insumo-costo'))||0;
     payload.cod = get('insumo-cod').trim()||null;
   }
   var res;
   if(insumoEditId){
+    // No se manda "stock" en el UPDATE: si se editó a mano, se aplica aparte como
+    // delta atómico (ajustarStockInsumo) — igual que con productos — para que
+    // editar nombre/costo no pueda pisar un descuento de stock hecho en simultáneo
+    // por una venta en otro dispositivo mientras se tenía este modal abierto.
+    var actual = insumos.find(function(i){return String(i.id)===String(insumoEditId);});
+    var deltaStock = vinc ? 0 : (nuevoStock - (actual?(actual.stock||0):0));
     res = await supabaseClient.from('insumos').update(payload).eq('id',insumoEditId);
+    if(!res.error && deltaStock) ajustarStockInsumo(insumoEditId, deltaStock);
   } else {
+    payload.stock = vinc ? 0 : nuevoStock;
     res = await supabaseClient.from('insumos').insert(payload);
   }
   if(res.error){
@@ -8451,12 +8459,11 @@ function ajustarStockInsumo(insumoId, delta){
 }
 
 // Al vender un producto online con receta armada, descuenta cada insumo según
-// la cantidad de la receta × la cantidad vendida. itemsVendidos: [{menu_item_id, cantidad}].
-// Descuenta el stock de insumos según la receta de cada plato vendido y devuelve
-// el costo total de esos insumos (para registrarlo como gasto real en Finanzas).
-// Trae los insumos frescos de Supabase en vez de usar el array global `insumos`
-// porque ese array solo se carga al abrir la pantalla Insumos — puede estar
-// vacío si el pedido se entrega desde otra pantalla (ej. "Pedidos a entregar").
+// la cantidad de la receta × la cantidad vendida y devuelve el costo total de
+// esos insumos (para registrarlo como gasto real en Finanzas). Trae los
+// insumos frescos de Supabase en vez de usar el array global `insumos` porque
+// ese array solo se carga al abrir la pantalla Insumos — puede estar vacío si
+// el pedido se entrega desde otra pantalla (ej. "Pedidos a entregar").
 async function descontarInsumosPorVenta(itemsVendidos){
   if(!supabaseClient||!currentNegocioId) return 0;
   var menuItemIds = (itemsVendidos||[]).map(function(x){return x.menu_item_id?String(x.menu_item_id):null;}).filter(Boolean);
