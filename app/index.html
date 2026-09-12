@@ -1246,7 +1246,7 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="modal">
   <div class="modal-drag"></div>
   <div class="modal-t">📦 Nuevo Producto</div>
-  <div class="modal-s">Agregá un producto o insumo al inventario</div>
+  <div class="modal-s">Agregá un producto a tu inventario de reventa</div>
   <div style="background:var(--acc-dim);border:1px solid var(--acc2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--txt);display:flex;align-items:center;gap:10px;">
     <span style="font-size:18px;">🧠</span>
     <span style="flex:1;">¿Tenés varios productos para cargar? El <b>Importador IA</b> los suma todos de una — pegás una lista, subís un Excel, o sacás una foto.</span>
@@ -1344,9 +1344,7 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="fg" id="plato-stock-wrap"><label class="fl">Stock (opcional)</label><input class="fi" id="plato-stock" type="number" placeholder="Dejalo vacío si no querés controlar el stock"></div>
   <div id="plato-vinculado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
-  <div id="plato-receta-wrap" style="display:none;margin-bottom:12px;">
-    <button class="btn btn-ghost btn-full" type="button" onclick="abrirModalReceta(platoEditId)">🧾 Armar receta (insumos)</button>
-  </div>
+  <div id="plato-receta-wrap" style="display:none;margin-bottom:12px;"></div>
   <div class="chk-wrap"><input type="checkbox" id="plato-visible" checked><label for="plato-visible" class="fl" style="margin:0;cursor:pointer;">Visible en la Tienda Online pública</label></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="closeModal('modal-plato')">Cancelar</button>
@@ -2667,7 +2665,7 @@ function closeModal(id){
   if(id==='modal-prod' && prodEditId){
     prodEditId=null;
     var t=document.querySelector('#modal-prod .modal-t'); if(t)t.textContent='📦 Nuevo Producto';
-    var s=document.querySelector('#modal-prod .modal-s'); if(s)s.textContent='Agregá un producto o insumo al inventario';
+    var s=document.querySelector('#modal-prod .modal-s'); if(s)s.textContent='Agregá un producto a tu inventario de reventa';
     var btn=document.querySelector('#modal-prod .btn-acc'); if(btn)btn.textContent='Guardar';
     ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov'].forEach(function(id){set(id,'val','');});
   }
@@ -4314,7 +4312,7 @@ function guardarProd(){
     }
     prodEditId = null;
     var t = document.querySelector('#modal-prod .modal-t'); if(t) t.textContent = '📦 Nuevo Producto';
-    var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto o insumo al inventario';
+    var s = document.querySelector('#modal-prod .modal-s'); if(s) s.textContent = 'Agregá un producto a tu inventario de reventa';
     var btn = document.querySelector('#modal-prod .btn-acc'); if(btn) btn.textContent = 'Guardar';
     ['p-cod','p-nom','p-stock','p-precio','p-pventa','p-min','p-max','p-prov','p-plu'].forEach(function(id){set(id,'val','');});
     closeModal('modal-prod'); if(p) guardarProductoEditado(p, deltaStockEdicion); renderDash(); renderProds();
@@ -5977,6 +5975,12 @@ async function agregarInsumoAReceta(insumoId){
 }
 
 var platoEditId = null;
+var PLATO_RECETA_BTN_HTML = '<button class="btn btn-ghost btn-full" type="button" onclick="abrirModalReceta(platoEditId)">🧾 Armar receta (insumos)</button>';
+// Al crear un producto todavía no tiene id, así que no se puede armar la
+// receta hasta guardarlo y reabrirlo en edición. Antes esto no se anticipaba
+// en ningún lado (el bloque quedaba oculto sin más) y el usuario lo tenía que
+// descubrir por su cuenta reabriendo el producto — ahora se lo avisa acá.
+var PLATO_RECETA_AVISO_HTML = '<div style="font-size:12px;color:var(--mut2);background:var(--sur2);border-radius:8px;padding:10px 12px;">🧾 Una vez que lo guardes vas a poder volver a abrirlo para <b style="color:var(--txt);">armarle una receta con insumos</b> (opcional) — así se descuentan solos cada vez que lo vendas.</div>';
 function abrirModalPlato(id){
   platoEditId = id||null;
   var stockWrap = el('plato-stock-wrap');
@@ -5999,7 +6003,7 @@ function abrirModalPlato(id){
     } else {
       if(stockWrap) stockWrap.style.display='';
       if(vincInfo) vincInfo.style.display='none';
-      if(recetaWrap) recetaWrap.style.display='';
+      if(recetaWrap){ recetaWrap.innerHTML=PLATO_RECETA_BTN_HTML; recetaWrap.style.display=''; }
     }
   } else {
     set('modal-plato-titulo','text','🆕 Nuevo producto online');
@@ -6007,7 +6011,7 @@ function abrirModalPlato(id){
     var vEl2 = el('plato-visible'); if(vEl2) vEl2.checked = true;
     if(stockWrap) stockWrap.style.display='';
     if(vincInfo) vincInfo.style.display='none';
-    if(recetaWrap) recetaWrap.style.display='none';
+    if(recetaWrap){ recetaWrap.innerHTML=PLATO_RECETA_AVISO_HTML; recetaWrap.style.display=''; }
   }
   openModal('modal-plato');
 }
