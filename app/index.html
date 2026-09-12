@@ -5990,7 +5990,7 @@ async function guardarPlato(){
   if(!precio){ toast('Ingresá el precio','err'); return; }
   var categoria = get('plato-categoria').trim()||'Otros';
   var stockVal = get('plato-stock').trim();
-  var stock = stockVal===''? null : (parseInt(stockVal)||0);
+  var stock = stockVal===''? null : (parseFloat(stockVal)||0);
   var visible = el('plato-visible') ? el('plato-visible').checked : true;
   if(platoEditId){
     await supabaseClient.from('menu_items').update({nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible}).eq('id',platoEditId);
