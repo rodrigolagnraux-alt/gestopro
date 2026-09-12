@@ -1059,8 +1059,12 @@ select.fi{appearance:none;cursor:pointer;}
         <button class="btn btn-ghost btn-sm" onclick="agregarLineaIngreso()">+ Manual</button>
       </div>
     </div>
+    <!-- En celular esta tabla no entra en el ancho de pantalla (6 columnas con
+         anchos fijos) — scrollea horizontal adentro de este contenedor propio
+         en vez de romper el ancho del modal entero. -->
+    <div style="overflow-x:auto;">
     <!-- HEADERS -->
-    <div style="display:grid;grid-template-columns:2fr 80px 100px 100px 80px 28px;gap:6px;padding:6px 8px;background:var(--sur2);border-radius:6px;margin-bottom:6px;">
+    <div style="display:grid;grid-template-columns:2fr 80px 100px 100px 80px 28px;gap:6px;padding:6px 8px;background:var(--sur2);border-radius:6px;margin-bottom:6px;min-width:560px;">
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Producto</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Cant.</span>
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Precio unit.</span>
@@ -1068,7 +1072,8 @@ select.fi{appearance:none;cursor:pointer;}
       <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:1px;">Subtotal</span>
       <span></span>
     </div>
-    <div id="ing-lineas"></div>
+    <div id="ing-lineas" style="min-width:560px;"></div>
+    </div>
     <!-- TOTAL -->
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-top:2px solid var(--brd2);margin-top:8px;">
       <span style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;">TOTAL FACTURA</span>
