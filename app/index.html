@@ -4342,6 +4342,11 @@ async function eliminarProd(id){
       var nombres = miRes.data.map(function(m){return m.nombre;}).join(', ');
       if(!confirm('⚠️ Este producto está vinculado a tu Tienda Online ('+nombres+'). Si lo eliminás, ese/esos ítem/s van a quedar rotos ahí.\n\nTe recomendamos desvincularlo primero desde Tienda Online.\n\n¿Eliminar igual?')) return;
     }
+    var insRes = await supabaseClient.from('insumos').select('id,nombre').eq('negocio_id',currentNegocioId).eq('producto_id',String(id));
+    if(insRes.data && insRes.data.length){
+      var nombresIns = insRes.data.map(function(i){return i.nombre;}).join(', ');
+      if(!confirm('⚠️ Este producto está vinculado a un insumo ('+nombresIns+'). Si lo eliminás, ese insumo se queda sin stock ni costo de referencia.\n\nTe recomendamos desvincularlo primero desde Insumos.\n\n¿Eliminar igual?')) return;
+    }
   }
   var res = await eliminarDeNube('productos',id);
   if(res && res.error){
