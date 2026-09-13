@@ -553,6 +553,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-drag"></div>
   <div class="modal-t">🛒 Mercadería llevada</div>
   <div class="modal-s" id="modal-merc-emp-nombre"></div>
+  <div style="background:var(--yel-dim);color:var(--yel);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px;">⚠️ Usá esto solo para lo que <b>no</b> se cobró en la caja como "A cargo de empleado" — eso ya queda cargado solo. Fijate en la lista de abajo antes de cargar, para no descontar lo mismo dos veces.</div>
   <div class="fg"><label class="fl">Producto</label><input class="fi" id="emp-merc-prod" placeholder="Nombre del producto"></div>
   <div class="frow">
     <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="emp-merc-cant" type="number" placeholder="1" inputmode="decimal"></div>
@@ -3848,10 +3849,14 @@ function confirmarCobro(){
       // Si hay productos detallados los guardamos uno a uno, si no guardamos el total como un item
       var itemsAGuardar = detalleEmpleado.length > 0 ? detalleEmpleado : [{nom:descFinal,cant:1,precio_unit:monto,total:monto}];
       itemsAGuardar.forEach(function(item){
+        // Prefijo "🛒 Caja" para distinguir esto (cargado automático al cobrar
+        // "A cargo de empleado") de lo que alguien cargue a mano después en
+        // "Mercadería" de la ficha — sin esto no había forma de notar que ya
+        // estaba registrado y se podía terminar descontando dos veces lo mismo.
         supabaseClient.from('empleados_mercaderia').insert({
           negocio_id: currentNegocioId,
           empleado_id: empSelId,
-          producto_nom: item.nom,
+          producto_nom: '🛒 Caja — '+item.nom,
           cantidad: item.cant,
           precio_unit: item.precio_unit,
           total: item.total||monto,
