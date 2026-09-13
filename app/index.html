@@ -630,12 +630,12 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="plan-card" onclick="closeModal('modal-plan')" style="opacity:0.7;cursor:default;">
       <div class="pc-name">🆓 Gratis</div>
       <div class="pc-price" style="font-size:13px;color:var(--mut2);">30 días gratis</div>
-      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li></ul>
+      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li><li>Fiado (crédito clientes)</li></ul>
     </div>
     <div class="plan-card" onclick="irAPaywall()">
       <div class="pc-name">💛 Básico</div>
       <div class="pc-price">$60.000 <span>/mes</span></div>
-      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas de proveedores</li><li>Gastos fijos</li><li>Resumen financiero</li><li>Fiado (crédito clientes)</li></ul>
+      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas de proveedores</li><li>Gastos fijos</li><li>Resumen financiero</li></ul>
     </div>
     <div class="plan-card rec" onclick="irAPaywall()">
       <div class="pc-name">🟠 Pro</div>
@@ -1538,7 +1538,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-lbl">Finanzas</div>
     <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
     <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
-    <div class="sb-i" id="sb-fiado" onclick="goLocked('fiado',this,'basico')"><span class="sb-ico">🤝</span>Fiado<span class="sb-lock" id="lock-fiado">🔒</span><span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
+    <div class="sb-i" id="sb-fiado" onclick="go('fiado',this)"><span class="sb-ico">🤝</span>Fiado<span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
     <div class="sb-i" id="sb-cierremensual" onclick="goConPin('cierremensual',this,'basico')"><span class="sb-ico">📅</span>Cierre Mensual<span class="sb-lock" id="lock-cierremensual">🔒</span></div>
@@ -1609,7 +1609,7 @@ select.fi{appearance:none;cursor:pointer;}
 
   <!-- FIADO ALERT — solo aparece si hay clientes con deuda -->
   <div id="dash-fiado-alert" style="display:none;margin-bottom:16px;">
-    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="goLocked('fiado',el('sb-fiado'),'basico')">
+    <div style="background:var(--yel-dim);border:1px solid var(--yel);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="go('fiado',el('sb-fiado'))">
       <div style="font-size:32px;">🤝</div>
       <div style="flex:1;">
         <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--yel);">Clientes con fiado pendiente</div>
@@ -2513,7 +2513,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',fiado:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
+const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -2651,7 +2651,7 @@ function go(id,navEl){
 }
 function goLocked(id,navEl,req){
   if(PLAN_N[planActual]>=PLAN_N[req]) go(id,navEl);
-  else{ openModal('modal-plan'); toast('Función disponible en Plan '+req.charAt(0).toUpperCase()+req.slice(1),'err'); }
+  else{ openModal('modal-plan'); toast('Función disponible en '+(PLANES[req]?PLANES[req].nombre:req),'err'); }
 }
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
@@ -9471,7 +9471,7 @@ function goConPin(id, navEl, req) {
   // Si ya tiene el plan necesario
   if(PLAN_N[planActual] < PLAN_N[req]) {
     openModal('modal-plan');
-    toast('Función disponible en Plan ' + req.charAt(0).toUpperCase() + req.slice(1), 'err');
+    toast('Función disponible en ' + (PLANES[req] ? PLANES[req].nombre : req), 'err');
     return;
   }
   // Secciones que requieren PIN
