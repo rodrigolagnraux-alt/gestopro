@@ -6427,7 +6427,12 @@ async function confirmarEntregaPedidoOnline(){
       return {prodId:x.prod.id, nom:x.prod.nom, cant:x.it.cantidad||1, um:x.prod.um||'UN', precioVenta:x.it.precio||x.prod.pventa||0};
     });
     var descFiado = '🤝 '+(cFiadoSel?cFiadoSel.nom:'cliente')+' · 🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:'')+(envio>0?' · + envío '+fmtM(envio):'');
-    var _mf = { id:Date.now(), tipo:'fiado', desc:descFiado, monto:p.total||0, fecha:hoy(), metodo:'fiado' };
+    // Se guarda el cajero (si hay uno con caja abierta) para que el Cierre de
+    // Caja pueda atribuir este movimiento a un turno puntual — sin esto, un
+    // pedido online cobrado en efectivo quedaba "sin dueño" y el cierre lo
+    // sumaba en CUALQUIER caja abierta al mismo tiempo (podía duplicarse si
+    // dos empleados tenían turno abierto a la vez).
+    var _mf = { id:Date.now(), tipo:'fiado', desc:descFiado, monto:p.total||0, fecha:hoy(), metodo:'fiado', cajero:cajeroActual?cajeroActual.nombre:null };
     movimientos.unshift(_mf);
     saveMovimiento(_mf);
     await registrarFiadoCliente(clienteFiadoId, p.total||0, descFiado, detalleFiado);
@@ -6437,7 +6442,7 @@ async function confirmarEntregaPedidoOnline(){
     var _m = {
       id: Date.now(), tipo:'cobro',
       desc: '🛎️ Pedido online — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
-      monto: subtotal, fecha: hoy(), metodo: metodoMov
+      monto: subtotal, fecha: hoy(), metodo: metodoMov, cajero:cajeroActual?cajeroActual.nombre:null
     };
     movimientos.unshift(_m);
     saveMovimiento(_m);
@@ -6445,7 +6450,7 @@ async function confirmarEntregaPedidoOnline(){
       var _mEnvio = {
         id: Date.now()+1, tipo:'cobro',
         desc: '🚚 Envío — Pedido online '+(p.cliente_nombre||'Cliente'),
-        monto: envio, fecha: hoy(), metodo: metodoMov, cat:'Envio'
+        monto: envio, fecha: hoy(), metodo: metodoMov, cat:'Envio', cajero:cajeroActual?cajeroActual.nombre:null
       };
       movimientos.unshift(_mEnvio);
       saveMovimiento(_mEnvio);
