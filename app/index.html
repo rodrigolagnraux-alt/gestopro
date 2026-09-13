@@ -2106,16 +2106,26 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="card" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;">VALOR POR HORA</div>
+          <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;" id="emp-detalle-sueldo-lbl">VALOR POR HORA</div>
           <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);" id="emp-detalle-sueldo"></div>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-ghost btn-sm" onclick="abrirModalEditarEmpleado()">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalMercaderia()" style="color:var(--acc2);">🛒 Mercadería</button>
+          <button class="btn btn-ghost btn-sm" id="emp-btn-mercaderia" onclick="abrirModalMercaderia()" style="color:var(--acc2);">🛒 Mercadería</button>
         </div>
       </div>
     </div>
 
+    <!-- Repartidor a comisión: no maneja sueldo por hora, así que en vez del
+         sueldo semanal se lo manda a gestionar su comisión donde realmente
+         vive (Pedidos a entregar) — nada de horas, anticipos ni mercadería,
+         que le generarían una deuda que nunca podría saldar sin sueldo. -->
+    <div class="card" id="emp-repartidor-info-card" style="display:none;margin-bottom:12px;background:var(--acc-dim);border:1px solid var(--acc2);">
+      <div style="font-size:13px;line-height:1.6;">🛵 Este repartidor cobra <b>comisión por entrega</b>, no sueldo por hora — no tiene horas, anticipos ni mercadería para gestionar acá.</div>
+      <div style="font-size:12px;color:var(--mut2);margin-top:6px;">Su comisión pendiente se ve y se paga desde <b>Pedidos a entregar</b>, eligiéndote a vos mismo (dueño) ahí.</div>
+    </div>
+
+    <div id="emp-payroll-secciones">
     <!-- Horas de la semana -->
     <div class="card" style="margin-bottom:12px;">
       <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;">⏱️ Horas trabajadas</div>
@@ -2177,6 +2187,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="card" style="margin-top:12px;">
       <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;">🛒 Mercadería llevada este mes</div>
       <div id="emp-merc-mes-lista"></div>
+    </div>
     </div>
   </div>
 </div>
@@ -9739,6 +9750,7 @@ async function renderEmpleados() {
       '<div style="font-size:12px;">Agregá tu primer empleado para empezar a gestionar sueldos</div></div>';
   } else {
     lista.forEach(function(emp) {
+      var esRep = esRepartidorAComision(emp);
       html += '<div class="fiado-item" onclick="abrirDetalleEmpleado(\''+emp.id+'\')">'+
         '<div class="fiado-avatar" style="background:var(--acc-dim);color:var(--acc2);">'+escapeHtml(emp.nombre.charAt(0).toUpperCase())+'</div>'+
         '<div class="fiado-txt">'+
@@ -9746,8 +9758,9 @@ async function renderEmpleados() {
           '<div class="fiado-meta">'+escapeHtml(emp.rol||'Empleado')+'</div>'+
         '</div>'+
         '<div class="fiado-right">'+
-          '<div class="fiado-deuda" style="color:var(--grn);">'+pesos(emp.valor_hora)+'/hora</div>'+
-          '<div class="fiado-deuda-lbl">sueldo</div>'+
+          (esRep
+            ? '<div class="fiado-deuda" style="color:var(--grn);font-size:12px;">🛵 Comisión</div><div class="fiado-deuda-lbl">por entrega</div>'
+            : '<div class="fiado-deuda" style="color:var(--grn);">'+pesos(emp.valor_hora)+'/hora</div><div class="fiado-deuda-lbl">sueldo</div>')+
         '</div>'+
       '</div>';
     });
@@ -9801,6 +9814,10 @@ async function renderReporteMes(listaEmpleados) {
   el('emp-reporte-mes').innerHTML = html || '<div style="font-size:12px;color:var(--mut2);">Sin movimientos este mes</div>';
 }
 
+function esRepartidorAComision(emp){
+  return !!emp && emp.rol==='Repartidor';
+}
+
 async function abrirDetalleEmpleado(empId) {
   var res = await supabaseClient.from('empleados').select('*').eq('id', empId).single();
   if(!res.data) return;
@@ -9809,7 +9826,24 @@ async function abrirDetalleEmpleado(empId) {
   el('emp-vista-lista').style.display = 'none';
   el('emp-vista-detalle').style.display = 'block';
   el('emp-detalle-nombre').textContent = empActual.nombre;
+
+  var esRepartidor = esRepartidorAComision(empActual);
+  var infoCard = el('emp-repartidor-info-card');
+  var payrollSecciones = el('emp-payroll-secciones');
+  var btnMerc = el('emp-btn-mercaderia');
+  if(esRepartidor){
+    el('emp-detalle-sueldo-lbl').textContent = 'PAGO';
+    el('emp-detalle-sueldo').textContent = 'Comisión por entrega';
+    if(infoCard) infoCard.style.display = 'block';
+    if(payrollSecciones) payrollSecciones.style.display = 'none';
+    if(btnMerc) btnMerc.style.display = 'none';
+    return;
+  }
+  el('emp-detalle-sueldo-lbl').textContent = 'VALOR POR HORA';
   el('emp-detalle-sueldo').textContent = pesos(empActual.valor_hora)+'/hora';
+  if(infoCard) infoCard.style.display = 'none';
+  if(payrollSecciones) payrollSecciones.style.display = '';
+  if(btnMerc) btnMerc.style.display = '';
 
   // Reset historial al mes actual al cambiar de empleado
   var hoyReset = new Date();
@@ -10108,7 +10142,9 @@ async function guardarEmpleado() {
   var valorHora = parseFloat(el('emp-form-valorhora').value)||0;
   var pin = el('emp-form-pin') ? el('emp-form-pin').value.trim() : '';
   if(!nombre){ toast('Ingresá el nombre del empleado','err'); return; }
-  if(valorHora <= 0){ toast('Ingresá el valor por hora','err'); return; }
+  // Un repartidor a comisión no tiene valor por hora — exigírselo lo dejaba
+  // sin poder ni siquiera corregir el nombre sin ponerle un sueldo ficticio.
+  if(rol!=='Repartidor' && valorHora <= 0){ toast('Ingresá el valor por hora','err'); return; }
   if(pin && (pin.length !== 4 || isNaN(pin))){ toast('El PIN debe ser de 4 dígitos numéricos','err'); return; }
   if(pin){
     var dupRes = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('pin_caja',pin).eq('activo',true);
@@ -10123,8 +10159,7 @@ async function guardarEmpleado() {
     await supabaseClient.from('empleados').update(datos).eq('id',empEditId);
     toast('Empleado actualizado ✓');
     closeModal('modal-empleado');
-    var res = await supabaseClient.from('empleados').select('*').eq('id',empEditId).single();
-    if(res.data){ empActual = res.data; el('emp-detalle-nombre').textContent = empActual.nombre; el('emp-detalle-sueldo').textContent = pesos(empActual.valor_hora)+'/hora'; }
+    await abrirDetalleEmpleado(empEditId);
   } else {
     await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,valor_hora:valorHora,pin_caja:pin||null,activo:true});
     toast('Empleado agregado ✓');
