@@ -3102,18 +3102,28 @@ async function marcarPedidoEntregadoSimple(id){
     var envio = p.costo_envio||0;
     var subtotal = (p.subtotal!==undefined && p.subtotal!==null) ? p.subtotal : (p.total||0)-envio;
     var nombreEmpleado = entregaEmpleadoActual ? entregaEmpleadoActual.nombre : null;
+    // El repartidor cobra en la calle pero ese efectivo lo termina teniendo el
+    // mostrador (se lo entrega al dueño/cajero al volver) — por eso el cobro
+    // se atribuye a la caja abierta del mostrador, no al repartidor, para que
+    // el Cierre de Caja lo cuente. Si hay más de una caja abierta a la vez no
+    // sabemos a cuál corresponde, así que se deja sin cajero (se cuenta en
+    // cualquiera, igual que los movimientos viejos) en vez de adivinar mal.
+    var cajaAbiertaNombre = null;
+    var cajasRes = await supabaseClient.from('cajas').select('cajero_nombre').eq('negocio_id',currentNegocioId).eq('estado','abierta');
+    if(cajasRes.data && cajasRes.data.length===1) cajaAbiertaNombre = cajasRes.data[0].cajero_nombre;
+    var descRepartidor = nombreEmpleado ? ' · 🛵 '+nombreEmpleado : '';
     var _m = {
       id: Date.now()+1, tipo:'cobro',
-      desc: '🛵 Entrega — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:''),
-      monto: subtotal, fecha: hoy(), metodo:'efectivo', cajero: nombreEmpleado
+      desc: '🛵 Entrega — '+(p.cliente_nombre||'Cliente')+(itemsDesc?' · '+itemsDesc:'')+descRepartidor,
+      monto: subtotal, fecha: hoy(), metodo:'efectivo', cajero: cajaAbiertaNombre
     };
     movimientos.unshift(_m);
     saveMovimiento(_m);
     if(envio>0){
       var _mEnvio = {
         id: Date.now()+2, tipo:'cobro',
-        desc: '🚚 Envío — Entrega '+(p.cliente_nombre||'Cliente'),
-        monto: envio, fecha: hoy(), metodo:'efectivo', cat:'Envio', cajero: nombreEmpleado
+        desc: '🚚 Envío — Entrega '+(p.cliente_nombre||'Cliente')+descRepartidor,
+        monto: envio, fecha: hoy(), metodo:'efectivo', cat:'Envio', cajero: cajaAbiertaNombre
       };
       movimientos.unshift(_mEnvio);
       saveMovimiento(_mEnvio);
