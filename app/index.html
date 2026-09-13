@@ -3131,9 +3131,26 @@ async function renderComisionRepartoHoy(){
 
 async function pagarComisionRepartoDesdeEntregar(empleadoId, nombre){
   if(!confirm('¿Marcar toda la comisión pendiente de '+nombre+' como pagada?')) return;
-  var res = await supabaseClient.from('comisiones_reparto').update({pagado:true}).eq('empleado_id',empleadoId).eq('pagado',false);
+  // .select() al final devuelve las filas que efectivamente se actualizaron —
+  // sirve tanto para calcular el monto real a registrar como para detectar
+  // si alguien más ya la pagó justo antes (filas afectadas = 0).
+  var res = await supabaseClient.from('comisiones_reparto').update({pagado:true}).eq('empleado_id',empleadoId).eq('pagado',false).select();
   if(res.error){ toast('No se pudo registrar el pago','err'); return; }
-  toast('✓ Comisión de '+nombre+' liquidada');
+  var filas = res.data || [];
+  if(!filas.length){
+    toast('Esa comisión ya se había liquidado','err');
+    await renderComisionRepartoHoy();
+    return;
+  }
+  // Antes esto no dejaba ningún registro en Movimientos — el costo real de
+  // pagarle al repartidor quedaba invisible en Flujo Financiero y en el
+  // reporte mensual, aunque cualquier mercadería mal cargada a un empleado sí
+  // apareciera como costo. Ahora sí queda como egreso, igual que un sueldo.
+  var total = filas.reduce(function(s,f){return s+(f.monto||0);},0);
+  var _mComision = {id:Date.now(), tipo:'egreso', cat:'ComisionReparto', desc:'🛵 Comisión de reparto — '+nombre, monto:total, fecha:hoy()};
+  movimientos.unshift(_mComision);
+  saveMovimiento(_mComision);
+  toast('✓ Comisión de '+nombre+' liquidada — '+fmtM(total)+' registrado como egreso');
   await renderComisionRepartoHoy();
 }
 
@@ -7657,13 +7674,14 @@ async function renderFinanzas(){
   var totalGF = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalCostoInsumos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalComisionReparto = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='ComisionReparto';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
-  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados - totalCostoInsumos;
+  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto;
 
   if(kEl) kEl.innerHTML =
     '<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'+
-    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados+totalCostoInsumos)+'</div><div class="kd">total egresos</div></div>'+
+    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados+totalCostoInsumos+totalComisionReparto)+'</div><div class="kd">total egresos</div></div>'+
     '<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
 
   var rEl = el('fin-resultado');
@@ -7671,6 +7689,7 @@ async function renderFinanzas(){
     '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
     '<div class="fin-row"><span>📦 Costo mercadería comprada</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
     (totalCostoInsumos>0?'<div class="fin-row"><span>🧂 Costo insumos (platos vendidos)</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCostoInsumos)+'</span></div>':'')+
+    (totalComisionReparto>0?'<div class="fin-row"><span>🛵 Comisión de reparto</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalComisionReparto)+'</span></div>':'')+
     '<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
     (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
@@ -7755,6 +7774,7 @@ async function renderCierreMensual(){
   var totalConsumoPropio = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen==='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalCostoInsumos = egresos.filter(function(m){return m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalComisionReparto = egresos.filter(function(m){return m.cat==='ComisionReparto';}).reduce(function(s,m){return s+(m.monto||0);},0);
 
   var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
     .eq('negocio_id',currentNegocioId).eq('pagado',true)
@@ -7764,12 +7784,13 @@ async function renderCierreMensual(){
     return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
   }, 0);
 
-  var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados - totalCostoInsumos;
+  var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto;
 
   if(cEl) cEl.innerHTML =
     '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
     '<div class="fin-row"><span>📦 Compras de mercadería</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
     (totalCostoInsumos>0?'<div class="fin-row"><span>🧂 Costo insumos (platos vendidos)</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCostoInsumos)+'</span></div>':'')+
+    (totalComisionReparto>0?'<div class="fin-row"><span>🛵 Comisión de reparto</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalComisionReparto)+'</span></div>':'')+
     '<div class="fin-row"><span>💡 Gastos fijos pagados</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalConsumoPropio>0?'<div class="fin-row"><span>🏠 Consumo propio</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalConsumoPropio)+'</span></div>':'')+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos (prorrateados)</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
