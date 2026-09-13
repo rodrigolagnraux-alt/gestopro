@@ -1437,6 +1437,8 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="font-size:11px;color:var(--mut2);margin:4px 0 12px;">Si la apagás, tus clientes ven el menú pero no pueden hacer pedidos hasta que la vuelvas a abrir</div>
   <div class="fg"><label class="fl">Costo de envío ($)</label><input class="fi" id="cfg-costo-envio" type="number" placeholder="0" inputmode="numeric"></div>
   <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Se usa como costo de envío por defecto en los pedidos delivery de tu Tienda Online</div>
+  <div class="fg"><label class="fl">Comisión por entrega ($)</label><input class="fi" id="cfg-comision-envio" type="number" placeholder="0" inputmode="numeric"></div>
+  <div style="font-size:11px;color:var(--mut2);margin:-8px 0 10px;">Lo que se le suma al repartidor por cada pedido que marca como entregado (dejalo en 0 si no aplica)</div>
   <div class="fg">
     <label class="fl">Logo del negocio (se muestra arriba del menú online)</label>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -1785,6 +1787,7 @@ select.fi{appearance:none;cursor:pointer;}
     <div id="entregar-cajero-badge" style="font-size:12px;color:var(--mut2);"></div>
   </div>
   <div class="psub" style="margin-bottom:14px;">Delivery pendiente o en preparación</div>
+  <div id="entregar-comision-hoy" style="display:none;background:var(--sur2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;"></div>
   <div id="entregar-lista"></div>
 </div>
   <!-- MOVIMIENTOS -->
@@ -2700,6 +2703,7 @@ async function guardarConfig(){
   var telDueno=get('cfg-tel-dueno');
   var emailDueno=get('cfg-email-dueno');
   var costoEnvio=parseFloat(get('cfg-costo-envio')); costoEnvio = isNaN(costoEnvio) ? 0 : costoEnvio;
+  var comisionEnvio=parseFloat(get('cfg-comision-envio')); comisionEnvio = isNaN(comisionEnvio) ? 0 : comisionEnvio;
   var tiendaAbiertaChk = el('cfg-tienda-abierta');
   var tiendaAbierta = tiendaAbiertaChk ? tiendaAbiertaChk.checked : true;
   var ordenMenuEl2 = document.querySelector('input[name="cfg-orden-menu"]:checked');
@@ -2732,6 +2736,7 @@ async function guardarConfig(){
   if(telDueno !== snap.tel) config.tel=telDueno;
   if(emailDueno !== snap.emailDueno) config.emailDueno=emailDueno;
   if(costoEnvio !== snap.costoEnvio) config.costoEnvio=costoEnvio;
+  if(comisionEnvio !== snap.comisionEnvio) config.comisionEnvio=comisionEnvio;
   if(tiendaAbierta !== snap.tiendaAbierta) config.tiendaAbierta=tiendaAbierta;
   if(ordenMenu !== snap.ordenMenu) config.ordenMenu=ordenMenu;
   if(aliasDni !== snap.aliasDni) config.aliasDni=aliasDni;
@@ -3000,6 +3005,7 @@ async function renderPedidosEntregar(){
   if(!cont) return;
   var badge = el('entregar-cajero-badge');
   if(badge) badge.textContent = entregaEmpleadoActual ? ('👤 '+entregaEmpleadoActual.nombre) : '';
+  renderComisionRepartoHoy();
   cont.innerHTML = '<div style="color:var(--mut2);font-size:13px;padding:16px;text-align:center;">Cargando...</div>';
   var res = await supabaseClient.from('pedidos').select('*').eq('negocio_id',currentNegocioId).eq('tipo_entrega','delivery').in('estado',['pendiente','preparando']).order('created_at',{ascending:true});
   if(res.error){
@@ -3013,6 +3019,57 @@ async function renderPedidosEntregar(){
     return;
   }
   cont.innerHTML = data.map(renderPedidoEntregarCard).join('');
+}
+
+// Muestra el estado de la comisión de reparto acá mismo, en "Pedidos a
+// entregar" — no en Empleados, porque esa sección requiere el plan Business
+// y la comisión de reparto tiene que funcionar para cualquier rotisería,
+// tenga o no ese plan.
+// - Si entra un repartidor: ve cuánto lleva acumulado hoy (para saber qué
+//   esperar cuando el dueño le liquide el día).
+// - Si entra el dueño: ve la lista de todo lo pendiente de pagar, por
+//   repartidor, con un botón para liquidarlo — reemplaza lo que antes iba a
+//   requerir abrir la ficha de Empleados.
+async function renderComisionRepartoHoy(){
+  var cont = el('entregar-comision-hoy');
+  if(!cont) return;
+  if(!entregaEmpleadoActual){ cont.style.display='none'; return; }
+  if(entregaEmpleadoActual.id==='dueno'){
+    var resPend = await supabaseClient.from('comisiones_reparto').select('*').eq('negocio_id',currentNegocioId).eq('pagado',false);
+    var pendientes = resPend.data || [];
+    if(!pendientes.length){ cont.style.display='none'; return; }
+    var porEmpleado = {};
+    pendientes.forEach(function(c){
+      var k = c.empleado_id;
+      if(!porEmpleado[k]) porEmpleado[k] = {nombre:c.empleado_nombre, total:0, cant:0};
+      porEmpleado[k].total += (c.monto||0);
+      porEmpleado[k].cant += 1;
+    });
+    cont.style.display='block';
+    cont.innerHTML = '<div style="font-weight:700;margin-bottom:8px;">💰 Comisión de reparto pendiente</div>'
+      + Object.keys(porEmpleado).map(function(empId){
+        var e = porEmpleado[empId];
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd);">'
+          +'<span>'+escapeHtml(e.nombre)+' <span style="color:var(--mut2);font-size:11px;">('+e.cant+' entrega'+(e.cant!==1?'s':'')+')</span></span>'
+          +'<span style="display:flex;align-items:center;gap:8px;"><b style="color:var(--grn);">'+fmtM(e.total)+'</b><button class="btn btn-acc btn-sm" onclick="pagarComisionRepartoDesdeEntregar(\''+empId+'\',\''+escapeHtml(e.nombre).replace(/'/g,"\\'")+'\')">Pagar</button></span>'
+          +'</div>';
+      }).join('');
+    return;
+  }
+  var res = await supabaseClient.from('comisiones_reparto').select('monto').eq('negocio_id',currentNegocioId).eq('empleado_id',entregaEmpleadoActual.id).eq('fecha',hoy());
+  var filas = res.data || [];
+  if(!filas.length){ cont.style.display='none'; return; }
+  var total = filas.reduce(function(s,f){return s+(f.monto||0);},0);
+  cont.style.display='block';
+  cont.innerHTML = '💰 Hoy entregaste <b>'+filas.length+'</b> pedido'+(filas.length!==1?'s':'')+' · te corresponden <b style="color:var(--grn);">'+fmtM(total)+'</b> de comisión';
+}
+
+async function pagarComisionRepartoDesdeEntregar(empleadoId, nombre){
+  if(!confirm('¿Marcar toda la comisión pendiente de '+nombre+' como pagada?')) return;
+  var res = await supabaseClient.from('comisiones_reparto').update({pagado:true}).eq('empleado_id',empleadoId).eq('pagado',false);
+  if(res.error){ toast('No se pudo registrar el pago','err'); return; }
+  toast('✓ Comisión de '+nombre+' liquidada');
+  await renderComisionRepartoHoy();
 }
 
 function renderPedidoEntregarCard(p){
@@ -3080,6 +3137,18 @@ async function marcarPedidoEntregadoSimple(id){
     toast('Este pedido ya fue entregado (o cancelado) desde otra pantalla','err');
     renderPedidosEntregar();
     return;
+  }
+
+  // Comisión de reparto: si quien entrega es un repartidor real (no el dueño)
+  // y el negocio configuró un monto por entrega, se acredita acá — queda en
+  // su propio registro (comisiones_reparto) para poder pagarle el total del
+  // día, sin mezclarse con el sueldo semanal del resto del personal.
+  if(entregaEmpleadoActual && entregaEmpleadoActual.id!=='dueno' && (config.comisionEnvio||0)>0){
+    supabaseClient.from('comisiones_reparto').insert({
+      negocio_id: currentNegocioId, empleado_id: entregaEmpleadoActual.id,
+      empleado_nombre: entregaEmpleadoActual.nombre, pedido_id: String(id),
+      monto: config.comisionEnvio, fecha: hoy()
+    }).then(function(){}).catch(function(e){console.log('Error registrando comisión de reparto:',e);});
   }
 
   itemsResueltos.forEach(function(x){
@@ -9162,6 +9231,7 @@ function poblarFormConfig(){
   set('cfg-tel-dueno','val',config.tel||'');
   set('cfg-email-dueno','val',config.emailDueno||'');
   set('cfg-costo-envio','val',config.costoEnvio!==undefined?config.costoEnvio:'');
+  set('cfg-comision-envio','val',config.comisionEnvio!==undefined?config.comisionEnvio:'');
   var tiendaAbiertaEl = el('cfg-tienda-abierta'); if(tiendaAbiertaEl) tiendaAbiertaEl.checked = config.tiendaAbierta!==false;
   var ordenMenuPref = config.ordenMenu || 'vinculados';
   var ordenMenuEl = el('cfg-orden-menu-'+ordenMenuPref);
@@ -9188,6 +9258,7 @@ function poblarFormConfig(){
   _configSnapshotAlAbrir = {
     nombre: config.nombre||'', tel: config.tel||'', emailDueno: config.emailDueno||'',
     costoEnvio: config.costoEnvio!==undefined?config.costoEnvio:0,
+    comisionEnvio: config.comisionEnvio!==undefined?config.comisionEnvio:0,
     alias: config.alias||'', cvu: config.cvu||'',
     aliasDni: config.aliasDni||'', cvuDni: config.cvuDni||'',
     pin: config.pin||'', recargoDomingo: config.recargoDomingo!==undefined?config.recargoDomingo:50,
