@@ -1641,12 +1641,18 @@ select.fi{appearance:none;cursor:pointer;}
 <div id="pg-menuonline" class="pg">
   <div class="ptitle">Tienda Online</div>
   <div class="psub" style="margin-bottom:14px;">Tu catálogo para pedidos por link, sin llamadas ni WhatsApp</div>
-  <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-    <div>
-      <div class="kl">LINK DE TU TIENDA</div>
-      <div class="mn" id="menu-link-display" style="color:var(--acc2);font-size:13px;">—</div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="kl">LINK DE TU TIENDA</div>
+    <div class="mn" id="menu-link-display" style="color:var(--acc2);font-size:13px;margin:2px 0 10px;">—</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <div style="flex:1;min-width:220px;display:flex;align-items:center;background:var(--sur2);border-radius:8px;padding:0 4px 0 10px;">
+        <span style="font-size:11px;color:var(--mut2);white-space:nowrap;">gestopro.com.ar/menu.html?negocio=</span>
+        <input class="fi" id="menu-slug-input" placeholder="tu-negocio" style="border:none;background:transparent;padding:9px 4px;flex:1;min-width:90px;font-size:13px;" oninput="this.value=this.value.toLowerCase();">
+      </div>
+      <button class="btn btn-acc btn-sm" onclick="guardarSlugMenu()">💾 Guardar</button>
+      <button class="btn btn-ghost btn-sm" onclick="copiarLinkMenu()">📋 Copiar</button>
     </div>
-    <button class="btn btn-acc btn-sm" onclick="copiarLinkMenu()">📋 Copiar link</button>
+    <div style="font-size:11px;color:var(--mut2);margin-top:8px;">Elegí cómo se ve tu link — solo minúsculas, números y guiones. Podés cambiarlo cuando quieras.</div>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="btn btn-acc" onclick="abrirBuscadorInventarioTienda()" style="flex:1;min-width:180px;">+ Agregar del inventario</button>
@@ -5471,13 +5477,30 @@ function renderResumenDiario(movsF, factsF, label, cajasF){
   }).join('');
 }
 
+// Convierte cualquier texto (ej. el nombre del negocio) en un slug de link
+// válido: minúsculas, sin acentos, solo letras/números/guiones.
+function slugificar(texto){
+  return String(texto||'')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'')
+    .slice(0,40);
+}
+
 async function renderMenuOnline(){
   if(!currentNegocioId) return;
   var negRes = await supabaseClient.from('negocios').select('slug').eq('id',currentNegocioId).single();
   var slug = negRes.data ? negRes.data.slug : null;
   var linkEl = el('menu-link-display');
-  if(linkEl) linkEl.textContent = slug ? 'gestopro.com.ar/menu.html?negocio='+slug : 'Sin slug configurado';
+  if(linkEl) linkEl.textContent = slug ? 'gestopro.com.ar/menu.html?negocio='+slug : 'Todavía no tenés un link — elegí uno abajo';
   window._menuLinkActual = slug ? 'https://gestopro.com.ar/menu.html?negocio='+slug : '';
+  // Si nunca configuró un link, se lo sugerimos ya armado a partir del nombre
+  // del negocio para que no tenga que pensarlo desde cero — puede cambiarlo.
+  var slugInput = el('menu-slug-input');
+  if(slugInput && document.activeElement!==slugInput){
+    slugInput.value = slug || slugificar(config.nombre);
+  }
   var res = await supabaseClient.from('menu_items').select('*').eq('negocio_id',currentNegocioId).order('orden',{ascending:true}).order('nombre',{ascending:true});
   var items = res.data || [];
   window._menuItemsCache = items;
@@ -5592,8 +5615,23 @@ async function agregarTodosProductosTienda(btnEl){
 
 function copiarLinkMenu(){
   var link = window._menuLinkActual;
-  if(!link){ toast('Configurá el slug del negocio primero','err'); return; }
+  if(!link){ toast('Primero guardá el link de tu tienda','err'); return; }
   navigator.clipboard.writeText(link).then(function(){ toast('Link copiado ✓'); }).catch(function(){ toast('No se pudo copiar','err'); });
+}
+
+async function guardarSlugMenu(){
+  if(!currentNegocioId) return;
+  var slug = slugificar(get('menu-slug-input'));
+  if(!slug){ toast('Escribí un nombre para tu link (ej: almacen-lopez)','err'); return; }
+  var res = await supabaseClient.from('negocios').update({slug:slug}).eq('id',currentNegocioId);
+  if(res.error){
+    // El índice único de slug rechaza el UPDATE si otro negocio ya lo usa.
+    var yaUsado = res.error.code==='23505' || /duplicate|unique/i.test(res.error.message||'');
+    toast(yaUsado ? 'Ese link ya lo está usando otro negocio — probá con otro' : 'No se pudo guardar el link','err');
+    return;
+  }
+  toast('✓ Link guardado');
+  renderMenuOnline();
 }
 
 // ═══════════════════════════════════════════════
