@@ -700,18 +700,30 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-drag"></div>
   <div class="modal-t">🛵 Pedidos a entregar</div>
   <div class="modal-s">Identificate con tu PIN para ver los pedidos</div>
-  <div class="fg">
+  <div class="fg" id="entregar-cajero-sel-wrap">
     <label class="fl">Empleado</label>
     <select class="fi" id="entregar-cajero-sel" style="font-size:15px;" onchange="onEntregarCajeroCambia()">
       <option value="">— Elegir —</option>
     </select>
+    <div style="text-align:right;margin-top:6px;"><span style="color:var(--acc2);font-size:12px;font-weight:600;cursor:pointer;" onclick="mostrarAltaRepartidorRapida()">+ Agregar repartidor nuevo</span></div>
   </div>
-  <div class="fg">
+  <!-- Alta rápida de repartidor — no requiere el plan Premium (a diferencia de
+       "Empleados"): solo nombre y PIN, sin valor por hora, porque un repartidor
+       que cobra por entrega no tiene sueldo por hora. -->
+  <div id="entregar-alta-repartidor-wrap" style="display:none;">
+    <div class="fg"><label class="fl">Nombre del repartidor</label><input class="fi" id="entregar-nuevo-nombre" placeholder="Ej: Juan"></div>
+    <div class="fg"><label class="fl">PIN (4 dígitos, para que entre solo)</label><input class="fi" id="entregar-nuevo-pin" type="password" maxlength="4" inputmode="numeric" placeholder="••••" style="font-size:20px;text-align:center;letter-spacing:6px;"></div>
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn btn-ghost" onclick="ocultarAltaRepartidorRapida()">Cancelar</button>
+      <button class="btn btn-acc" onclick="guardarRepartidorRapido()">✓ Agregar</button>
+    </div>
+  </div>
+  <div class="fg" id="entregar-pin-inp-wrap">
     <label class="fl">PIN</label>
     <input class="fi" id="entregar-pin-inp" type="password" placeholder="••••" maxlength="4" inputmode="numeric" style="font-size:24px;text-align:center;letter-spacing:8px;" onkeydown="if(event.key==='Enter')confirmarPinEntregar()">
   </div>
   <div id="entregar-pin-error" style="display:none;color:var(--red);font-size:12px;text-align:center;margin-bottom:10px;">PIN incorrecto. Intentá de nuevo.</div>
-  <div class="btn-row">
+  <div class="btn-row" id="entregar-pin-btnrow">
     <button class="btn btn-ghost" onclick="closeModal('modal-pin-entregar')">Cancelar</button>
     <button class="btn btn-grn" onclick="confirmarPinEntregar()">✓ Entrar</button>
   </div>
@@ -2931,20 +2943,62 @@ var entregaEmpleadoActual = null; // {id, nombre} — identificación liviana, n
 var entregaPinFallosSeguidos = 0;
 var _entregarNavEl = null;
 
+async function cargarSelectorEntregar(seleccionarId){
+  var sel = el('entregar-cajero-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Elegir —</option><option value="dueno">👑 '+escapeHtml(config.nombre||'El dueño')+' (dueño)</option>';
+  if(currentNegocioId && supabaseClient){
+    var res = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
+    (res.data||[]).forEach(function(e){ sel.innerHTML += '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>'; });
+  }
+  if(seleccionarId) sel.value = seleccionarId;
+}
+
 async function abrirPedidosEntregar(navEl){
   if(entregaEmpleadoActual){ go('entregar', navEl); return; }
-  var sel = el('entregar-cajero-sel');
-  if(sel){
-    sel.innerHTML = '<option value="">— Elegir —</option><option value="dueno">👑 '+escapeHtml(config.nombre||'El dueño')+' (dueño)</option>';
-    if(currentNegocioId && supabaseClient){
-      var res = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nombre');
-      (res.data||[]).forEach(function(e){ sel.innerHTML += '<option value="'+e.id+'">'+escapeHtml(e.nombre)+'</option>'; });
-    }
-  }
+  ocultarAltaRepartidorRapida();
+  await cargarSelectorEntregar();
   el('entregar-pin-inp').value = '';
   el('entregar-pin-error').style.display = 'none';
   _entregarNavEl = navEl;
   openModal('modal-pin-entregar');
+}
+
+// Alta rápida de repartidor, disponible acá porque "Empleados" (donde
+// normalmente se cargaría) requiere el plan Premium — un repartidor tiene
+// que poder darse de alta sin importar el plan del negocio. Solo pide
+// nombre y PIN; sin valor por hora, porque cobra por entrega, no por hora.
+function mostrarAltaRepartidorRapida(){
+  el('entregar-cajero-sel-wrap').style.display = 'none';
+  el('entregar-pin-inp-wrap').style.display = 'none';
+  el('entregar-pin-btnrow').style.display = 'none';
+  el('entregar-nuevo-nombre').value = '';
+  el('entregar-nuevo-pin').value = '';
+  el('entregar-alta-repartidor-wrap').style.display = 'block';
+  setTimeout(function(){ el('entregar-nuevo-nombre').focus(); },100);
+}
+
+function ocultarAltaRepartidorRapida(){
+  var wrap = el('entregar-alta-repartidor-wrap');
+  if(wrap) wrap.style.display = 'none';
+  var selWrap = el('entregar-cajero-sel-wrap'); if(selWrap) selWrap.style.display = '';
+  var pinWrap = el('entregar-pin-inp-wrap'); if(pinWrap) pinWrap.style.display = '';
+  var btnRow = el('entregar-pin-btnrow'); if(btnRow) btnRow.style.display = '';
+}
+
+async function guardarRepartidorRapido(){
+  var nombre = get('entregar-nuevo-nombre').trim();
+  var pin = get('entregar-nuevo-pin').trim();
+  if(!nombre){ toast('Ingresá el nombre del repartidor','err'); return; }
+  if(!pin || pin.length!==4 || isNaN(pin)){ toast('El PIN debe ser de 4 dígitos numéricos','err'); return; }
+  var dupRes = await supabaseClient.from('empleados').select('id,nombre').eq('negocio_id',currentNegocioId).eq('pin_caja',pin).eq('activo',true);
+  if(dupRes.data && dupRes.data.length){ toast('Ese PIN ya lo usa '+dupRes.data[0].nombre+' — elegí otro','err'); return; }
+  var res = await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:'Repartidor',valor_hora:0,pin_caja:pin,activo:true}).select().single();
+  if(res.error || !res.data){ toast('No se pudo agregar el repartidor','err'); return; }
+  toast('✓ '+nombre+' agregado — ya podés entrar con su PIN');
+  ocultarAltaRepartidorRapida();
+  await cargarSelectorEntregar(res.data.id);
+  onEntregarCajeroCambia();
 }
 
 function onEntregarCajeroCambia(){
