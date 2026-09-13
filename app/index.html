@@ -9876,8 +9876,11 @@ async function abrirDetalleEmpleado(empId) {
   empHistMesActual = hoyReset.getMonth();
   empHistAnioActual = hoyReset.getFullYear();
 
-  await cargarHorasDias();
+  // cargarSemanaActual() primero: cargarHorasDias() necesita saber si la
+  // semana ya fue liquidada (empSemanaActual.yaLiquidada) para no dejar
+  // editar horas de algo que ya se pagó.
   await cargarSemanaActual();
+  await cargarHorasDias();
   await cargarHistorialSemanas();
   await cargarMercaderiaMes();
 }
@@ -9894,7 +9897,14 @@ async function cargarHorasDias() {
     .gte('fecha', lunesStr).lte('fecha', domingo);
   var registros = res.data || [];
 
-  var html = '';
+  // Si esta semana ya se liquidó, las horas quedan de solo lectura — antes se
+  // podían seguir editando sin ningún aviso, y el monto ya pagado (congelado
+  // en empleados_semanas) no reflejaba ese cambio: quedaba una semana
+  // "cerrada" con horas distintas a las que realmente se pagaron.
+  var bloqueada = !!(empSemanaActual && empSemanaActual.yaLiquidada);
+  var avisoBloqueo = bloqueada ? '<div style="font-size:11px;color:var(--yel);background:var(--yel-dim);border-radius:8px;padding:8px 10px;margin-bottom:8px;">🔒 Esta semana ya fue liquidada — las horas quedan fijas. Si hay un error, corregilo desde la semana actual.</div>' : '';
+
+  var html = avisoBloqueo;
   for(var i=0; i<7; i++){
     var d = new Date(lunes);
     d.setDate(lunes.getDate()+i);
@@ -9902,9 +9912,9 @@ async function cargarHorasDias() {
     var reg = registros.find(function(r){ return r.fecha === fechaStr; });
     var horas = reg ? reg.horas : '';
     var esDomingo = i === 6;
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd);">'+
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd);'+(bloqueada?'opacity:0.6;':'')+'">'+
       '<div style="font-size:12px;'+(esDomingo?'color:var(--yel);font-weight:700;':'color:var(--mut2);')+'">'+DIAS_SEMANA[i]+(esDomingo?' 🔶':'')+' <span style="font-size:10px;opacity:0.7;">'+fechaCorta(fechaStr)+'</span></div>'+
-      '<input class="fi" style="width:80px;text-align:center;padding:6px;font-size:13px;" type="number" step="0.5" placeholder="0" value="'+horas+'" data-fecha="'+fechaStr+'" onchange="guardarHorasDia(this)">'+
+      '<input class="fi" style="width:80px;text-align:center;padding:6px;font-size:13px;" type="number" step="0.5" placeholder="0" value="'+horas+'" data-fecha="'+fechaStr+'" onchange="guardarHorasDia(this)"'+(bloqueada?' disabled':'')+'>'+
     '</div>';
   }
   el('emp-horas-dias').innerHTML = html;
@@ -10366,8 +10376,8 @@ async function confirmarLiquidacion() {
     toast('✅ Semana liquidada — '+pesos(total)+' registrado como egreso');
   }
   closeModal('modal-emp-liquidar');
-  await cargarHorasDias();
   await cargarSemanaActual();
+  await cargarHorasDias();
   await cargarHistorialSemanas();
 }
 
