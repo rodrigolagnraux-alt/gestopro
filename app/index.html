@@ -10235,16 +10235,33 @@ async function confirmarLiquidacion() {
   var domingo = empSemanaActual.domingo;
 
   if(empSemanaActual.id) {
-    await supabaseClient.from('empleados_semanas').update({
+    // .eq('pagado',false) hace que este UPDATE solo tenga efecto si nadie la
+    // liquidó todavía — si dos pestañas/dispositivos confirman casi al mismo
+    // tiempo, la segunda no actualiza ninguna fila (res.data vuelve vacío) y
+    // cortamos ANTES de registrar el egreso o marcar mercadería como pagada,
+    // en vez de duplicar el pago.
+    var resLiq = await supabaseClient.from('empleados_semanas').update({
       horas_extra: empSemanaActual.montoDomingo,
       mercaderia: empSemanaActual.mercaderia,
       total_pagado: total,
       deuda_pendiente: deuda,
       pagado: true,
       fecha_pago: new Date().toISOString()
-    }).eq('id', empSemanaActual.id);
+    }).eq('id', empSemanaActual.id).eq('pagado', false).select();
+    if(resLiq.error){ toast('No se pudo registrar el pago','err'); return; }
+    if(!resLiq.data || !resLiq.data.length){
+      toast('Esta semana ya fue liquidada desde otro dispositivo','err');
+      closeModal('modal-emp-liquidar');
+      await cargarSemanaActual();
+      await cargarHistorialSemanas();
+      return;
+    }
   } else {
-    await supabaseClient.from('empleados_semanas').insert({
+    // No existe fila para esta semana todavía. La columna tiene un índice
+    // único (empleado_id, semana_inicio) en la base — si dos liquidaciones
+    // simultáneas intentan crearla, la segunda va a fallar por esa restricción
+    // en vez de crear un pago duplicado.
+    var resIns = await supabaseClient.from('empleados_semanas').insert({
       negocio_id: currentNegocioId,
       empleado_id: empActual.id,
       semana_inicio: lunes,
@@ -10258,6 +10275,14 @@ async function confirmarLiquidacion() {
       pagado: true,
       fecha_pago: new Date().toISOString()
     });
+    if(resIns.error){
+      var yaExiste = resIns.error.code==='23505' || /duplicate|unique/i.test(resIns.error.message||'');
+      toast(yaExiste ? 'Esta semana ya fue liquidada desde otro dispositivo' : 'No se pudo registrar el pago','err');
+      closeModal('modal-emp-liquidar');
+      await cargarSemanaActual();
+      await cargarHistorialSemanas();
+      return;
+    }
   }
 
   // Marcar mercadería como descontada
