@@ -1230,7 +1230,12 @@ select.fi{appearance:none;cursor:pointer;}
 <div class="modal" style="max-width:420px;">
   <div class="modal-drag"></div>
   <div class="modal-t">✅ Confirmar pago de gasto fijo</div>
-  <div id="modal-gf-pagar-header" style="margin-bottom:16px;"></div>
+  <div id="modal-gf-pagar-header" style="margin-bottom:10px;"></div>
+  <div class="fg">
+    <label class="fl">Monto a pagar</label>
+    <input class="fi" id="gfpago-monto" type="number" style="font-size:18px;font-family:DM Mono,monospace;">
+    <div style="font-size:11px;color:var(--mut2);margin-top:4px;">Ajustalo si cambió (luz, gas, aumento de alquiler, etc.) — queda como el nuevo monto de referencia.</div>
+  </div>
   <div class="fg">
     <label class="fl">¿De dónde sale el dinero?</label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
@@ -4297,7 +4302,7 @@ async function guardarGF(){
   gastosFijos.push(_gf);
   ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
   closeModal('modal-gf'); saveGastoFijo(_gf);
-  if(marcarPagado) await registrarPagoGF(_gf,'caja');
+  if(marcarPagado) await registrarPagoGF(_gf,'caja',monto);
   renderDash(); await renderGastos();
   toast('💡 Gasto fijo guardado ✓');
 }
@@ -4305,22 +4310,47 @@ async function guardarGF(){
 // Un pago real de un gasto fijo — se guarda con fecha en gastos_fijos_pagos
 // (no un booleano perpetuo) y genera el egreso correspondiente en Movimientos,
 // igual que confirmarPagoFactura(). Si es "del bolsillo" no toca el cierre de caja.
-async function registrarPagoGF(gf, origen){
-  if(!currentNegocioId||!supabaseClient) return;
-  var ins = await supabaseClient.from('gastos_fijos_pagos').insert({negocio_id:currentNegocioId,gasto_fijo_id:String(gf.id),monto:gf.monto,fecha:hoy(),origen:origen}).select().single();
-  if(ins.data) gastosFijosPagos.push(ins.data);
-  var _me = {id:Date.now()+Math.random(),tipo:'egreso',desc:'Gasto fijo — '+gf.nom+(origen==='bolsillo'?' · Del bolsillo':''),monto:gf.monto,fecha:hoy(),metodo:'efectivo',origen:origen,cat:'GastoFijo',cajero:cajeroActual?cajeroActual.nombre:null};
+// montoReal permite ajustar el monto de ESE pago (luz/gas/agua varían, el
+// alquiler puede aumentar): si difiere del monto guardado, pasa a ser el nuevo
+// monto de referencia del gasto fijo, sin borrar y recrear.
+// La tabla tiene un índice único (gasto_fijo_id, mes) — si ya había un pago
+// este mes, el insert falla con 23505 y no se duplica el egreso.
+async function registrarPagoGF(gf, origen, montoReal){
+  var monto = (typeof montoReal==='number' && !isNaN(montoReal) && montoReal>0) ? montoReal : gf.monto;
+  if(currentNegocioId && supabaseClient){
+    var ins = await supabaseClient.from('gastos_fijos_pagos').insert({negocio_id:currentNegocioId,gasto_fijo_id:String(gf.id),monto:monto,fecha:hoy(),origen:origen}).select().single();
+    if(ins.error){
+      if(ins.error.code==='23505'){ toast('Este gasto ya estaba pagado este mes','err'); }
+      else { toast('No se pudo registrar el pago','err'); }
+      return false;
+    }
+    if(ins.data) gastosFijosPagos.push(ins.data);
+  }
+  var _me = {id:Date.now()+Math.random(),tipo:'egreso',desc:'Gasto fijo — '+gf.nom+(origen==='bolsillo'?' · Del bolsillo':''),monto:monto,fecha:hoy(),metodo:'efectivo',origen:origen,cat:'GastoFijo',cajero:cajeroActual?cajeroActual.nombre:null};
   movimientos.unshift(_me); saveMovimiento(_me);
+  var gfCambio=false;
+  if(monto!==gf.monto){ gf.monto=monto; gfCambio=true; }
+  if(gf.repetir===false && !gf.pagadoDefinitivo){ gf.pagadoDefinitivo=true; gfCambio=true; }
+  if(gfCambio) saveGastoFijo(gf);
+  return true;
 }
 
 function gfPagadoEsteMes(id){
   return gastosFijosPagos.some(function(p){return String(p.gasto_fijo_id)===String(id);});
 }
 
+// Un gasto que NO se repite queda resuelto para siempre en cuanto se paga una
+// vez — si dependiera solo de gfPagadoEsteMes() volvería a aparecer como
+// pendiente el mes que viene, porque esa función solo mira el mes actual.
+function gfEstaPagado(gf){
+  if(gf.repetir===false) return !!gf.pagadoDefinitivo || gfPagadoEsteMes(gf.id);
+  return gfPagadoEsteMes(gf.id);
+}
+
 function toggleGFPago(id){
   const gf=gastosFijos.find(function(gf){return gf.id===id;});
   if(!gf) return;
-  if(gfPagadoEsteMes(id)){
+  if(gfEstaPagado(gf)){
     deshacerPagoGF(gf);
   } else {
     gfPagarId = id;
@@ -4328,8 +4358,8 @@ function toggleGFPago(id){
     var oc=el('gfpago-origen-caja'), ob=el('gfpago-origen-bolsillo');
     if(oc) oc.classList.add('on'); if(ob) ob.classList.remove('on');
     var mh = el('modal-gf-pagar-header');
-    if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+escapeHtml(gf.nom)+'</div>'
-      +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(gf.monto)+'</div>';
+    if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);">'+escapeHtml(gf.nom)+'</div>';
+    set('gfpago-monto','val',gf.monto);
     openModal('modal-gf-pagar');
   }
 }
@@ -4343,19 +4373,28 @@ function selOrigenPagoGF(origen, selEl){
 async function confirmarPagoGF(){
   const gf=gastosFijos.find(function(gf){return gf.id===gfPagarId;});
   if(!gf) return;
-  await registrarPagoGF(gf, origenPagoGF);
+  var montoReal = parseFloat(get('gfpago-monto'));
+  if(isNaN(montoReal) || montoReal<=0){ toast('Ingresá un monto válido','err'); return; }
+  var ok = await registrarPagoGF(gf, origenPagoGF, montoReal);
   closeModal('modal-gf-pagar');
   gfPagarId = null;
   renderDash(); await renderGastos();
-  toast('✅ Pagado');
+  if(ok) toast('✅ Pagado');
 }
 
+// Revierte un pago (incluso de un mes anterior, para el caso de un gasto que
+// no se repite) buscando en la nube en vez de confiar solo en el caché local
+// del mes actual — así el "↩" siempre encuentra y borra el pago real.
 async function deshacerPagoGF(gf){
-  var pagosDeEste = gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)===String(gf.id);});
-  for(var i=0;i<pagosDeEste.length;i++){
-    await supabaseClient.from('gastos_fijos_pagos').delete().eq('id',pagosDeEste[i].id);
+  if(supabaseClient && currentNegocioId){
+    var res = await supabaseClient.from('gastos_fijos_pagos').select('*').eq('negocio_id',currentNegocioId).eq('gasto_fijo_id',String(gf.id));
+    var todos = res.data || [];
+    for(var i=0;i<todos.length;i++){
+      await supabaseClient.from('gastos_fijos_pagos').delete().eq('id',todos[i].id);
+    }
   }
   gastosFijosPagos = gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)!==String(gf.id);});
+  if(gf.pagadoDefinitivo){ gf.pagadoDefinitivo=false; saveGastoFijo(gf); }
   renderDash(); await renderGastos();
   toast('↩ Marcado pendiente');
 }
@@ -8652,7 +8691,7 @@ function sincronizarStockLigero(){
 }
 
 function recalcularEstadoGastosFijos(){
-  gastosFijos.forEach(function(gf){ gf.estado = gfPagadoEsteMes(gf.id) ? 'pagado' : 'pendiente'; });
+  gastosFijos.forEach(function(gf){ gf.estado = gfEstaPagado(gf) ? 'pagado' : 'pendiente'; });
 }
 
 function guardarProductoNube(p){
