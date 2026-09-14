@@ -5513,18 +5513,24 @@ async function renderResumen(){
   // Gastos fijos: lo efectivamente pagado DENTRO de este período (movimiento
   // tipo egreso con cat:'GastoFijo'), no el total comprometido del mes actual
   // — antes mostraba siempre el mismo número sin importar qué mes mirabas.
-  const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso';});
+  // "Del bolsillo" no sale de la caja — se separa igual que en el resumen por
+  // día y en Cierre de Caja, para que Balance refleje la plata real de la caja
+  // y no se mezcle con gastos que el dueño pagó de su propio bolsillo.
+  const egresosSueltos=movsF.filter(function(m){return m.tipo==='egreso' && m.origen!=='bolsillo';});
+  const egresosBolsilloSueltos=movsF.filter(function(m){return m.tipo==='egreso' && m.origen==='bolsillo';});
   const esPagoFactura=function(m){ return m.desc && m.desc.indexOf('Pago factura ')===0; };
   const totalGF=egresosSueltos.filter(function(m){return m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
   const totalSueldos=totalSueldosSemanas!==null?totalSueldosSemanas:egresosSueltos.filter(function(m){return m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const factsPag=egresosSueltos.filter(function(m){return esPagoFactura(m);}).reduce(function(s,m){return s+(m.monto||0);},0);
   const totalOtrosEgresos=egresosSueltos.filter(function(m){return m.cat!=='Sueldos'&&m.cat!=='GastoFijo'&&!m.prodId&&!esPagoFactura(m);}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
+  const totalBolsillo=egresosBolsilloSueltos.reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   const totalEg=totalGF+factsPag+totalSueldos+totalOtrosEgresos;
   if(re)re.innerHTML='<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">'+fmtM(totalGF)+'</span></div>'
     +'<div class="fin-row"><span>🧾 Facturas pagadas</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(factsPag)+'</span></div>'
     +(totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">'+fmtM(totalSueldos)+'</span></div>':'')
     +(totalOtrosEgresos>0?'<div class="fin-row"><span>📤 Otros egresos</span><span style="font-family:DM Mono,monospace;color:var(--red);">'+fmtM(totalOtrosEgresos)+'</span></div>':'')
-    +'<div class="fin-total"><span class="fin-total-lbl">Total egresos</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>';
+    +'<div class="fin-total"><span class="fin-total-lbl">Total egresos (de la caja)</span><span class="fin-total-val" style="color:var(--red);">'+fmtM(totalEg)+'</span></div>'
+    +(totalBolsillo>0?'<div style="font-size:11px;color:var(--acc2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">💼 Pagado del bolsillo (no afecta la caja): <b>'+fmtM(totalBolsillo)+'</b></div>':'');
   const balance=totalCobrado-totalEg;
   const balColor=balance>=0?'var(--grn)':'var(--red)';
   if(rb)rb.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;padding:16px 0;">'
