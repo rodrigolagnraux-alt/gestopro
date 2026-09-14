@@ -5435,6 +5435,7 @@ async function renderGastos(){
 // ═══ RESUMEN HISTÓRICO ═══
 var resumenMesActual = new Date().getMonth();
 var resumenAnioActual = new Date().getFullYear();
+var resumenReqId = 0; // evita que una consulta vieja pise en pantalla el mes que se está mirando ahora
 
 function resumenNavMes(delta){
   resumenMesActual += delta;
@@ -5454,6 +5455,7 @@ function resumenIrHoy(){
   renderResumen();
 }
 async function renderResumen(){
+  var miReqId = ++resumenReqId;
   var desde = new Date(resumenAnioActual, resumenMesActual, 1);
   var hasta = new Date(resumenAnioActual, resumenMesActual + 1, 0);
   var desdeStr = desde.toISOString().slice(0,10);
@@ -5494,6 +5496,10 @@ async function renderResumen(){
     movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
     factsF = facturas.filter(function(f){ var fd=(f.fecha||'').slice(0,10); return fd>=desdeStr&&fd<=hastaStr; });
   }
+  // Si mientras esperábamos estas consultas el usuario ya navegó a otro mes,
+  // esta respuesta quedó vieja — no pisamos en pantalla el mes que se está
+  // mirando ahora con datos de un mes distinto.
+  if(miReqId !== resumenReqId) return;
   const cobros=movsF.filter(function(m){return m.tipo==='cobro';});
   const totalCobrado=cobros.reduce(function(s,m){return s+(m.monto||0);},0);
   const ef=cobros.filter(function(m){return m.metodo==='efectivo';}).reduce(function(s,m){return s+m.monto;},0);
