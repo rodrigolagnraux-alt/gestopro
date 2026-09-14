@@ -631,12 +631,12 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="plan-card" onclick="closeModal('modal-plan')" style="opacity:0.7;cursor:default;">
       <div class="pc-name">🆓 Gratis</div>
       <div class="pc-price" style="font-size:13px;color:var(--mut2);">30 días gratis</div>
-      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li><li>Fiado (crédito clientes)</li><li>Tienda Online + reparto</li><li>Insumos y recetas</li></ul>
+      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li><li>Fiado (crédito clientes)</li><li>Gastos fijos</li><li>Tienda Online + reparto</li><li>Insumos y recetas</li></ul>
     </div>
     <div class="plan-card" onclick="irAPaywall()">
       <div class="pc-name">💛 Básico</div>
       <div class="pc-price">$60.000 <span>/mes</span></div>
-      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas de proveedores</li><li>Gastos fijos</li><li>Resumen financiero</li><li>Flujo financiero completo</li></ul>
+      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas de proveedores</li><li>Resumen financiero</li><li>Flujo financiero completo</li></ul>
     </div>
     <div class="plan-card rec" onclick="irAPaywall()">
       <div class="pc-name">🟠 Pro</div>
@@ -1543,7 +1543,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="sb-sec">
     <div class="sb-lbl">Finanzas</div>
     <div class="sb-i" id="sb-facturas" onclick="goLocked('facturas',this,'basico')"><span class="sb-ico">🧾</span>Facturas<span class="sb-lock" id="lock-facturas">🔒</span></div>
-    <div class="sb-i" id="sb-gastos" onclick="goLocked('gastos',this,'basico')"><span class="sb-ico">💡</span>Gastos Fijos<span class="sb-lock" id="lock-gastos">🔒</span></div>
+    <div class="sb-i" id="sb-gastos" onclick="go('gastos',this)"><span class="sb-ico">💡</span>Gastos Fijos</div>
     <div class="sb-i" id="sb-fiado" onclick="go('fiado',this)"><span class="sb-ico">🤝</span>Fiado<span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
     <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
@@ -1601,7 +1601,7 @@ select.fi{appearance:none;cursor:pointer;}
       <div class="action-lbl">Factura</div>
       <div class="action-sub">Cargar proveedor</div>
     </div>
-    <div class="action-btn gasto" onclick="goLocked('gastos',null,'basico');openModal('modal-gf')">
+    <div class="action-btn gasto" onclick="openModal('modal-gf')">
       <div class="action-ico">💡</div>
       <div class="action-lbl">Gasto fijo</div>
       <div class="action-sub">Luz, agua, gas...</div>
@@ -2530,7 +2530,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',gastos:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
+const LOCKS={facturas:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
