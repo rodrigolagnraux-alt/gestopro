@@ -4302,9 +4302,14 @@ async function guardarGF(){
   gastosFijos.push(_gf);
   ['gf-nom','gf-monto','gf-dia'].forEach(function(id){set(id,'val','');});
   closeModal('modal-gf'); saveGastoFijo(_gf);
-  if(marcarPagado) await registrarPagoGF(_gf,'caja',monto);
   renderDash(); await renderGastos();
-  toast('💡 Gasto fijo guardado ✓');
+  if(marcarPagado){
+    // No asumimos "de la caja": si ya lo pagaste (p.ej. al configurar la app
+    // a mitad de mes), preguntamos de dónde salió igual que un pago normal.
+    abrirModalPagoGF(_gf);
+  } else {
+    toast('💡 Gasto fijo guardado ✓');
+  }
 }
 
 // Un pago real de un gasto fijo — se guarda con fecha en gastos_fijos_pagos
@@ -4347,20 +4352,24 @@ function gfEstaPagado(gf){
   return gfPagadoEsteMes(gf.id);
 }
 
+function abrirModalPagoGF(gf){
+  gfPagarId = gf.id;
+  origenPagoGF = 'caja';
+  var oc=el('gfpago-origen-caja'), ob=el('gfpago-origen-bolsillo');
+  if(oc) oc.classList.add('on'); if(ob) ob.classList.remove('on');
+  var mh = el('modal-gf-pagar-header');
+  if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);">'+escapeHtml(gf.nom)+'</div>';
+  set('gfpago-monto','val',gf.monto);
+  openModal('modal-gf-pagar');
+}
+
 function toggleGFPago(id){
   const gf=gastosFijos.find(function(gf){return gf.id===id;});
   if(!gf) return;
   if(gfEstaPagado(gf)){
     deshacerPagoGF(gf);
   } else {
-    gfPagarId = id;
-    origenPagoGF = 'caja';
-    var oc=el('gfpago-origen-caja'), ob=el('gfpago-origen-bolsillo');
-    if(oc) oc.classList.add('on'); if(ob) ob.classList.remove('on');
-    var mh = el('modal-gf-pagar-header');
-    if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);">'+escapeHtml(gf.nom)+'</div>';
-    set('gfpago-monto','val',gf.monto);
-    openModal('modal-gf-pagar');
+    abrirModalPagoGF(gf);
   }
 }
 
@@ -4399,13 +4408,15 @@ async function deshacerPagoGF(gf){
   toast('↩ Marcado pendiente');
 }
 function eliminarGF(id){
-  if(!confirm('¿Eliminar?'))return;
+  if(!confirm('¿Eliminar? Los pagos que ya registraste de este gasto quedan en el historial (Movimientos), solo se borra el gasto en sí.'))return;
   gastosFijos=gastosFijos.filter(function(gf){return gf.id!==id;});
-  gastosFijosPagos=gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)!==String(id);});
+  // Los pagos (gastos_fijos_pagos) NO se borran de la nube — son historial real
+  // de plata que salió; solo los sacamos del caché local del mes actual porque
+  // ya no hay un gasto fijo visible al que asociarlos en pantalla.
+  gastosFijosPagos = gastosFijosPagos.filter(function(p){return String(p.gasto_fijo_id)!==String(id);});
   saveState();
   if(supabaseClient&&currentNegocioId){
     supabaseClient.from('gastos_fijos').delete().eq('id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});
-    supabaseClient.from('gastos_fijos_pagos').delete().eq('gasto_fijo_id',String(id)).eq('negocio_id',currentNegocioId).then(function(){});
   }
   renderGastos();renderDash();toast('Eliminado');
 }
