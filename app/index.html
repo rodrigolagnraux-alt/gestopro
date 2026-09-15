@@ -3679,7 +3679,7 @@ async function cargarSelectorFiado(){
     sel.innerHTML = '<option value="">— Sin conexión —</option>';
     return;
   }
-  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
+  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite,es_consumo_propio').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
   fiados = res.data || [];
   if(!fiados.length){
     sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
@@ -3815,6 +3815,7 @@ function confirmarCobro(){
   var prods=[];
   var detalleFiado=[];
   var detalleEmpleado=[];
+  var costoTotalFiado=0;
   lineasCobro.forEach(function(l){
     var prod=productos.find(function(p){return p.id==l.prodId;});
     if(prod&&l.cant>0){
@@ -3824,6 +3825,7 @@ function confirmarCobro(){
       prods.push(l.cant+' '+um+' '+prod.nom);
       if(pagoActual==='fiado'){
         detalleFiado.push({prodId:prod.id,nom:prod.nom,cant:l.cant,um:um,precioVenta:prod.pventa||prod.precio||0});
+        costoTotalFiado += (prod.precio||0)*l.cant;
       }
       if(pagoActual==='empleado'){
         detalleEmpleado.push({nom:prod.nom,cant:l.cant,precio_unit:prod.pventa||prod.precio||0,total:l.cant*(prod.pventa||prod.precio||0)});
@@ -3842,6 +3844,14 @@ function confirmarCobro(){
     descFinal='🤝 '+nomFiado+' · '+descFinal;
     // Guardar en Supabase de forma asíncrona
     registrarFiadoCliente(fSel2, monto, descFinal, detalleFiado);
+    // Consumo propio no es un cliente real: la "deuda" de arriba es solo un
+    // registro interno (fiados_movimientos) que Flujo Financiero/Cierre Mensual
+    // no ven. Sin esto, lo que el dueño se lleva quedaba sin costo en ningún
+    // lado y la ganancia salía inflada.
+    if(cfLocal && cfLocal.es_consumo_propio && costoTotalFiado>0){
+      var _mcp2={id:Date.now()+Math.random(),tipo:'egreso',cat:'ConsumoPropio',desc:'🏠 Consumo propio — '+prods.join(' · '),monto:costoTotalFiado,fecha:hoy(),cajero:cajeroActual?cajeroActual.nombre:null};
+      movimientos.unshift(_mcp2); saveMovimiento(_mcp2);
+    }
   }
 
   // Registrar en empleado
@@ -6153,6 +6163,16 @@ async function guardarConsumoPropioInsumo(){
   var detalle = [{ insumoId:i.id, nom:i.nombre, cant:cant, um:i.um||'UN', precioVenta:valorUnit }];
   await registrarFiadoCliente(r.id, monto, '🏠 Consumo propio — '+cant+' '+(i.um||'UN')+' de '+i.nombre, detalle);
 
+  // La cuenta de Fiado de arriba es solo un registro interno — sin esto, lo
+  // que el dueño se lleva para uso personal no tenía costo en ningún lado y
+  // Flujo Financiero/Cierre Mensual mostraban una ganancia inflada.
+  var costoUnit = costoUnitarioInsumo(i);
+  var montoCosto = costoUnit*cant;
+  if(montoCosto>0){
+    var _mcp = {id:Date.now()+Math.random(),tipo:'egreso',cat:'ConsumoPropio',desc:'🏠 Consumo propio — '+cant+' '+(i.um||'UN')+' de '+i.nombre,monto:montoCosto,fecha:hoy(),cajero:cajeroActual?cajeroActual.nombre:null};
+    movimientos.unshift(_mcp); saveMovimiento(_mcp);
+  }
+
   closeModal('modal-insumo-consumo-propio');
   var msg = '🏠 Registrado: '+cant+' '+(i.um||'UN')+' de '+i.nombre;
   if(r.creada) msg += ' · Se creó la cuenta de consumo propio';
@@ -7752,13 +7772,14 @@ async function renderFinanzas(){
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalCostoInsumos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalComisionReparto = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='ComisionReparto';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalConsumoPropio = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='ConsumoPropio';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var factPend = factsF.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida';});
   var totalPend = factPend.reduce(function(s,f){return s+f.monto;},0);
-  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto;
+  var ganancia = totalVentas - totalCompras - totalGF - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto - totalConsumoPropio;
 
   if(kEl) kEl.innerHTML =
     '<div class="kpi kg"><div class="kl">VENTAS</div><div class="kn" style="font-size:20px;">'+fmtM(totalVentas)+'</div><div class="kd">cobrado</div></div>'+
-    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados+totalCostoInsumos+totalComisionReparto)+'</div><div class="kd">total egresos</div></div>'+
+    '<div class="kpi kr"><div class="kl">COMPRAS + GASTOS</div><div class="kn" style="font-size:20px;">'+fmtM(totalCompras+totalGF+totalSueldos+totalMercEmpleados+totalCostoInsumos+totalComisionReparto+totalConsumoPropio)+'</div><div class="kd">total egresos</div></div>'+
     '<div class="kpi '+(ganancia>=0?'kg':'kr')+'"><div class="kl">GANANCIA REAL</div><div class="kn" style="font-size:20px;">'+fmtM(Math.abs(ganancia))+'</div><div class="kd">'+(ganancia>=0?'positivo':'negativo')+'</div></div>';
 
   var rEl = el('fin-resultado');
@@ -7770,6 +7791,7 @@ async function renderFinanzas(){
     '<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
     (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
+    (totalConsumoPropio>0?'<div class="fin-row"><span>🏠 Consumo propio</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalConsumoPropio)+'</span></div>':'')+
     '<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Pérdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>'+
     // Separado del listado de arriba (no lleva "-" ni entra en la resta):
     // es plata que todavía no salió, para que no se lea como ya descontada.
@@ -7853,10 +7875,8 @@ async function renderCierreMensual(){
   if(!totalCompras) totalCompras = factsF.filter(function(f){return f.estado==='pagada'||f.estado==='parcial';}).reduce(function(s,f){return s+(f.monto_pagado||f.monto||0);},0);
 
   var egresos = movsF.filter(function(m){return m.tipo==='egreso';});
-  // El cierre mensual de consumo propio se registra con cat:'GastoFijo' pero
-  // origen:'cierre_mensual' — se separa acá para no mezclarlo con gastos fijos reales.
-  var totalGF = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen!=='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
-  var totalConsumoPropio = egresos.filter(function(m){return m.cat==='GastoFijo' && m.origen==='cierre_mensual';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalGF = egresos.filter(function(m){return m.cat==='GastoFijo';}).reduce(function(s,m){return s+(m.monto||0);},0);
+  var totalConsumoPropio = egresos.filter(function(m){return m.cat==='ConsumoPropio';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalMercEmpleados = movsF.filter(function(m){return m.tipo==='empleado';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalCostoInsumos = egresos.filter(function(m){return m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalComisionReparto = egresos.filter(function(m){return m.cat==='ComisionReparto';}).reduce(function(s,m){return s+(m.monto||0);},0);
