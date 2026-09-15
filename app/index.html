@@ -1559,7 +1559,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="sb-sec">
     <div class="sb-lbl">Mi Negocio</div>
     <div class="sb-i" id="sb-empleados" onclick="goConPin('empleados',this,'business')"><span class="sb-ico">👥</span>Empleados<span class="sb-lock" id="lock-empleados">🔒</span></div>
-    <div class="sb-i" id="sb-facturacion" onclick="go('facturacion',this)"><span class="sb-ico">🧾</span>Facturación electrónica</div>
+    <div class="sb-i" id="sb-facturacion" onclick="goLocked('facturacion',this,'pro')"><span class="sb-ico">🧾</span>Facturación electrónica<span class="sb-lock" id="lock-facturacion">🔒</span></div>
   </div>
   <div class="sb-foot">
     <div class="plan-box">
@@ -2539,7 +2539,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro'};
+const LOCKS={facturas:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro',facturacion:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
@@ -3638,8 +3638,9 @@ function selPago(tipo,selEl){
   pagoActual=tipo;
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
-  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && tipo!=='empleado' && PLAN_N[nivelAcceso()]<PLAN_N['basico'];
-  if(needBasico){ toast('Cuenta DNI y Mercado Pago disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
+  // Cuenta DNI y Mercado Pago son solo una etiqueta de dónde entró la plata —
+  // GestoPro no la toca ni la procesa, así que no tiene sentido que dependan
+  // de ningún plan. Libre para todos, igual que Efectivo.
   const needPremium=tipo==='empleado' && PLAN_N[nivelAcceso()]<PLAN_N['business'];
   if(needPremium){ toast('Cargo a empleado disponible en Plan Premium','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
