@@ -2516,6 +2516,12 @@ function escapeHtml(str){ return String(str===null||str===undefined?'':str).repl
 let productos=[], movimientos=[], facturas=[], gastosFijos=[], fiados=[];
 let config={nombre:'Mi Negocio',alias:'mi.negocio.mp',cvu:'0000003100012345678901',recargoDomingo:50};
 let planActual='gratis';
+// Durante el trial (plan==='gratis' y todavía no venció), dejamos ver casi
+// toda la app como si fuera Plan Pro — es el gancho para que se enganchen con
+// la herramienta real y no con una versión recortada. Al vencer, ya no llega
+// a usar nada de esto: verificarAccesoNegocio() manda directo al paywall.
+let trialActivo=false;
+function nivelAcceso(){ return (planActual==='gratis' && trialActivo) ? 'pro' : planActual; }
 let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
 var cajeroActual = null; // {id, nombre, esDueno}
@@ -2670,7 +2676,7 @@ function go(id,navEl){
   renderPage(id);
 }
 function goLocked(id,navEl,req){
-  if(PLAN_N[planActual]>=PLAN_N[req]) go(id,navEl);
+  if(PLAN_N[nivelAcceso()]>=PLAN_N[req]) go(id,navEl);
   else{ openModal('modal-plan'); toast('Función disponible en '+(PLANES[req]?PLANES[req].nombre:req),'err'); }
 }
 function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggle('on'); }
@@ -3632,9 +3638,9 @@ function selPago(tipo,selEl){
   pagoActual=tipo;
   document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('on');});
   if(selEl) selEl.classList.add('on');
-  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && tipo!=='empleado' && PLAN_N[planActual]<PLAN_N['basico'];
+  const needBasico=tipo!=='efectivo' && tipo!=='fiado' && tipo!=='empleado' && PLAN_N[nivelAcceso()]<PLAN_N['basico'];
   if(needBasico){ toast('Cuenta DNI y Mercado Pago disponibles en Plan Básico','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
-  const needPremium=tipo==='empleado' && PLAN_N[planActual]<PLAN_N['business'];
+  const needPremium=tipo==='empleado' && PLAN_N[nivelAcceso()]<PLAN_N['business'];
   if(needPremium){ toast('Cargo a empleado disponible en Plan Premium','err'); const pm=el('pm-efectivo');if(pm)selPago('efectivo',pm); return; }
   set('pago-efectivo','display',tipo==='efectivo'?'block':'none');
   set('pago-cuentadni','display',tipo==='cuentadni'?'block':'none');
@@ -4584,7 +4590,7 @@ function guardarProd(){
     toast('📓 Producto actualizado ✓');
     return;
   }
-  if(planActual==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
+  if(nivelAcceso()==='gratis'&&productos.length>=50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   var nuevoProd={id:Date.now(),cod:cod||('PRD'+String(productos.length+1).padStart(3,'0')),nom:nom,cat:pcat?pcat.value:'Otro',stock:stockVal,um:pum?pum.value:'UN',precio:precioVal,pventa:pventaVal,min:minVal,max:maxVal,prov:get('p-prov')==='__nuevo_prov__'?'':get('p-prov').trim(),plu:plu||null};
   productos.push(nuevoProd);
   if(prodNuevoDesdeLinea!==null){
@@ -5009,7 +5015,7 @@ function intentarImportarIA(){
 
 async function confirmarImport(){
   if(importDestino==='insumos'){ await confirmarImportInsumos(); return; }
-  if(planActual==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
+  if(nivelAcceso()==='gratis'&&productos.length+pendingImport.length>50){toast('Plan Gratis: máx 50 productos','err');openModal('modal-plan');return;}
   var actualizados=0, nuevos=0;
   pendingImport.forEach(function(imp){
     var existente = productos.find(function(p){
@@ -8671,6 +8677,7 @@ function verificarAccesoNegocio(negocio){
     return true;
   }
   if(['basico','pro','business'].includes(negocio.plan)){
+    trialActivo = false;
     var venc = negocio.plan_vencimiento ? new Date(negocio.plan_vencimiento+'T23:59:59') : null;
     if(venc){
       var finGracia = new Date(venc);
@@ -8699,9 +8706,11 @@ function verificarAccesoNegocio(negocio){
   var diasTrial = negocio.trial_dias || 35;
   var diasRestantes = diasTrial - diasTranscurridos;
   if(diasRestantes <= 0){
+    trialActivo = false;
     irAPaywall();
     return true;
   }
+  trialActivo = true;
   if(diasRestantes <= 5){
     setTimeout(function(){ toast('⚠️ Te quedan '+diasRestantes+' día'+(diasRestantes!==1?'s':'')+' de prueba'); }, 1500);
   }
@@ -9582,9 +9591,9 @@ function initAppData(){
         set('plan-chip','text',pl2.nombre);
         set('plan-name-sb','text',pl2.nombre);
         set('plan-sub-sb','text',pl2.sub);
-        Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
+        Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[nivelAcceso()]>=PLAN_N[req]?'none':''; });
         var lockWraps2 = {pventa:'pro', oc:'business'};
-        Object.keys(lockWraps2).forEach(function(mod){ var wrap=el(mod+'-lock-wrap'); if(wrap) wrap.style.display=PLAN_N[planActual]>=PLAN_N[lockWraps2[mod]]?'none':''; });
+        Object.keys(lockWraps2).forEach(function(mod){ var wrap=el(mod+'-lock-wrap'); if(wrap) wrap.style.display=PLAN_N[nivelAcceso()]>=PLAN_N[lockWraps2[mod]]?'none':''; });
       }
     });
   }
@@ -9597,12 +9606,12 @@ function initAppData(){
   set('alias-mp-display','text',config.alias||'—');
   set('cvu-mp-display','text',config.cvu||'—');
   poblarFormConfig();
-  Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[planActual]>=PLAN_N[req]?'none':''; });
+  Object.keys(LOCKS).forEach(function(mod){ var req=LOCKS[mod]; var lk=el('lock-'+mod); if(lk)lk.style.display=PLAN_N[nivelAcceso()]>=PLAN_N[req]?'none':''; });
   // Ocultar overlays internos de secciones bloqueadas según plan
   var lockWraps = {pventa:'pro', oc:'business'};
   Object.keys(lockWraps).forEach(function(mod){
     var wrap = el(mod+'-lock-wrap');
-    if(wrap) wrap.style.display = PLAN_N[planActual]>=PLAN_N[lockWraps[mod]] ? 'none' : '';
+    if(wrap) wrap.style.display = PLAN_N[nivelAcceso()]>=PLAN_N[lockWraps[mod]] ? 'none' : '';
   });
   var uz=el('upload-z');
   if(uz){ uz.addEventListener('dragover',function(e){e.preventDefault();uz.style.borderColor='var(--acc)';}); uz.addEventListener('dragleave',function(){uz.style.borderColor='';}); uz.addEventListener('drop',function(e){e.preventDefault();uz.style.borderColor='';handleFile(e.dataTransfer.files[0]);}); }
@@ -9650,7 +9659,7 @@ var pinSesionDesbloqueada = {};
 
 function goConPin(id, navEl, req) {
   // Si ya tiene el plan necesario
-  if(PLAN_N[planActual] < PLAN_N[req]) {
+  if(PLAN_N[nivelAcceso()] < PLAN_N[req]) {
     openModal('modal-plan');
     toast('Función disponible en ' + (PLANES[req] ? PLANES[req].nombre : req), 'err');
     return;
