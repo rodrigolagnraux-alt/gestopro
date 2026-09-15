@@ -7684,6 +7684,7 @@ function updPrecioCorne(prodId, val){
 // ═══ FLUJO FINANCIERO HISTÓRICO ═══
 var finMesActual = new Date().getMonth();
 var finAnioActual = new Date().getFullYear();
+var finReqId = 0; // evita que una consulta vieja pise en pantalla el mes que se está mirando ahora
 
 function finNavMes(delta){
   finMesActual += delta;
@@ -7703,6 +7704,7 @@ function finIrHoy(){
 function setFinPeriod(p,btn){ /* legacy no-op */ }
 
 async function renderFinanzas(){
+  var miReqId = ++finReqId;
   var desde = new Date(finAnioActual, finMesActual, 1);
   var hasta = new Date(finAnioActual, finMesActual + 1, 0);
   var desdeStr = desde.toISOString().slice(0,10);
@@ -7736,6 +7738,10 @@ async function renderFinanzas(){
     factsF = facturas.filter(function(f){var fd=(f.fecha||'').slice(0,10);return fd>=desdeStr&&fd<=hastaStr;});
     totalSueldos = movsF.filter(function(m){return m.tipo==='egreso'&&m.cat==='Sueldos';}).reduce(function(s,m){return s+(m.total||m.monto||0);},0);
   }
+  // Si mientras esperábamos estas consultas el usuario ya navegó a otro mes,
+  // esta respuesta quedó vieja — no pisamos en pantalla el mes actual con
+  // datos de un mes distinto.
+  if(miReqId !== finReqId) return;
 
   var cobros = movsF.filter(function(m){return m.tipo==='cobro';});
   var totalVentas = cobros.reduce(function(s,m){return s+(m.monto||0);},0);
@@ -7764,8 +7770,10 @@ async function renderFinanzas(){
     '<div class="fin-row"><span>💡 Gastos fijos</span><span style="font-family:DM Mono,monospace;color:var(--pur);">-'+fmtM(totalGF)+'</span></div>'+
     (totalSueldos>0?'<div class="fin-row"><span>👥 Sueldos empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalSueldos)+'</span></div>':'')+
     (totalMercEmpleados>0?'<div class="fin-row"><span>🛒 Mercadería empleados</span><span style="font-family:DM Mono,monospace;color:var(--acc2);">-'+fmtM(totalMercEmpleados)+'</span></div>':'')+
-    (totalPend>0?'<div class="fin-row"><span>⏳ Facturas pendientes</span><span style="font-family:DM Mono,monospace;color:var(--yel);">'+fmtM(totalPend)+'</span></div>':'')+
-    '<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Pérdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>';
+    '<div class="fin-total"><span class="fin-total-lbl">'+(ganancia>=0?'✓ Ganancia':'⚠️ Pérdida')+'</span><span class="fin-total-val" style="color:'+(ganancia>=0?'var(--grn)':'var(--red)')+';">'+(ganancia>=0?'':'-')+fmtM(Math.abs(ganancia))+'</span></div>'+
+    // Separado del listado de arriba (no lleva "-" ni entra en la resta):
+    // es plata que todavía no salió, para que no se lea como ya descontada.
+    (totalPend>0?'<div style="font-size:11px;color:var(--yel);margin-top:8px;padding-top:8px;border-top:1px dashed var(--brd);">⏳ Facturas pendientes de pago (todavía no descontado de la ganancia): <b>'+fmtM(totalPend)+'</b></div>':'');
 
 
   var dEl = el('fin-detalle');
@@ -7788,6 +7796,7 @@ async function renderFinanzas(){
 // ═══ CIERRE MENSUAL ═══
 var cierreMesActual = new Date().getMonth();
 var cierreAnioActual = new Date().getFullYear();
+var cierreReqId = 0; // evita que una consulta vieja pise en pantalla el mes que se está mirando ahora
 
 function cierreNavMes(delta){
   cierreMesActual += delta;
@@ -7809,6 +7818,7 @@ function cierreIrHoy(){
 // (no hay un "snapshot" congelado) — igual que Resumen/Finanzas, navegar a un mes
 // pasado simplemente reaplica el mismo cálculo sobre ese rango de fechas.
 async function renderCierreMensual(){
+  var miReqId = ++cierreReqId;
   var desde = new Date(cierreAnioActual, cierreMesActual, 1);
   var hasta = new Date(cierreAnioActual, cierreMesActual + 1, 0);
   var desdeStr = desde.toISOString().slice(0,10);
@@ -7832,6 +7842,10 @@ async function renderCierreMensual(){
   var movsF = rm.data || [];
   var rf = await supabaseClient.from('facturas_v2').select('monto,monto_pagado,estado').eq('negocio_id',currentNegocioId).gte('fecha',desdeStr).lte('fecha',hastaStr);
   var factsF = rf.data || [];
+  // Si mientras esperábamos estas consultas el usuario ya navegó a otro mes,
+  // esta respuesta quedó vieja — no pisamos en pantalla el mes actual con
+  // datos de un mes distinto.
+  if(miReqId !== cierreReqId) return;
 
   var totalVentas = movsF.filter(function(m){return m.tipo==='cobro';}).reduce(function(s,m){return s+(m.monto||0);},0);
 
@@ -7857,6 +7871,7 @@ async function renderCierreMensual(){
 
   var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto;
 
+  if(miReqId !== cierreReqId) return;
   if(cEl) cEl.innerHTML =
     '<div class="fin-row"><span>💚 Ventas cobradas</span><span style="font-family:DM Mono,monospace;color:var(--grn);">'+fmtM(totalVentas)+'</span></div>'+
     '<div class="fin-row"><span>📦 Compras de mercadería</span><span style="font-family:DM Mono,monospace;color:var(--red);">-'+fmtM(totalCompras)+'</span></div>'+
