@@ -629,24 +629,24 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="modal-s">Empezá gratis · Desbloqueá funciones cuando las necesites</div>
   <div class="plans-grid">
     <div class="plan-card" onclick="closeModal('modal-plan')" style="opacity:0.7;cursor:default;">
-      <div class="pc-name">🆓 Gratis</div>
-      <div class="pc-price" style="font-size:13px;color:var(--mut2);">30 días gratis</div>
-      <ul class="pc-feats"><li>50 productos</li><li>Stock básico</li><li>Movimientos</li><li>Cobrar en efectivo</li><li>Fiado (crédito clientes)</li><li>Gastos fijos</li><li>Tienda Online + reparto</li><li>Insumos y recetas</li></ul>
+      <div class="pc-name">🆓 Prueba gratis</div>
+      <div class="pc-price" style="font-size:13px;color:var(--mut2);">35 días, sin tarjeta</div>
+      <ul class="pc-feats"><li>Acceso completo a Básico y Pro</li><li>Sin límite de productos</li><li>Elegís tu plan cuando termine</li></ul>
     </div>
     <div class="plan-card" onclick="irAPaywall()">
       <div class="pc-name">💛 Básico</div>
       <div class="pc-price">$60.000 <span>/mes</span></div>
-      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar QR y transferencia</li><li>Facturas de proveedores</li><li>Resumen financiero</li><li>Flujo financiero completo</li></ul>
+      <ul class="pc-feats"><li>Productos ilimitados</li><li>Cobrar en efectivo, QR, transferencia</li><li>Fiado y gastos fijos</li><li>Facturas de proveedores</li><li>Resumen financiero</li></ul>
     </div>
     <div class="plan-card rec" onclick="irAPaywall()">
       <div class="pc-name">🟠 Pro</div>
       <div class="pc-price">$75.000 <span>/mes</span></div>
-      <ul class="pc-feats"><li>Todo lo del Básico</li><li>Punto de venta con código de barras</li><li>IA para leer facturas</li><li>Reportes avanzados</li></ul>
+      <ul class="pc-feats"><li>Todo lo del Básico</li><li>Facturación electrónica AFIP</li><li>Flujo Financiero (ganancia real)</li><li>Cierre Mensual</li><li>Pedidos a proveedores</li><li>Punto de venta con código de barras</li></ul>
     </div>
     <div class="plan-card" onclick="irAPaywall()">
       <div class="pc-name">⭐ Premium</div>
       <div class="pc-price">$120.000 <span>/mes</span></div>
-      <ul class="pc-feats"><li>Todo lo del Pro</li><li>Gestión de empleados</li><li>Control de sueldos semanales</li><li>Mercadería descontada del sueldo</li><li>Órdenes de compra</li><li>Soporte prioritario</li></ul>
+      <ul class="pc-feats"><li>Todo lo del Pro</li><li>Gestión de empleados</li><li>Control de sueldos semanales</li><li>Comisión de reparto</li><li>Órdenes de compra</li></ul>
     </div>
   </div>
   <div class="btn-row"><button class="btn btn-ghost" onclick="closeModal('modal-plan')">Cerrar</button></div>
@@ -1546,8 +1546,8 @@ select.fi{appearance:none;cursor:pointer;}
     <div class="sb-i" id="sb-gastos" onclick="go('gastos',this)"><span class="sb-ico">💡</span>Gastos Fijos</div>
     <div class="sb-i" id="sb-fiado" onclick="go('fiado',this)"><span class="sb-ico">🤝</span>Fiado<span class="sb-badge" id="sb-fiado-badge" style="display:none;">!</span></div>
     <div class="sb-i" id="sb-resumen" onclick="goConPin('resumen',this,'basico')"><span class="sb-ico">📊</span>Resumen<span class="sb-lock" id="lock-resumen">🔒</span></div>
-    <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'basico')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
-    <div class="sb-i" id="sb-cierremensual" onclick="goConPin('cierremensual',this,'basico')"><span class="sb-ico">📅</span>Cierre Mensual<span class="sb-lock" id="lock-cierremensual">🔒</span></div>
+    <div class="sb-i" id="sb-finanzas" onclick="goConPin('finanzas',this,'pro')"><span class="sb-ico">💰</span>Flujo Financiero<span class="sb-lock" id="lock-finanzas">🔒</span></div>
+    <div class="sb-i" id="sb-cierremensual" onclick="goConPin('cierremensual',this,'pro')"><span class="sb-ico">📅</span>Cierre Mensual<span class="sb-lock" id="lock-cierremensual">🔒</span></div>
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Avanzado</div>
@@ -2539,7 +2539,7 @@ const PLANES={
   business: {nombre:'Plan Premium',  sub:'$120.000/mes',        precio:'$120.000',  maxP:99999}
 };
 const PLAN_N={gratis:0,basico:1,pro:2,business:3};
-const LOCKS={facturas:'basico',resumen:'basico',finanzas:'basico',cierremensual:'basico',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro',facturacion:'pro'};
+const LOCKS={facturas:'basico',resumen:'basico',finanzas:'pro',cierremensual:'pro',pventa:'pro',oc:'business',empleados:'business',pedidos:'pro',facturacion:'pro'};
 
 // ═══ DEMO ═══
 function cargarDemo(){
