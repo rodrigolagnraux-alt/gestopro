@@ -2353,9 +2353,12 @@ select.fi{appearance:none;cursor:pointer;}
 
   <!-- MANUAL FALLBACK -->
   <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--mut2);margin-bottom:8px;font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;">¿La cámara no lo lee? Escribilo manualmente</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:1px;">¿La cámara no lo lee? Escribilo manualmente</div>
+      <button class="btn btn-ghost btn-sm" id="scanner-usb-btn" onclick="activarModoLectorUSB()" style="font-size:10px;padding:4px 8px;white-space:nowrap;">🔌 Lector USB</button>
+    </div>
     <div style="display:flex;gap:8px;">
-      <input class="fi" id="scanner-manual" type="text" placeholder="Código de barras o nombre del producto" style="flex:1;" oninput="buscarProductoScannerConBalanza()">
+      <input class="fi" id="scanner-manual" type="text" placeholder="Código de barras o nombre del producto" style="flex:1;" oninput="buscarProductoScannerConBalanza()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarScannerEnter();}">
       <button class="btn btn-acc btn-sm" onclick="confirmarScannerManual()">Buscar</button>
     </div>
   </div>
@@ -7092,6 +7095,7 @@ var scannerStream = null;
 var scannerCallback = null; // 'ingreso' or 'cobro'
 var scannerFoundProd = null;
 var scannerInterval = null;
+var scannerModoUSB = false; // true cuando se activó "Lector USB" — no usa cámara, mantiene el foco en el campo manual entre escaneo y escaneo
 
 function escanearParaNuevoProducto(){
   scannerCallback = 'nuevo-producto';
@@ -7110,6 +7114,8 @@ function escanearParaNuevoProducto(){
 function abrirScanner(callback){
   scannerCallback = callback;
   scannerFoundProd = null;
+  scannerModoUSB = false;
+  set('scanner-cam-wrap','display','block');
   set('scanner-manual','val','');
   set('scanner-cant','val','');
   set('scanner-found','display','none');
@@ -7186,6 +7192,32 @@ function escanearFrame(){
 function detenerCamara(){
   if(scannerInterval){ clearInterval(scannerInterval); scannerInterval=null; }
   if(scannerStream){ scannerStream.getTracks().forEach(function(t){t.stop();}); scannerStream=null; }
+}
+
+// Para cuando hay un lector de código de barras USB conectado (la "pistolita")
+// — no hace falta la cámara, y el lector solo funciona si el campo de texto
+// está enfocado (manda las teclas del código como si fuera un teclado). No
+// intentamos adivinar si el dispositivo es compu o celu: es un botón que la
+// persona toca a propósito solo si sabe que tiene un lector conectado — en el
+// celu nadie lo va a tocar, y la cámara sigue funcionando igual que siempre.
+function activarModoLectorUSB(){
+  scannerModoUSB = true;
+  detenerCamara();
+  set('scanner-cam-wrap','display','none');
+  var inp = el('scanner-manual');
+  if(inp) inp.focus();
+  toast('🔌 Listo — escaneá con tu lector, se va agregando solo');
+}
+
+// Enter en el campo manual — lo manda tanto un lector USB al terminar de leer
+// un código como alguien que tipeó el código/nombre a mano y confirma. Si ya
+// hay un producto encontrado SIN ambigüedad (el buscador de arriba ya se
+// encargó de eso), se agrega directo; si es ambiguo o no se encontró nada,
+// no hace nada raro — la persona sigue escribiendo o elige de la lista.
+function confirmarScannerEnter(){
+  if(!scannerFoundProd) return;
+  if(scannerCallback==='cobro' && !get('scanner-cant')){ set('scanner-cant','val','1'); }
+  confirmarScanner();
 }
 
 function cerrarScanner(){
@@ -7441,7 +7473,7 @@ function confirmarScanner(){
     else { lineasCobro.push({id:Date.now(),prodId:scannerFoundProd.id,cant:cant}); }
     renderLineasCobro();
     toast('✓ '+cant+' '+um+' de '+scannerFoundProd.nom+' agregado');
-    // Reabrir cámara para el siguiente producto
+    // Listo para el siguiente producto
     scannerFoundProd = null;
     set('scanner-manual','val','');
     set('scanner-cant','val','');
@@ -7449,8 +7481,13 @@ function confirmarScanner(){
     set('scanner-not-found','display','none');
     set('scanner-results','display','none');
     set('scanner-confirm-btn','display','none');
-    detenerCamara();
-    iniciarCamara();
+    if(scannerModoUSB){
+      var inpUSB = el('scanner-manual');
+      if(inpUSB) inpUSB.focus();
+    } else {
+      detenerCamara();
+      iniciarCamara();
+    }
   }
 }
 
