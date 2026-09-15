@@ -5499,12 +5499,14 @@ async function renderResumen(){
     if(resCajas.data) cajasF = resCajas.data;
     // Sueldos: semanas liquidadas que se solapan con el mes, prorrateadas por
     // días trabajados en cada mes cuando la semana cruza el fin de mes.
-    var resSem = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+    var resSem = await supabaseClient.from('empleados_semanas').select('empleado_id,total_pagado,semana_inicio,semana_fin')
       .eq('negocio_id',currentNegocioId).eq('pagado',true)
       .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
     var semanasR = resSem.data || [];
+    var horasProrrateoR = await cargarHorasParaProrrateo(semanasR, desdeStr, hastaStr);
     totalSueldosSemanas = semanasR.reduce(function(s,sm){
-      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+      var hs = horasProrrateoR[sm.empleado_id+'|'+sm.semana_inicio];
+      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr, hs, config.recargoDomingo);
     }, 0);
   } else {
     movsF = movimientos.filter(function(m){ var f=(m.fecha||'').slice(0,10); return f>=desdeStr&&f<=hastaStr; });
@@ -7746,12 +7748,14 @@ async function renderFinanzas(){
     if(rf.data) factsF = rf.data.map(function(f){return {id:f.id,num:f.num,prov:f.prov,fecha:f.fecha,venc:f.venc,monto:f.monto||0,montoPagado:f.monto_pagado||0,estado:f.estado,origen:f.origen,obs:f.obs};});
     // Sueldos: semanas liquidadas que se solapan con el mes, prorrateadas por
     // días trabajados en cada mes cuando la semana cruza el fin de mes.
-    var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+    var rs = await supabaseClient.from('empleados_semanas').select('empleado_id,total_pagado,semana_inicio,semana_fin')
       .eq('negocio_id',currentNegocioId).eq('pagado',true)
       .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
     var semanasF = rs.data || [];
+    var horasProrrateoF = await cargarHorasParaProrrateo(semanasF, desdeStr, hastaStr);
     totalSueldos = semanasF.reduce(function(s,sm){
-      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+      var hs = horasProrrateoF[sm.empleado_id+'|'+sm.semana_inicio];
+      return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr, hs, config.recargoDomingo);
     }, 0);
   } else {
     movsF = movimientos.filter(function(m){var f=(m.fecha||'').slice(0,10);return f>=desdeStr&&f<=hastaStr;});
@@ -7881,12 +7885,14 @@ async function renderCierreMensual(){
   var totalCostoInsumos = egresos.filter(function(m){return m.cat==='CostoInsumos';}).reduce(function(s,m){return s+(m.monto||0);},0);
   var totalComisionReparto = egresos.filter(function(m){return m.cat==='ComisionReparto';}).reduce(function(s,m){return s+(m.monto||0);},0);
 
-  var rs = await supabaseClient.from('empleados_semanas').select('total_pagado,semana_inicio,semana_fin')
+  var rs = await supabaseClient.from('empleados_semanas').select('empleado_id,total_pagado,semana_inicio,semana_fin')
     .eq('negocio_id',currentNegocioId).eq('pagado',true)
     .lte('semana_inicio',hastaStr).gte('semana_fin',desdeStr);
   var semanasF = rs.data || [];
+  var horasProrrateoC = await cargarHorasParaProrrateo(semanasF, desdeStr, hastaStr);
   var totalSueldos = semanasF.reduce(function(s,sm){
-    return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr);
+    var hs = horasProrrateoC[sm.empleado_id+'|'+sm.semana_inicio];
+    return s + prorratearSemanaEnPeriodo(sm.semana_inicio, sm.semana_fin, sm.total_pagado||0, desdeStr, hastaStr, hs, config.recargoDomingo);
   }, 0);
 
   var ganancia = totalVentas - totalCompras - totalGF - totalConsumoPropio - totalSueldos - totalMercEmpleados - totalCostoInsumos - totalComisionReparto;
@@ -9812,21 +9818,59 @@ function fechaLocalStr(d) {
   return y+'-'+m+'-'+dia;
 }
 
-// Reparte el monto de una semana liquidada entre los meses que cruza, proporcional
-// a los días trabajados en cada uno (ej: 5 días de julio + 2 de agosto → 5/7 y 2/7).
-// Solo afecta el cálculo de cierres/reportes mensuales — el ciclo de liquidación
-// semanal sigue pagando el monto completo de una sola vez, sin cambios.
-function prorratearSemanaEnPeriodo(semanaInicio, semanaFin, monto, desdePeriodo, hastaPeriodo) {
+// Reparte el monto de una semana liquidada entre los meses que cruza —
+// proporcional a lo efectivamente ganado cada día (horas trabajadas, con el
+// recargo de domingo aplicado), no a la cantidad de días de calendario. Así
+// una semana con horas muy desparejas (vacaciones, ausencias a mitad de
+// semana) no le atribuye plata a un mes en el que casi no se trabajó.
+// `horasSemana` es la lista de registros {fecha,horas} de empleados_horas
+// para ESA semana y ESE empleado; si no se pasa (dato viejo sin horas
+// cargadas, o llamado sin ese detalle) cae al reparto por días de calendario
+// como aproximación razonable. Solo afecta el cálculo de cierres/reportes
+// mensuales — el ciclo de liquidación semanal sigue pagando el monto
+// completo de una sola vez, sin cambios.
+function prorratearSemanaEnPeriodo(semanaInicio, semanaFin, monto, desdePeriodo, hastaPeriodo, horasSemana, recargoDomingo) {
   var sIni = new Date(semanaInicio+'T00:00:00');
   var sFin = new Date(semanaFin+'T00:00:00');
   var pIni = new Date(desdePeriodo+'T00:00:00');
   var pFin = new Date(hastaPeriodo+'T00:00:00');
-  var totalDias = Math.round((sFin-sIni)/86400000) + 1;
   var solapIni = sIni > pIni ? sIni : pIni;
   var solapFin = sFin < pFin ? sFin : pFin;
+  if(solapFin < solapIni) return 0;
+
+  if(horasSemana && horasSemana.length){
+    var recargo = 1 + ((recargoDomingo!==undefined ? recargoDomingo : 50)/100);
+    var pesoTotal = 0, pesoEnPeriodo = 0;
+    horasSemana.forEach(function(r){
+      var d = new Date(r.fecha+'T00:00:00');
+      var peso = (r.horas||0) * (d.getDay()===0 ? recargo : 1);
+      pesoTotal += peso;
+      if(d >= solapIni && d <= solapFin) pesoEnPeriodo += peso;
+    });
+    if(pesoTotal > 0) return monto * pesoEnPeriodo / pesoTotal;
+    // Semana con horas cargadas en 0 (o sin peso) — cae al reparto por días.
+  }
+
+  var totalDias = Math.round((sFin-sIni)/86400000) + 1;
   var diasEnPeriodo = Math.round((solapFin-solapIni)/86400000) + 1;
   if(diasEnPeriodo <= 0 || totalDias <= 0) return 0;
   return monto * diasEnPeriodo / totalDias;
+}
+
+// Trae, para cada semana que efectivamente CRUZA el período (no las que caen
+// enteras adentro — a esas no hace falta pedirles el detalle), las horas
+// cargadas de ese empleado en esa semana, para prorratear por horas reales
+// en vez de por días de calendario. Devuelve un mapa "empleadoId|semanaInicio" → filas.
+async function cargarHorasParaProrrateo(semanas, desdeStr, hastaStr){
+  var cruzan = semanas.filter(function(s){ return s.semana_inicio < desdeStr || s.semana_fin > hastaStr; });
+  var mapa = {};
+  for(var i=0;i<cruzan.length;i++){
+    var s = cruzan[i];
+    var rh = await supabaseClient.from('empleados_horas').select('fecha,horas')
+      .eq('empleado_id', s.empleado_id).gte('fecha', s.semana_inicio).lte('fecha', s.semana_fin);
+    mapa[s.empleado_id+'|'+s.semana_inicio] = rh.data || [];
+  }
+  return mapa;
 }
 
 function getLunesActual() {
@@ -9910,14 +9954,16 @@ async function renderReporteMes(listaEmpleados) {
     // Semanas liquidadas que caen o se solapan con el mes (incluye semanas que
     // cruzan el fin de mes — se prorratean por días trabajados en cada mes)
     var sw = await supabaseClient.from('empleados_semanas')
-      .select('total_pagado,mercaderia,semana_inicio,semana_fin')
+      .select('empleado_id,total_pagado,mercaderia,semana_inicio,semana_fin')
       .eq('empleado_id', emp.id)
       .eq('pagado', true)
       .lte('semana_inicio', finMes)
       .gte('semana_fin', inicioMes);
     var semanas = sw.data || [];
+    var horasProrrateoRM = await cargarHorasParaProrrateo(semanas, inicioMes, finMes);
     var totalSueldos = semanas.reduce(function(a,s){
-      return a + prorratearSemanaEnPeriodo(s.semana_inicio, s.semana_fin, s.total_pagado||0, inicioMes, finMes);
+      var hs = horasProrrateoRM[s.empleado_id+'|'+s.semana_inicio];
+      return a + prorratearSemanaEnPeriodo(s.semana_inicio, s.semana_fin, s.total_pagado||0, inicioMes, finMes, hs, config.recargoDomingo);
     }, 0);
 
     // Mercadería del mes
