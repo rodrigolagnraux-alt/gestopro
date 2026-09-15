@@ -4833,10 +4833,30 @@ function interpretarFotoProductosIA(input){
 // Fallback cuando el Excel no tiene ninguna columna reconocible de "nombre" — en
 // vez de descartar todas las filas en silencio, se las manda crudas a la IA.
 function interpretarExcelConIA(rows){
-  var filas = rows.slice(0, 150); // tope razonable de filas por llamada
+  procesarTandaExcelIA(rows, 0);
+}
+
+// Manda las filas en tandas de 150 (tope razonable por llamada a la IA) hasta
+// cubrir el archivo entero — antes se mandaban solo las primeras 150 y el
+// resto se perdía en silencio si el archivo tenía más filas que eso.
+function procesarTandaExcelIA(rows, desde){
+  var tanda = rows.slice(desde, desde + 150);
+  if(!tanda.length) return;
+  var hastaMostrar = Math.min(desde + 150, rows.length);
+  set('imp-ia-loading','html', rows.length > 150
+    ? '🧠 Analizando con IA... fila '+(desde+1)+' a '+hastaMostrar+' de '+rows.length
+    : '🧠 Analizando con IA... puede tardar unos segundos');
   llamarIAProductos(
-    [{type:'text', text: construirPromptIA(importDestino) + '\n\nEstas son filas crudas de una planilla — no se reconocieron los encabezados de las columnas. Interpretá cada fila:\n\n' + JSON.stringify(filas)}],
-    function(items){ if(items) aplicarResultadoIA(items); }
+    [{type:'text', text: construirPromptIA(importDestino) + '\n\nEstas son filas crudas de una planilla — no se reconocieron los encabezados de las columnas. Interpretá cada fila:\n\n' + JSON.stringify(tanda)}],
+    function(items){
+      if(items) aplicarResultadoIA(items);
+      var siguienteDesde = desde + 150;
+      if(items && siguienteDesde < rows.length){
+        procesarTandaExcelIA(rows, siguienteDesde);
+      } else if(rows.length > 150){
+        toast('🧠 Terminó de analizar las '+rows.length+' filas');
+      }
+    }
   );
 }
 
