@@ -4145,7 +4145,11 @@ function confirmarIngresoFactura(){
     }
     prod.stock+=l.cant; // optimista, para feedback inmediato en pantalla
     ajustarStockProducto(prod.id,l.cant); // ajuste real, atómico, del lado de Supabase
-    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:esAjusteStock?'Ajuste de stock':'Compra a '+prov,costo:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
+    // Un ajuste de stock no tiene plata real de por medio (ver esAjusteStock
+    // más arriba) — el costo NO se guarda en ese caso, aunque el campo de
+    // precio haya quedado cargado, para que Flujo Financiero/Cierre Mensual
+    // no lo sumen como si fuera una compra real.
+    const _mi={id:Date.now()+Math.random(),tipo:'ingreso',prodId:prod.id,prodNom:prod.nom,cant:l.cant,fecha:hoy(),motivo:esAjusteStock?'Ajuste de stock':'Compra a '+prov,costo:esAjusteStock?0:l.precio}; movimientos.unshift(_mi); saveMovimiento(_mi);
   });
   // Show price update summary
   if(cambiosPrecio.length>0){
