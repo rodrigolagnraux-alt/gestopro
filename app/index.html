@@ -4252,11 +4252,18 @@ function toggleOrigenPagoFactExist(){
   var wrap = el('fpagoex-origen-wrap');
   if(m && wrap) wrap.style.display = (m.value==='efectivo') ? 'block' : 'none';
 }
+// El saldo pendiente de un pago parcial se calcula siempre a partir de monto
+// y montoPagado (ambos persistidos) — nunca de un campo "saldoPendiente"
+// aparte, porque ese campo no se guardaba en la nube y se perdía apenas se
+// recargaba la app: una factura pagada parcialmente volvía a mostrar el
+// monto TOTAL como si nada se hubiera pagado.
+function saldoFactura(f){ return (f.monto||0) - (f.montoPagado||0); }
+
 function marcarPagada(id){
   factPagarId = id;
   var f = facturas.find(function(f){return String(f.id)===String(id);});
   if(!f) return;
-  var saldo = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
+  var saldo = saldoFactura(f);
   var mh = el('modal-pagar-fact-header');
   if(mh) mh.innerHTML = '<div style="font-size:13px;color:var(--mut2);margin-bottom:4px;">'+f.prov+' · '+f.num+'</div>'
     +'<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--yel);">'+fmtM(saldo)+'</div>'
@@ -4269,7 +4276,7 @@ function marcarPagada(id){
   toggleOrigenPagoFactExist();
   openModal('modal-pagar-fact');
 }
-function confirmarPagoFactura(){
+async function confirmarPagoFactura(){
   var f = facturas.find(function(f){return String(f.id)===String(factPagarId);});
   if(!f) return;
   var monto = parseFloat(el('fpago-monto').value)||f.monto;
@@ -4277,30 +4284,44 @@ function confirmarPagoFactura(){
   var metodoEl = el('fpago-metodo');
   var metodo = metodoEl ? metodoEl.value : 'efectivo';
   var metLbl = {efectivo:'Efectivo',cuentadni:'Cuenta DNI',mercadopago:'Mercado Pago',cheque:'Cheque'};
-  var saldoOriginal = (f.saldoPendiente!==undefined ? f.saldoPendiente : f.monto);
+  var montoPagadoAntes = f.montoPagado||0;
+  var saldoOriginal = saldoFactura(f);
   if(monto > saldoOriginal + 0.5){ toast('El pago supera el saldo pendiente ('+fmtM(saldoOriginal)+')','err'); return; }
-  var diff = saldoOriginal - monto;
+  var montoPagadoNuevo = montoPagadoAntes + monto;
+  var diff = f.monto - montoPagadoNuevo;
   var origenFact = (metodo==='efectivo') ? origenPagoFactExist : '';
+  var estadoNuevo = diff > 0.5 ? 'parcial' : 'pagada';
+
+  // Guardamos el pago ANTES de registrar el egreso, con el mismo patrón
+  // "claim" atómico que usamos en Gastos Fijos y en sueldos: el UPDATE solo
+  // tiene efecto si nadie más pagó esta factura mientras tanto (el monto
+  // pagado sigue siendo el que leímos). Sin esto, un doble click o dos
+  // pestañas pagando a la vez duplicaban el egreso en Movimientos.
+  if(supabaseClient && currentNegocioId){
+    var upd = await supabaseClient.from('facturas_v2').update({
+      estado: estadoNuevo, monto_pagado: montoPagadoNuevo, origen: origenFact, updated_at: new Date().toISOString()
+    }).eq('id', String(f.id)).eq('monto_pagado', montoPagadoAntes).select();
+    if(!upd.data || !upd.data.length){
+      toast('Esta factura ya se pagó desde otro lado — revisá el saldo antes de pagar de nuevo','err');
+      closeModal('modal-pagar-fact');
+      var refresco = await supabaseClient.from('facturas_v2').select('*').eq('id',String(f.id)).maybeSingle();
+      if(refresco.data){ f.monto=refresco.data.monto||0; f.montoPagado=refresco.data.monto_pagado||0; f.estado=refresco.data.estado; f.origen=refresco.data.origen; }
+      renderFacts(); renderDash();
+      return;
+    }
+  }
+
   // Registrar egreso automático por el monto realmente pagado
   var egreso = {id:Date.now(),tipo:'egreso',desc:'Pago factura '+f.num+' · '+f.prov+(origenFact==='bolsillo'?' · Del bolsillo':''),monto:monto,fecha:hoy(),metodo:metodo,origen:origenFact,cajero:cajeroActual?cajeroActual.nombre:null};
   movimientos.unshift(egreso); saveMovimiento(egreso);
 
-  if(diff > 0.5){
-    // Pago parcial — queda saldo pendiente
-    f.estado='parcial';
-    f.saldoPendiente = diff;
-    f.montoPagado = (f.montoPagado||0) + monto;
-    f.fechaPago=hoy(); f.metodoPago=metodo; f.origen=origenFact;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
+  f.estado=estadoNuevo; f.montoPagado=montoPagadoNuevo; f.origen=origenFact;
+  saveState();
+  closeModal('modal-pagar-fact');
+  renderFacts(); renderDash();
+  if(estadoNuevo==='parcial'){
     toast('⚠️ Pago parcial registrado · Quedan '+fmtM(diff)+' pendientes de '+f.num);
   } else {
-    f.estado='pagada'; f.fechaPago=hoy(); f.metodoPago=metodo; f.saldoPendiente=0; f.origen=origenFact;
-    f.montoPagado = (f.montoPagado||0) + monto;
-    saveFactura(f); saveState();
-    closeModal('modal-pagar-fact');
-    renderFacts(); renderDash();
     toast('✅ Factura pagada · '+metLbl[metodo]+' · '+fmtM(monto));
   }
 }
