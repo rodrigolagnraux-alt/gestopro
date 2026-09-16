@@ -1849,10 +1849,10 @@ select.fi{appearance:none;cursor:pointer;}
     <button class="btn btn-yel btn-sm" onclick="openModal('modal-fact')">🧾 Nueva</button>
   </div>
   <div class="fr">
-    <button class="fb on" onclick="fFact('TODOS',this)">Todas</button>
-    <button class="fb" onclick="fFact('pendiente',this)">🟡 Pendientes</button>
+    <button class="fb on" onclick="fFact('pendiente',this)">🟡 Por pagar</button>
     <button class="fb" onclick="fFact('vencida',this)">🔴 Vencidas</button>
     <button class="fb" onclick="fFact('pagada',this)">✅ Pagadas</button>
+    <button class="fb" onclick="fFact('TODOS',this)">Todas</button>
   </div>
   <div class="tw"><table><thead><tr><th>Estado</th><th>N° Factura</th><th>Proveedor</th><th>Fecha</th><th>Vence</th><th>Monto</th><th>Descripción</th><th></th></tr></thead><tbody id="tbl-facts"></tbody></table></div>
   <div class="mc-list" id="mc-facts"></div>
@@ -2522,7 +2522,7 @@ let planActual='gratis';
 // a usar nada de esto: verificarAccesoNegocio() manda directo al paywall.
 let trialActivo=false;
 function nivelAcceso(){ return (planActual==='gratis' && trialActivo) ? 'pro' : planActual; }
-let movFilter='TODOS', movPeriod='mes', factFilter='TODOS', resPeriod='mes';
+let movFilter='TODOS', movPeriod='mes', factFilter='pendiente', resPeriod='mes';
 let pendingImport=[], pagoActual='efectivo', pagoFactura='pendiente';
 var cajeroActual = null; // {id, nombre, esDueno}
 var cajaActualId = null; // ID de la caja abierta en Supabase
@@ -5463,7 +5463,10 @@ async function renderMovs(){
 
 // ═══ RENDER FACTURAS ═══
 function renderFacts(){
-  const rows=factFilter==='TODOS'?facturas:(factFilter==='pendiente'?facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='parcial';}):facturas.filter(function(f){return f.estado===factFilter;}));
+  // "Por pagar" (la pestaña que se abre por defecto) junta pendiente+parcial+vencida
+  // — así lo primero que se ve al entrar es lo que hay que resolver, y las pagadas
+  // no ensucian la vista aunque nunca se borren (quedan en su propia pestaña).
+  const rows=factFilter==='TODOS'?facturas:(factFilter==='pendiente'?facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='parcial'||f.estado==='vencida';}):facturas.filter(function(f){return f.estado===factFilter;}));
   const pend=facturas.filter(function(f){return f.estado==='pendiente'||f.estado==='vencida'||f.estado==='parcial';});
   set('fact-sub','text',pend.length+' pendientes · '+fmtM(pend.reduce(function(s,f){return s+f.monto;},0)));
   const tf=el('tbl-facts');
