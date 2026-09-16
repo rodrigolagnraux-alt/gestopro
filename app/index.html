@@ -4795,32 +4795,41 @@ function construirPromptIA(destino){
 function llamarIAProductos(contenido, callback){
   set('imp-ia-loading','display','block');
   var destino = importDestino;
-  fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-gestopro-token':GP_CHAT_TOKEN},
-    body:JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:8000,
-      messages:[{role:'user', content: contenido}]
-    })
-  })
-  .then(function(r){return r.json();})
-  .then(function(data){
-    set('imp-ia-loading','display','none');
-    try{
-      var texto = data.content[0].text;
-      texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
-      var resultado = JSON.parse(texto);
-      callback(destino==='insumos' ? (resultado.insumos||[]) : (resultado.productos||[]));
-    }catch(e){
-      toast('No pude interpretar los '+(destino==='insumos'?'insumos':'productos')+'. Probá con otro formato o cargalos a mano.','err');
+  supabaseClient.auth.getSession().then(function(sesionRes){
+    var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+    if(!token){
+      set('imp-ia-loading','display','none');
+      toast('Tu sesión venció — volvé a iniciar sesión.','err');
       callback(null);
+      return;
     }
-  })
-  .catch(function(){
-    set('imp-ia-loading','display','none');
-    toast('Error al conectar con la IA. Intentalo de nuevo.','err');
-    callback(null);
+    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-gestopro-token':GP_CHAT_TOKEN},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:8000,
+        messages:[{role:'user', content: contenido}]
+      })
+    })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      set('imp-ia-loading','display','none');
+      try{
+        var texto = data.content[0].text;
+        texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
+        var resultado = JSON.parse(texto);
+        callback(destino==='insumos' ? (resultado.insumos||[]) : (resultado.productos||[]));
+      }catch(e){
+        toast('No pude interpretar los '+(destino==='insumos'?'insumos':'productos')+'. Probá con otro formato o cargalos a mano.','err');
+        callback(null);
+      }
+    })
+    .catch(function(){
+      set('imp-ia-loading','display','none');
+      toast('Error al conectar con la IA. Intentalo de nuevo.','err');
+      callback(null);
+    });
   });
 }
 
@@ -8211,36 +8220,44 @@ function leerFacturaIA(input){
     var base64 = ev.target.result.split(',')[1];
     var mediaType = file.type||'image/jpeg';
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
-    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-gestopro-token':GP_CHAT_TOKEN},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-            {type:'text',text:prompt}
-          ]
-        }]
-      })
-    })
-    .then(function(r){return r.json();})
-    .then(function(data){
-      set('ia-loading','display','none');
-      try{
-        var texto=data.content[0].text;
-        texto=texto.replace(/```json/g,'').replace(/```/g,'').trim();
-        var factura=JSON.parse(texto);
-        cargarDatosFacturaIA(factura);
-      }catch(e){
-        toast('No pude leer la factura. Completa los datos a mano.','err');
+    supabaseClient.auth.getSession().then(function(sesionRes){
+      var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+      if(!token){
+        set('ia-loading','display','none');
+        toast('Tu sesión venció — volvé a iniciar sesión.','err');
+        return;
       }
-    })
-    .catch(function(){
-      set('ia-loading','display','none');
-      toast('Error al procesar la imagen. Intentalo de nuevo.','err');
+      fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-gestopro-token':GP_CHAT_TOKEN},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:1000,
+          messages:[{
+            role:'user',
+            content:[
+              {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+              {type:'text',text:prompt}
+            ]
+          }]
+        })
+      })
+      .then(function(r){return r.json();})
+      .then(function(data){
+        set('ia-loading','display','none');
+        try{
+          var texto=data.content[0].text;
+          texto=texto.replace(/```json/g,'').replace(/```/g,'').trim();
+          var factura=JSON.parse(texto);
+          cargarDatosFacturaIA(factura);
+        }catch(e){
+          toast('No pude leer la factura. Completa los datos a mano.','err');
+        }
+      })
+      .catch(function(){
+        set('ia-loading','display','none');
+        toast('Error al procesar la imagen. Intentalo de nuevo.','err');
+      });
     });
   };
   reader.readAsDataURL(file);
