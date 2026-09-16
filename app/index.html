@@ -5194,8 +5194,9 @@ async function renderDash(){
   set('sb-alerta','text',String(alertas.length));
   const dEl=el('dash-fecha');
   if(dEl)dEl.innerHTML=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  // Fiado alert
-  var fiadosConDeuda = fiados.filter(function(f){return f.deuda>0;});
+  // Fiado alert — consumo propio no es un cliente real, no cuenta acá
+  // (ver mismo criterio en renderFiado).
+  var fiadosConDeuda = fiados.filter(function(f){return f.deuda>0 && !f.es_consumo_propio;});
   var totalFiado = fiadosConDeuda.reduce(function(s,f){return s+f.deuda;},0);
   var fiadoAlert = el('dash-fiado-alert');
   if(fiadoAlert){
@@ -6636,7 +6637,7 @@ function selPagoEntrega(tipo,selEl){
 async function cargarSelectorFiadoEntrega(){
   var sel = el('entregar-fiado-cliente-sel');
   if(!sel||!currentNegocioId) return;
-  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite,via_libre').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
+  var res = await supabaseClient.from('fiados_clientes').select('id,nom,deuda,limite,via_libre,es_consumo_propio').eq('negocio_id',currentNegocioId).eq('activo',true).order('nom');
   fiados = res.data || [];
   if(!fiados.length){
     sel.innerHTML = '<option value="">— Aún no hay clientes —</option>';
@@ -9445,15 +9446,20 @@ async function renderFiado(){
 
   var lista = q ? todos.filter(function(f){ return f.nom.toLowerCase().includes(q); }) : todos;
 
-  var totalDeuda = todos.reduce(function(s,f){return s+(f.deuda||0);},0);
-  var conDeuda = todos.filter(function(f){return f.deuda>0;}).length;
-  var saldados = todos.filter(function(f){return f.deuda<=0;}).length;
+  // Consumo propio no es un cliente real — se lo excluye de los totales y
+  // KPIs (DEUDA TOTAL, CLIENTES, cuántos deben) para que no se confunda con
+  // deuda de gente que le compró al negocio. Sigue apareciendo en la lista
+  // de abajo (con su etiqueta "Uso interno"), solo se lo saca de las cuentas.
+  var clientesReales = todos.filter(function(f){ return !f.es_consumo_propio; });
+  var totalDeuda = clientesReales.reduce(function(s,f){return s+(f.deuda||0);},0);
+  var conDeuda = clientesReales.filter(function(f){return f.deuda>0;}).length;
+  var saldados = clientesReales.filter(function(f){return f.deuda<=0;}).length;
 
   set('fiado-sub','text',fmtM(totalDeuda)+' en '+conDeuda+' cliente'+(conDeuda!==1?'s':''));
   var kpis = el('fiado-kpis');
   if(kpis) kpis.innerHTML = ''
     +'<div class="kpi kr"><div class="kl">DEUDA TOTAL</div><div class="kn" style="font-size:20px;">'+fmtM(totalDeuda)+'</div><div class="kd">'+conDeuda+' clientes activos</div></div>'
-    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+todos.length+'</div><div class="kd">registrados</div></div>'
+    +'<div class="kpi ky"><div class="kl">CLIENTES</div><div class="kn">'+clientesReales.length+'</div><div class="kd">registrados</div></div>'
     +'<div class="kpi kg"><div class="kl">SALDADOS</div><div class="kn">'+saldados+'</div><div class="kd">sin deuda</div></div>';
 
   var badge = el('sb-fiado-badge');
