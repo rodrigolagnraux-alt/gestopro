@@ -10854,10 +10854,20 @@ if(document.readyState==='loading'){
     var typingDiv = gpAppendMensaje('escribiendo...', 'bot typing');
 
     try{
+      var sesionRes = await supabaseClient.auth.getSession();
+      var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+      if(!token){
+        typingDiv.remove();
+        gpAppendMensaje('Tu sesión venció — volvé a iniciar sesión para seguir usando el asistente.', 'bot');
+        btn.disabled = false;
+        return;
+      }
+
       var res = await fetch(GP_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
           'x-gestopro-token': GP_CHAT_TOKEN
         },
         body: JSON.stringify({
