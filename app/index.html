@@ -2270,7 +2270,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
     <div>
       <div class="ptitle" style="margin-bottom:2px;">📦 Pedidos a proveedores</div>
-      <div style="font-size:12px;color:var(--mut2);">Según tu stock mínimo y máximo, esto es lo que conviene reponer</div>
+      <div style="font-size:12px;color:var(--mut2);">Según tu stock mínimo y máximo, y cada cuánto le pedís a cada proveedor</div>
     </div>
     <button class="btn btn-acc btn-sm" onclick="abrirModalGenerarPedido()">📲 Generar pedido</button>
   </div>
@@ -2281,14 +2281,15 @@ select.fi{appearance:none;cursor:pointer;}
     <button class="fb" id="ped-filtro-todos" onclick="setFiltroPedidos('todos',this)">Ver todos</button>
   </div>
 
-  <div class="kgrid3" id="ped-kpis" style="margin-bottom:14px;"></div>
+  <div class="kgrid" id="ped-kpis" style="margin-bottom:14px;"></div>
 
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 10px;font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:0.5px;">
       <span style="flex:0 0 30px;"></span>
       <span style="flex:1;">Producto</span>
       <span style="flex:0 0 90px;text-align:center;">Stock</span>
-      <span style="flex:0 0 110px;text-align:center;">Sugerido</span>
+      <span style="flex:0 0 60px;text-align:center;">Ciclo</span>
+      <span style="flex:0 0 90px;text-align:center;">Sugerido</span>
     </div>
     <div id="ped-lista"></div>
   </div>
@@ -7218,7 +7219,7 @@ function abrirScanner(callback){
       if(r.data&&r.data.length) productos = r.data.map(function(p){
         return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
           stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
-          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov,cicloDias:p.ciclo_dias||0};
       });
     });
   }
@@ -8857,7 +8858,7 @@ function sincronizarDatos(){
       if(r.data&&r.data.length) productos = r.data.map(function(p){
         return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
           stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
-          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov,cicloDias:p.ciclo_dias||0};
       });
     }),
     // movimientos_v2 — solo los últimos 30 días para el array local (dashboard/renders locales)
@@ -8913,7 +8914,7 @@ function sincronizarStockLigero(){
       productos = r.data.map(function(p){
         return {id:p.id,cod:p.cod,nom:p.nom,cat:p.cat,subcat:p.subcat,animal:p.animal,
           stock:p.stock||0,um:p.um||'UN',precio:p.precio||0,pventa:p.pventa||0,
-          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov};
+          plu:p.plu,min:p.min||0,max:p.max||0,prov:p.prov,cicloDias:p.ciclo_dias||0};
       });
       renderDash();
     }
@@ -8934,6 +8935,7 @@ function guardarProductoNube(p){
     precio:p.precio||0, pventa:p.pventa||0,
     plu:p.plu?String(p.plu):null,
     min:p.min||0, max:p.max||0, prov:p.prov||null,
+    ciclo_dias:p.cicloDias||0,
     updated_at:new Date().toISOString()
   }).then(function(){}).catch(function(e){console.log('Save producto error:',e);});
 }
@@ -9880,28 +9882,70 @@ function setFiltroPedidos(f,btn){
   renderPedidos();
 }
 
-function renderPedidos(){
+// Última fecha de Ingreso por producto — se calcula desde movimientos_v2
+// (los ingresos sí traen prod_id+fecha, a diferencia de los cobros que
+// guardan el detalle como texto) para saber "hace cuánto no le pido a este
+// proveedor", sin depender de tener datos de venta que hoy no tenemos.
+async function calcularUltimoIngresoPorProducto(){
+  var mapa = {};
+  if(!supabaseClient || !currentNegocioId) return mapa;
+  var limiteFecha = fechaLocalStr(new Date(Date.now()-180*24*60*60*1000));
+  var res = await supabaseClient.from('movimientos_v2').select('prod_id,fecha')
+    .eq('negocio_id',currentNegocioId).eq('tipo','ingreso')
+    .gte('fecha',limiteFecha).order('fecha',{ascending:false});
+  if(res.data){
+    res.data.forEach(function(m){
+      // Ya viene ordenado por fecha desc, así que la primera ocurrencia de
+      // cada producto es la más reciente.
+      if(m.prod_id && mapa[m.prod_id]===undefined) mapa[m.prod_id]=m.fecha;
+    });
+  }
+  return mapa;
+}
+
+var pedidosReqId = 0; // evita que una consulta vieja pise en pantalla lo que se está mirando ahora
+var pedidosUltimoRender = []; // cache de {p,estado,sugerido,tocaPedir} del último render, para no recalcular en abrirModalGenerarPedido()
+
+async function renderPedidos(){
+  var miReqId = ++pedidosReqId;
+  var ultimoIngresoPorProducto = await calcularUltimoIngresoPorProducto();
+  if(miReqId !== pedidosReqId) return;
+
+  var hoyStr = fechaLocalStr(new Date());
   var todos = productos.map(function(p){
-    return {p:p, estado:estadoPedido(p), sugerido: pedidosCantidades[p.id]!==undefined?pedidosCantidades[p.id]:cantidadSugerida(p)};
+    var ultimoIngreso = ultimoIngresoPorProducto[p.id] || null;
+    var diasDesdeIngreso = ultimoIngreso ? Math.round((new Date(hoyStr)-new Date(ultimoIngreso))/86400000) : null;
+    // "Toca pedir" = tiene un ciclo configurado y ya pasó (o nunca hubo
+    // ingreso registrado en los últimos 180 días) — independiente del
+    // stock actual, para no esperar a quedarse corto para avisar.
+    var tocaPedir = !!(p.cicloDias>0 && (diasDesdeIngreso===null || diasDesdeIngreso>=p.cicloDias));
+    return {p:p, estado:estadoPedido(p), sugerido: pedidosCantidades[p.id]!==undefined?pedidosCantidades[p.id]:cantidadSugerida(p), tocaPedir:tocaPedir, diasDesdeIngreso:diasDesdeIngreso};
   });
+  pedidosUltimoRender = todos;
 
   var urgentes = todos.filter(function(x){return x.estado==='urgente';});
   var atencion = todos.filter(function(x){return x.estado==='atencion';});
+  var tocaPedirCount = todos.filter(function(x){return x.tocaPedir;}).length;
 
   var kpis = el('ped-kpis');
   if(kpis) kpis.innerHTML =
     '<div class="kpi kr"><div class="kl">🔴 URGENTES</div><div class="kn">'+urgentes.length+'</div><div class="kd">bajo el mínimo</div></div>'+
     '<div class="kpi" style="border-color:var(--yel);"><div class="kl">🟡 ATENCIÓN</div><div class="kn" style="color:var(--yel);">'+atencion.length+'</div><div class="kd">cerca del mínimo</div></div>'+
+    '<div class="kpi" style="border-color:var(--acc);"><div class="kl">🕒 TOCA PEDIR</div><div class="kn" style="color:var(--acc2);">'+tocaPedirCount+'</div><div class="kd">por ciclo configurado</div></div>'+
     '<div class="kpi kg"><div class="kl">✓ OK</div><div class="kn">'+(todos.length-urgentes.length-atencion.length)+'</div><div class="kd">stock saludable</div></div>';
 
   var lista;
-  if(pedidosFiltro==='urgente') lista = urgentes;
-  else if(pedidosFiltro==='atencion') lista = urgentes.concat(atencion);
+  if(pedidosFiltro==='urgente') lista = todos.filter(function(x){return x.estado==='urgente'||x.tocaPedir;});
+  else if(pedidosFiltro==='atencion') lista = todos.filter(function(x){return x.estado==='urgente'||x.estado==='atencion'||x.tocaPedir;});
   else lista = todos;
 
-  // Ordenar: urgentes primero, después atención, después ok
+  // Ordenar: urgentes primero, después atención, después "toca pedir", después ok
   var orden = {urgente:0, atencion:1, ok:2};
-  lista = lista.slice().sort(function(a,b){ return orden[a.estado]-orden[b.estado]; });
+  lista = lista.slice().sort(function(a,b){
+    var oa = a.tocaPedir && a.estado==='ok' ? 1.5 : orden[a.estado];
+    var ob = b.tocaPedir && b.estado==='ok' ? 1.5 : orden[b.estado];
+    return oa-ob;
+  });
 
   var html = '';
   if(lista.length===0){
@@ -9913,15 +9957,17 @@ function renderPedidos(){
     lista.forEach(function(x){
       var p = x.p;
       var dotColor = x.estado==='urgente'?'var(--red)':x.estado==='atencion'?'var(--yel)':'var(--grn)';
-      var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (x.estado!=='ok');
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--brd);">'+
+      var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (x.estado!=='ok' || x.tocaPedir);
+      var tocaPedirBadge = x.tocaPedir ? ' <span style="color:var(--acc2);font-size:10px;">🕒 toca pedir'+(x.diasDesdeIngreso!==null?' · hace '+x.diasDesdeIngreso+'d':'')+'</span>' : '';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--brd);flex-wrap:wrap;">'+
         '<input type="checkbox" '+(incluido?'checked':'')+' onchange="pedidosIncluidos['+p.id+']=this.checked;savePedidosState();" style="flex:0 0 18px;width:18px;height:18px;accent-color:var(--acc);">'+
         '<div style="flex:0 0 10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0;"></div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-size:13px;font-weight:600;">'+escapeHtml(p.nom)+'</div>'+
+        '<div style="flex:1;min-width:140px;">'+
+          '<div style="font-size:13px;font-weight:600;">'+escapeHtml(p.nom)+tocaPedirBadge+'</div>'+
           '<div style="font-size:11px;color:var(--mut2);">'+escapeHtml(p.prov||'Sin proveedor')+'</div>'+
         '</div>'+
         '<div style="flex:0 0 90px;text-align:center;font-size:12px;color:var(--mut2);font-family:DM Mono,monospace;">'+p.stock+' / '+p.max+' '+escapeHtml(p.um)+'</div>'+
+        '<input type="number" value="'+(p.cicloDias||'')+'" min="0" step="1" placeholder="días" title="Cada cuántos días lo pedís" style="flex:0 0 60px;text-align:center;padding:6px 4px;font-size:12px;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);" onchange="updCicloProducto('+p.id+',this.value)">'+
         '<input type="number" value="'+x.sugerido+'" min="0" step="any" style="flex:0 0 90px;text-align:center;padding:6px;font-size:13px;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);" onchange="pedidosCantidades['+p.id+']=parseFloat(this.value)||0;savePedidosState();">'+
       '</div>';
     });
@@ -9929,13 +9975,35 @@ function renderPedidos(){
   el('ped-lista').innerHTML = html;
 }
 
+// Cambia cada cuántos días se pide un producto, y ofrece aplicar el mismo
+// ciclo a los demás productos del mismo proveedor de una — así no hay que
+// cargarlo uno por uno cuando varios productos vienen del mismo lugar.
+function updCicloProducto(prodId, val){
+  var p = productos.find(function(p){return String(p.id)===String(prodId);});
+  if(!p) return;
+  var dias = parseInt(val)||0;
+  p.cicloDias = dias;
+  guardarEnNube('productos',p.id,p);
+  saveState();
+  if(dias>0 && p.prov && p.prov.trim()){
+    var otros = productos.filter(function(x){ return x.prov===p.prov && String(x.id)!==String(p.id); });
+    if(otros.length && confirm('¿Aplicar este ciclo de '+dias+' días a los otros '+otros.length+' productos de "'+p.prov+'"?')){
+      otros.forEach(function(x){ x.cicloDias = dias; guardarEnNube('productos',x.id,x); });
+      saveState();
+      renderPedidos();
+      toast('Ciclo aplicado a '+otros.length+' productos de '+p.prov+' ✓');
+      return;
+    }
+  }
+  renderPedidos();
+}
+
 function abrirModalGenerarPedido(){
-  var seleccionados = productos.filter(function(p){
-    var estado = estadoPedido(p);
-    var incluido = pedidosIncluidos[p.id]!==undefined ? pedidosIncluidos[p.id] : (estado!=='ok');
-    var cant = pedidosCantidades[p.id]!==undefined ? pedidosCantidades[p.id] : cantidadSugerida(p);
+  var seleccionados = pedidosUltimoRender.filter(function(x){
+    var incluido = pedidosIncluidos[x.p.id]!==undefined ? pedidosIncluidos[x.p.id] : (x.estado!=='ok' || x.tocaPedir);
+    var cant = pedidosCantidades[x.p.id]!==undefined ? pedidosCantidades[x.p.id] : cantidadSugerida(x.p);
     return incluido && cant>0;
-  });
+  }).map(function(x){return x.p;});
 
   if(seleccionados.length===0){
     toast('No hay productos seleccionados para pedir','err');
