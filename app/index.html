@@ -5415,7 +5415,9 @@ function movsIrHoy(){
 function setPeriod(p,btn){ /* legacy no-op */ }
 function fMov(f,btn){ movFilter=f; document.querySelectorAll('#pg-movimientos .fr .fb').forEach(function(b){b.classList.remove('on');}); if(btn)btn.classList.add('on'); renderMovs(); }
 
+var movsReqId = 0; // evita que una consulta vieja pise en pantalla el período/filtro que se está mirando ahora
 async function renderMovs(){
+  var miReqId = ++movsReqId;
   var hoy = new Date();
   var desdeStr, hastaStr, label;
 
@@ -5455,6 +5457,11 @@ async function renderMovs(){
   }
   // ordenar más reciente primero
   allMovs.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
+
+  // Si mientras esperábamos esta consulta el usuario ya cambió de pestaña,
+  // mes o filtro, esta respuesta quedó vieja — no pisamos en pantalla lo
+  // que se está mirando ahora con datos de otro período/filtro.
+  if(miReqId !== movsReqId) return;
 
   var filtrados = movFilter==='TODOS' ? allMovs : allMovs.filter(function(m){return m.tipo===movFilter;});
   var cobros = allMovs.filter(function(m){return m.tipo==='cobro';});
