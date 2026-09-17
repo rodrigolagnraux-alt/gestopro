@@ -9849,6 +9849,12 @@ function savePedidosState(){
 }
 
 function estadoPedido(p){
+  // Un producto sin stock Y sin precio de venta todavía no es un producto
+  // urgente — es uno que nunca se terminó de cargar (p.ej. recién agregado
+  // desde el Catálogo). Mismo criterio de "sin completar" que ya usa el
+  // Catálogo (Carnicería/Rotisería/Viandas/Fiambrería): no lo mandamos a
+  // pedir porque no hay nada que "reponer" todavía.
+  if(!p.stock && !p.pventa) return 'ok';
   // Reusa la misma lógica de semáforo que ya existe en estadoProd()
   if(p.stock<=0) return 'urgente';
   if(p.min>0 && p.stock<=p.min) return 'urgente';
