@@ -7020,6 +7020,16 @@ var facturaVentaFacturaId = null;
 
 async function abrirModalFacturarVenta(movId, monto){
   if(!supabaseClient || !currentNegocioId) return;
+  // Re-chequeamos el plan ACTUAL acá, no solo si en algún momento se
+  // configuró la Facturación Electrónica: un negocio pudo haber sido Pro,
+  // haberlo configurado, y después bajar de plan (o vencérsele el trial que
+  // le daba acceso Pro) — sin este chequeo seguiría facturando por AFIP
+  // con una configuración que quedó de cuando sí era Pro.
+  if(PLAN_N[nivelAcceso()] < PLAN_N['pro']){
+    openModal('modal-plan');
+    toast('Función disponible en '+(PLANES['pro']?PLANES['pro'].nombre:'Pro'),'err');
+    return;
+  }
   facturaVentaMovId = movId;
   facturaVentaConfig = null;
   facturaVentaFacturaId = null;
