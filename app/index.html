@@ -1358,7 +1358,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="plato-nombre" placeholder="Ej: Coca-Cola 2.25L"></div>
   <div class="frow">
     <div class="fg"><label class="fl">Categoría</label><input class="fi" id="plato-categoria" placeholder="Ej: Bebidas"></div>
-    <div class="fg"><label class="fl">Precio $</label><input class="fi" id="plato-precio" type="number" placeholder="0"></div>
+    <div class="fg" id="plato-precio-wrap"><label class="fl">Precio $</label><input class="fi" id="plato-precio" type="number" placeholder="0"></div>
   </div>
   <div class="fg" id="plato-stock-wrap"><label class="fl">Stock (opcional)</label><input class="fi" id="plato-stock" type="number" placeholder="Dejalo vacío si no querés controlar el stock"></div>
   <div id="plato-vinculado-info" style="display:none;background:var(--sur2);border-radius:8px;padding:10px;font-size:12px;color:var(--mut2);margin-bottom:12px;"></div>
@@ -5860,6 +5860,10 @@ async function renderMenuOnline(){
   }
   cont.innerHTML = items.map(function(it){
     var prodVinc = it.producto_id ? productos.find(function(p){return String(p.id)===String(it.producto_id);}) : null;
+    // Si está vinculado, el precio real es siempre el del inventario (igual
+    // que el stock) — ya no se puede desactualizar porque no se guarda una
+    // copia aparte, se muestra en vivo.
+    var precioMostrado = (prodVinc && prodVinc.pventa) ? prodVinc.pventa : it.precio;
     var stockTxt;
     if(prodVinc){ stockTxt = 'stock real: '+prodVinc.stock+' '+(prodVinc.um||'UN'); }
     else if(it.stock===null||it.stock===undefined){ stockTxt = 'sin límite de stock'; }
@@ -5868,14 +5872,10 @@ async function renderMenuOnline(){
     var vincBadge = prodVinc
       ? '<span class="bdg" style="background:var(--acc-dim);color:var(--acc2);">🔗 Vinculado</span>'
       : '<span class="bdg" style="background:var(--sur2);color:var(--mut2);">Manual</span>';
-    var desyncTxt = (prodVinc && (prodVinc.pventa||0)!==(it.precio||0))
-      ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠️ Precio desactualizado (inventario: '+fmtM(prodVinc.pventa||0)+')</div>'
-      : '';
     return '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
       +'<div style="flex:1;">'
       +'<div style="font-size:13.5px;font-weight:600;">'+escapeHtml(it.nombre)+'</div>'
-      +'<div class="mn md" style="font-size:11px;margin-top:2px;">'+escapeHtml(it.categoria||'Sin categoría')+' · '+fmtM(it.precio)+' · '+stockTxt+'</div>'
-      +desyncTxt
+      +'<div class="mn md" style="font-size:11px;margin-top:2px;">'+escapeHtml(it.categoria||'Sin categoría')+' · '+fmtM(precioMostrado)+' · '+stockTxt+'</div>'
       +'</div>'
       +vincBadge
       +badge
@@ -6380,6 +6380,7 @@ var PLATO_RECETA_AVISO_HTML = '<div style="font-size:12px;color:var(--mut2);back
 function abrirModalPlato(id){
   platoEditId = id||null;
   var stockWrap = el('plato-stock-wrap');
+  var precioWrap = el('plato-precio-wrap');
   var vincInfo = el('plato-vinculado-info');
   var recetaWrap = el('plato-receta-wrap');
   if(id){
@@ -6394,10 +6395,15 @@ function abrirModalPlato(id){
     var prodVinc = it.producto_id ? productos.find(function(p){return String(p.id)===String(it.producto_id);}) : null;
     if(prodVinc){
       if(stockWrap) stockWrap.style.display='none';
-      if(vincInfo){ vincInfo.style.display='block'; vincInfo.innerHTML='🔗 Vinculado a <b style="color:var(--txt);">'+escapeHtml(prodVinc.nom)+'</b> — stock real: '+prodVinc.stock+' '+escapeHtml(prodVinc.um||'UN')+'. El stock se descuenta automáticamente del inventario al entregar.'; }
+      // El precio de un ítem vinculado ya no se edita acá — es siempre el
+      // precio de venta real del producto en Productos, para que nunca
+      // quede desactualizado (mismo criterio que el stock).
+      if(precioWrap) precioWrap.style.display='none';
+      if(vincInfo){ vincInfo.style.display='block'; vincInfo.innerHTML='🔗 Vinculado a <b style="color:var(--txt);">'+escapeHtml(prodVinc.nom)+'</b> — precio y stock siempre son los reales de Productos ('+fmtM(prodVinc.pventa||0)+' · stock: '+prodVinc.stock+' '+escapeHtml(prodVinc.um||'UN')+'). Para cambiarlos, editá el producto en 📦 Productos.'; }
       if(recetaWrap) recetaWrap.style.display='none';
     } else {
       if(stockWrap) stockWrap.style.display='';
+      if(precioWrap) precioWrap.style.display='';
       if(vincInfo) vincInfo.style.display='none';
       if(recetaWrap){ recetaWrap.innerHTML=PLATO_RECETA_BTN_HTML; recetaWrap.style.display=''; }
     }
@@ -6406,6 +6412,7 @@ function abrirModalPlato(id){
     ['plato-nombre','plato-categoria','plato-precio','plato-stock'].forEach(function(id){set(id,'val','');});
     var vEl2 = el('plato-visible'); if(vEl2) vEl2.checked = true;
     if(stockWrap) stockWrap.style.display='';
+    if(precioWrap) precioWrap.style.display='';
     if(vincInfo) vincInfo.style.display='none';
     if(recetaWrap){ recetaWrap.innerHTML=PLATO_RECETA_AVISO_HTML; recetaWrap.style.display=''; }
   }
@@ -6414,18 +6421,30 @@ function abrirModalPlato(id){
 
 async function guardarPlato(){
   var nombre = get('plato-nombre').trim();
-  var precio = parseFloat(get('plato-precio'))||0;
   if(!nombre){ toast('Ingresá el nombre del producto','err'); return; }
-  if(!precio){ toast('Ingresá el precio','err'); return; }
   var categoria = get('plato-categoria').trim()||'Otros';
-  var stockVal = get('plato-stock').trim();
-  var stock = stockVal===''? null : (parseFloat(stockVal)||0);
   var visible = el('plato-visible') ? el('plato-visible').checked : true;
+  var itActual = platoEditId ? (window._menuItemsCache||[]).find(function(x){return String(x.id)===String(platoEditId);}) : null;
+  var esVinculado = !!(itActual && itActual.producto_id);
   if(platoEditId){
-    await supabaseClient.from('menu_items').update({nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible}).eq('id',platoEditId);
+    // Si está vinculado, ni precio ni stock se tocan acá — son siempre los
+    // reales del producto vinculado (el precio ya no se guarda aparte).
+    var cambios = {nombre:nombre, categoria:categoria, visible:visible};
+    if(!esVinculado){
+      var precio = parseFloat(get('plato-precio'))||0;
+      if(!precio){ toast('Ingresá el precio','err'); return; }
+      var stockVal = get('plato-stock').trim();
+      cambios.precio = precio;
+      cambios.stock = stockVal===''? null : (parseFloat(stockVal)||0);
+    }
+    await supabaseClient.from('menu_items').update(cambios).eq('id',platoEditId);
     toast('Producto actualizado ✓');
   } else {
-    await supabaseClient.from('menu_items').insert({negocio_id:currentNegocioId,nombre:nombre,categoria:categoria,precio:precio,stock:stock,visible:visible});
+    var precioNuevo = parseFloat(get('plato-precio'))||0;
+    if(!precioNuevo){ toast('Ingresá el precio','err'); return; }
+    var stockValNuevo = get('plato-stock').trim();
+    var stockNuevo = stockValNuevo===''? null : (parseFloat(stockValNuevo)||0);
+    await supabaseClient.from('menu_items').insert({negocio_id:currentNegocioId,nombre:nombre,categoria:categoria,precio:precioNuevo,stock:stockNuevo,visible:visible});
     toast('Producto agregado ✓');
   }
   closeModal('modal-plato');
