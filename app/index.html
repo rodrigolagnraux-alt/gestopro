@@ -9857,7 +9857,12 @@ function estadoPedido(p){
 }
 
 function cantidadSugerida(p){
-  var max = p.max||0;
+  // Si no cargó "máximo" (muy común — es el campo que menos se completa),
+  // sin este fallback la cuenta daba 0 aunque el producto esté urgente, y
+  // como el pedido generado descarta cantidad 0, ese producto urgente
+  // desaparecía del pedido sin que nadie lo note. Reponemos al doble del
+  // mínimo como objetivo razonable cuando no hay máximo propio cargado.
+  var max = p.max || (p.min>0 ? p.min*2 : 0);
   var sug = max - (p.stock||0);
   return sug>0 ? sug : 0;
 }
