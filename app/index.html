@@ -4793,48 +4793,61 @@ function construirPromptIA(destino){
   return destino==='insumos' ? PROMPT_INSUMOS_IA : PROMPT_PRODUCTOS_IA;
 }
 
+// Fetch autenticado compartido por el chat y los dos proxies de IA
+// (importador de Excel, lectura de facturas). Si el token de sesión local
+// quedó vencido — típico en una caja que queda con la pestaña abierta todo
+// el día sin que el refresh automático llegue a dispararse — el primer
+// intento vuelve con 401; en vez de mostrar error de una, forzamos una
+// renovación de sesión y reintentamos una sola vez antes de rendirnos.
+async function gpFetchConAuth(url, payload, headerExtra){
+  var sesionRes = await supabaseClient.auth.getSession();
+  var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
+  if(!token) return { sinSesion:true };
+  function hacerFetch(tok){
+    return fetch(url, {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+tok}, headerExtra||{}),
+      body: JSON.stringify(payload)
+    });
+  }
+  var res = await hacerFetch(token);
+  if(res.status === 401){
+    var refresh = await supabaseClient.auth.refreshSession();
+    var tokenNuevo = refresh.data && refresh.data.session ? refresh.data.session.access_token : null;
+    if(tokenNuevo) res = await hacerFetch(tokenNuevo);
+  }
+  var data = null;
+  try{ data = await res.json(); }catch(e){ data = null; }
+  return { res: res, data: data };
+}
+
 // Llama a la Edge Function interpretar-productos-ia (proxy generico a Claude,
 // mismo patron que ya usa leerFacturaIA para leer facturas) y devuelve el array
 // de productos/insumos crudo que devolvio la IA, o null si no se pudo interpretar.
-function llamarIAProductos(contenido, callback){
+async function llamarIAProductos(contenido, callback){
   set('imp-ia-loading','display','block');
   var destino = importDestino;
-  supabaseClient.auth.getSession().then(function(sesionRes){
-    var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
-    if(!token){
-      set('imp-ia-loading','display','none');
+  try{
+    var r = await gpFetchConAuth('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia', {
+      model:'claude-sonnet-4-6',
+      max_tokens:8000,
+      messages:[{role:'user', content: contenido}]
+    }, {'x-gestopro-token':GP_CHAT_TOKEN});
+    set('imp-ia-loading','display','none');
+    if(r.sinSesion){
       toast('Tu sesión venció — volvé a iniciar sesión.','err');
       callback(null);
       return;
     }
-    fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/interpretar-productos-ia',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-gestopro-token':GP_CHAT_TOKEN},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:8000,
-        messages:[{role:'user', content: contenido}]
-      })
-    })
-    .then(function(r){return r.json();})
-    .then(function(data){
-      set('imp-ia-loading','display','none');
-      try{
-        var texto = data.content[0].text;
-        texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
-        var resultado = JSON.parse(texto);
-        callback(destino==='insumos' ? (resultado.insumos||[]) : (resultado.productos||[]));
-      }catch(e){
-        toast('No pude interpretar los '+(destino==='insumos'?'insumos':'productos')+'. Probá con otro formato o cargalos a mano.','err');
-        callback(null);
-      }
-    })
-    .catch(function(){
-      set('imp-ia-loading','display','none');
-      toast('Error al conectar con la IA. Intentalo de nuevo.','err');
-      callback(null);
-    });
-  });
+    var texto = r.data.content[0].text;
+    texto = texto.replace(/```json/g,'').replace(/```/g,'').trim();
+    var resultado = JSON.parse(texto);
+    callback(destino==='insumos' ? (resultado.insumos||[]) : (resultado.productos||[]));
+  }catch(e){
+    set('imp-ia-loading','display','none');
+    toast('No pude interpretar los '+(destino==='insumos'?'insumos':'productos')+'. Probá con otro formato o cargalos a mano.','err');
+    callback(null);
+  }
 }
 
 function interpretarTextoProductosIA(){
@@ -8278,49 +8291,35 @@ function leerFacturaIA(input){
   if(!file) return;
   set('ia-loading','display','block');
   var reader = new FileReader();
-  reader.onload = function(ev){
+  reader.onload = async function(ev){
     var base64 = ev.target.result.split(',')[1];
     var mediaType = file.type||'image/jpeg';
     var prompt = 'Analiza esta factura de compra. Devuelve SOLO un JSON valido con este formato exacto, sin texto extra ni backticks: {"proveedor":"nombre","numero":"numero","fecha":"YYYY-MM-DD","productos":[{"nombre":"producto","cantidad":1,"precio_unitario":100,"subtotal":100}],"total":100}';
-    supabaseClient.auth.getSession().then(function(sesionRes){
-      var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
-      if(!token){
-        set('ia-loading','display','none');
+    try{
+      var r = await gpFetchConAuth('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura', {
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:prompt}
+          ]
+        }]
+      }, {'x-gestopro-token':GP_CHAT_TOKEN});
+      set('ia-loading','display','none');
+      if(r.sinSesion){
         toast('Tu sesión venció — volvé a iniciar sesión.','err');
         return;
       }
-      fetch('https://hnaewjnvxlvywnihxkgv.supabase.co/functions/v1/leer-factura',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-gestopro-token':GP_CHAT_TOKEN},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:1000,
-          messages:[{
-            role:'user',
-            content:[
-              {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-              {type:'text',text:prompt}
-            ]
-          }]
-        })
-      })
-      .then(function(r){return r.json();})
-      .then(function(data){
-        set('ia-loading','display','none');
-        try{
-          var texto=data.content[0].text;
-          texto=texto.replace(/```json/g,'').replace(/```/g,'').trim();
-          var factura=JSON.parse(texto);
-          cargarDatosFacturaIA(factura);
-        }catch(e){
-          toast('No pude leer la factura. Completa los datos a mano.','err');
-        }
-      })
-      .catch(function(){
-        set('ia-loading','display','none');
-        toast('Error al procesar la imagen. Intentalo de nuevo.','err');
-      });
-    });
+      var texto=r.data.content[0].text;
+      texto=texto.replace(/```json/g,'').replace(/```/g,'').trim();
+      var factura=JSON.parse(texto);
+      cargarDatosFacturaIA(factura);
+    }catch(e){
+      set('ia-loading','display','none');
+      toast('No pude leer la factura. Completa los datos a mano.','err');
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -11016,36 +11015,21 @@ if(document.readyState==='loading'){
     var typingDiv = gpAppendMensaje('escribiendo...', 'bot typing');
 
     try{
-      var sesionRes = await supabaseClient.auth.getSession();
-      var token = sesionRes.data && sesionRes.data.session ? sesionRes.data.session.access_token : null;
-      if(!token){
-        typingDiv.remove();
-        gpAppendMensaje('Tu sesión venció — volvé a iniciar sesión para seguir usando el asistente.', 'bot');
-        btn.disabled = false;
-        return;
-      }
-
-      var res = await fetch(GP_CHAT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token,
-          'x-gestopro-token': GP_CHAT_TOKEN
-        },
-        body: JSON.stringify({
-          mensaje: mensaje,
-          historial: gpChatHistorial,
-          negocio_id: currentNegocioId
-        })
-      });
-      var data = await res.json();
+      var r = await gpFetchConAuth(GP_CHAT_URL, {
+        mensaje: mensaje,
+        historial: gpChatHistorial,
+        negocio_id: currentNegocioId
+      }, {'x-gestopro-token': GP_CHAT_TOKEN});
       typingDiv.remove();
 
-      if(res.ok && data.respuesta){
-        gpAppendMensaje(data.respuesta, 'bot');
-        gpChatHistorial = data.historial || gpChatHistorial;
+      if(r.sinSesion){
+        gpAppendMensaje('Tu sesión venció — volvé a iniciar sesión para seguir usando el asistente.', 'bot');
+      } else if(r.res.ok && r.data && r.data.respuesta){
+        gpAppendMensaje(r.data.respuesta, 'bot');
+        gpChatHistorial = r.data.historial || gpChatHistorial;
       } else {
-        gpAppendMensaje('Uy, hubo un error: ' + (data.error || 'reintentá en un momento'), 'bot');
+        var motivo = (r.data && (r.data.error || r.data.message || r.data.msg)) || ('no se pudo conectar (HTTP ' + (r.res ? r.res.status : '?') + ')');
+        gpAppendMensaje('Uy, hubo un error: ' + motivo, 'bot');
       }
     } catch(e){
       typingDiv.remove();
