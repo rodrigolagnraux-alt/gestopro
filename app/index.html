@@ -2787,7 +2787,10 @@ async function guardarConfig(){
     else { pinStatus.textContent='🔓 PIN desactivado'; pinStatus.style.color='var(--mut2)'; }
   }
   if(rd !== snap.recargoDomingo) config.recargoDomingo=rd;
-  if(mpToken) config.mpToken=mpToken;
+  // Mismo criterio que el resto: solo se pisa si lo tocaste en este
+  // formulario (no un "if truthy" suelto, que además nunca dejaba borrar
+  // el token y pisaba el de otro dispositivo en cualquier guardado).
+  if(mpToken !== snap.mpToken) config.mpToken=mpToken;
   if(fiadoPrecio !== snap.fiadoPrecio) config.fiadoPrecio=fiadoPrecio;
 
   set('alias-dni-display','text',config.aliasDni||'—');
@@ -9648,7 +9651,7 @@ function poblarFormConfig(){
     alias: config.alias||'', cvu: config.cvu||'',
     aliasDni: config.aliasDni||'', cvuDni: config.cvuDni||'',
     pin: config.pin||'', recargoDomingo: config.recargoDomingo!==undefined?config.recargoDomingo:50,
-    fiadoPrecio: config.fiadoPrecio||'original',
+    fiadoPrecio: config.fiadoPrecio||'original', mpToken: config.mpToken||'',
     tiendaAbierta: config.tiendaAbierta!==false, ordenMenu: config.ordenMenu||'vinculados'
   };
 }
