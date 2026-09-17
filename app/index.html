@@ -5166,7 +5166,9 @@ function actualizarKpiCobradoLocal(){
   var totalHoyLocal = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
   set('kpi-cobrado','text',fmtM(totalHoyLocal));
 }
+var dashReqId = 0; // evita que una consulta vieja pise en pantalla los KPIs de una más nueva
 async function renderDash(){
+  var miReqId = ++dashReqId;
   actualizarBtnCarniceria();
   const now=new Date();
   const alertas=productos.filter(function(p){const e=estadoProd(p);return e.lbl==='CRÍTICO'||e.lbl==='SIN STOCK'||e.lbl==='MÍNIMO';});
@@ -5187,6 +5189,10 @@ async function renderDash(){
   } else {
     totalHoy = totalHoyLocal;
   }
+  // Si mientras esperábamos esta consulta se disparó otro renderDash (por
+  // otra acción, p.ej. un segundo cobro), esta respuesta quedó vieja — no
+  // pisamos los KPIs ya actualizados por la corrida más nueva.
+  if(miReqId !== dashReqId) return;
   set('kpi-cobrado','text',fmtM(totalHoy));
   set('kpi-alertas','text',String(alertas.length));
   set('kpi-facts','text',String(factsPend.length));
