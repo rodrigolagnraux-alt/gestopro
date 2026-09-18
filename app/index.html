@@ -1489,7 +1489,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Access Token MP (para QR dinámico)</label><input class="fi" id="cfg-mp-token" placeholder="APP_USR-..." type="password"><div style="font-size:11px;color:var(--mut2);margin-top:4px;">Obtené el token en <b>mercadopago.com/developers</b> → Tus integraciones → Credenciales de producción</div></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
-  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé Resumen y Flujo Financiero con un PIN de 4 dígitos. El empleado puede cobrar sin ver las ganancias.</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé con un PIN de 4 dígitos Resumen, Flujo Financiero, Cierre Mensual, Empleados y esta misma Configuración. El empleado puede cobrar sin ver las ganancias ni tocar estos ajustes.</div>
   <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>
   <div id="cfg-pin-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;color:var(--mut2);"></div>
 
@@ -6629,7 +6629,7 @@ function renderPedidoOnlineCard(p){
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">'
     +'<div>'
     +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;">'+escapeHtml(p.cliente_nombre||'Cliente')+'</div>'
-    +'<div style="font-size:11px;color:var(--mut2);">📞 '+escapeHtml(p.cliente_telefono||'—')+' · '+fecha+'</div>'
+    +'<div style="font-size:11px;color:var(--mut2);">📞 '+escapeHtml(p.cliente_telefono||'—')+' · '+fecha+(p.cliente_telefono?' · <span style="color:var(--grn);cursor:pointer;text-decoration:underline;" onclick="abrirWhatsAppPedidoOnline(\''+p.id+'\')">💬 WhatsApp</span>':'')+'</div>'
     +'</div>'
     +bdg(estadoBdg[p.estado]||'bg', estadoLbl[p.estado]||p.estado)
     +'</div>'
@@ -6640,6 +6640,16 @@ function renderPedidoOnlineCard(p){
     +'<div style="font-size:12px;color:var(--mut2);margin-bottom:10px;">'+entregaLbl+' · '+(metLbl[p.metodo_pago]||p.metodo_pago||'')+'</div>'
     +botonAccion
     +'</div>';
+}
+
+function abrirWhatsAppPedidoOnline(id){
+  var p = pedidosOnlineData.find(function(x){return String(x.id)===String(id);});
+  if(!p||!p.cliente_telefono){ toast('Este pedido no tiene teléfono cargado','err'); return; }
+  var negocio = config.nombre||'el negocio';
+  var msg = 'Hola '+(p.cliente_nombre||'')+'! 👋 Te escribimos por tu pedido en '+negocio+' (total '+fmtM(p.total||0)+').';
+  var tel = String(p.cliente_telefono).replace(/\D/g,'');
+  if(tel.length<=10) tel='549'+tel;
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 async function iniciarPreparacionPedido(id){
@@ -10624,7 +10634,7 @@ async function guardarEmpleado() {
     await abrirDetalleEmpleado(empEditId);
   } else {
     await supabaseClient.from('empleados').insert({negocio_id:currentNegocioId,nombre:nombre,rol:rol,valor_hora:valorHora,pin_caja:pin||null,activo:true});
-    toast('Empleado agregado ✓');
+    toast(pin ? 'Empleado agregado ✓' : 'Empleado agregado ✓ — sin PIN, por ahora no va a poder abrir caja ni identificarse para entregas');
     closeModal('modal-empleado');
     renderEmpleados();
   }
