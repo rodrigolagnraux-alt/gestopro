@@ -1272,7 +1272,7 @@ select.fi{appearance:none;cursor:pointer;}
   </div>
   <div class="frow"><div class="fg"><label class="fl">Código / SKU</label><div style="display:flex;gap:6px;"><input class="fi" id="p-cod" placeholder="PRD001" onblur="buscarNombrePorCodigo(this.value)" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm" onclick="escanearParaNuevoProducto()" style="white-space:nowrap;padding:0 12px;">📷</button></div></div><div class="fg"><label class="fl">Categoría</label><select class="fi" id="p-cat" onchange="if(this.value==='__nueva_cat__')crearCategoriaNueva(this)"><option>Alimentos</option><option>Bebidas</option><option>Limpieza</option><option>Ferretería</option><option>Electrónica</option><option>Indumentaria</option><option>Insumos</option><option>Otro</option><option value="__nueva_cat__">+ Nueva categoría...</option></select></div></div>
   <div class="fg"><label class="fl">Nombre del producto</label><input class="fi" id="p-nom" placeholder="Ej: Harina 000 x 25kg"></div>
-  <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div></div>
+  <div class="frow3"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="p-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Unidad</label><select class="fi" id="p-um"><option>UN</option><option>KG</option><option>LT</option><option>MT</option><option>CJ</option><option>BL</option></select></div><div class="fg" id="p-precio-wrap"><label class="fl">Precio costo $</label><input class="fi" id="p-precio" type="number" placeholder="0"></div><div class="fg" id="p-precio-lock" style="display:none;cursor:pointer;" onclick="verCostosConPin()"><label class="fl">Precio costo $</label><div class="fi" style="display:flex;align-items:center;color:var(--mut2);">🔒 Ver con PIN</div></div></div>
   <div class="frow"><div class="fg"><label class="fl">Stock mínimo</label><input class="fi" id="p-min" type="number" placeholder="0"></div><div class="fg"><label class="fl">Stock máximo</label><input class="fi" id="p-max" type="number" placeholder="0"></div></div>
   <div class="frow"><div class="fg"><label class="fl">Precio de venta $</label><input class="fi" id="p-pventa" type="number" placeholder="0"></div><div class="fg"><label class="fl">Proveedor</label><select class="fi" id="p-prov" onchange="if(this.value==='__nuevo_prov__'){abrirNuevoProveedorInline();}"><option value="">— Sin proveedor —</option></select></div></div>
   <div class="fg"><label class="fl">PLU balanza (opcional)</label><input class="fi" id="p-plu" type="number" placeholder="Ej: 100" inputmode="numeric">
@@ -1489,7 +1489,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div class="fg"><label class="fl">Access Token MP (para QR dinámico)</label><input class="fi" id="cfg-mp-token" placeholder="APP_USR-..." type="password"><div style="font-size:11px;color:var(--mut2);margin-top:4px;">Obtené el token en <b>mercadopago.com/developers</b> → Tus integraciones → Credenciales de producción</div></div>
 
   <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:1px;">🔒 PIN de seguridad</div>
-  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé con un PIN de 4 dígitos Resumen, Flujo Financiero, Cierre Mensual, Empleados y esta misma Configuración. El empleado puede cobrar sin ver las ganancias ni tocar estos ajustes.</div>
+  <div style="background:var(--sur2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--mut2);line-height:1.6;">Protegé con un PIN de 4 dígitos Resumen, Flujo Financiero, Cierre Mensual, Empleados, esta misma Configuración, "Cobrado hoy"/"Últimos movimientos" del Dashboard, y el costo/margen de tus productos en Catálogo. El empleado puede cobrar y reponer stock sin ver las ganancias ni tocar estos ajustes.</div>
   <div class="fg"><label class="fl">PIN de 4 dígitos (dejar vacío para desactivar)</label><input class="fi" id="cfg-pin" type="password" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>
   <div id="cfg-pin-status" style="font-size:11px;margin-top:-8px;margin-bottom:12px;color:var(--mut2);"></div>
 
@@ -1631,7 +1631,7 @@ select.fi{appearance:none;cursor:pointer;}
 
   <!-- KPIs -->
   <div class="kgrid">
-    <div class="kpi kg"><div class="kl">COBRADO HOY</div><div class="kn" id="kpi-cobrado">$0</div><div class="kd">en cobros</div></div>
+    <div class="kpi kg" style="cursor:pointer;" onclick="verDashConPin()"><div class="kl">COBRADO HOY</div><div class="kn" id="kpi-cobrado">$0</div><div class="kd">en cobros</div></div>
     <div class="kpi kr"><div class="kl">ALERTAS STOCK</div><div class="kn" id="kpi-alertas">0</div><div class="kd">bajo mínimo</div></div>
     <div class="kpi ky"><div class="kl">FACTURAS</div><div class="kn" id="kpi-facts">0</div><div class="kd">sin pagar</div></div>
     <div class="kpi kp"><div class="kl">GASTOS FIJOS</div><div class="kn" id="kpi-gf" style="font-size:18px;">$0</div><div class="kd">pendientes mes</div></div>
@@ -2697,6 +2697,7 @@ function openModal(id){
   const m=el(id);
   if(m){ m.classList.add('on'); _modalZCounter++; m.style.zIndex = String(_modalZCounter); }
   if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
+  if(id==='modal-prod'){ actualizarLockCostoProd(); }
   if(id==='modal-config'){ abrirModalConfig(); }
 }
 
@@ -5190,10 +5191,26 @@ function cerrarImportadorIA(){
 }
 
 // ═══ RENDER DASHBOARD ═══
+// "Cobrado hoy" y "Últimos movimientos" son la plata del día — igual de
+// sensibles que Resumen/Flujo Financiero, así que si hay PIN activado
+// quedan atrás del mismo candado (sección propia 'dashboard', se
+// desbloquea igual que las demás: tocando y cargando el PIN).
+function dashPlataOculta(){
+  return !!(config.pin && !pinSesionDesbloqueada['dashboard']);
+}
+function setKpiCobrado(monto){
+  set('kpi-cobrado','text', dashPlataOculta() ? '🔒' : fmtM(monto));
+}
+function verDashConPin(){
+  if(!dashPlataOculta()) return;
+  pinDestino = 'dashboard';
+  pinNavEl = null;
+  abrirPin();
+}
 function actualizarKpiCobradoLocal(){
   var hoyStr = fechaLocalStr(new Date());
   var totalHoyLocal = movimientos.filter(function(m){return m.tipo==='cobro'&&(m.fecha||'').slice(0,10)===hoyStr;}).reduce(function(s,m){return s+(m.monto||0);},0);
-  set('kpi-cobrado','text',fmtM(totalHoyLocal));
+  setKpiCobrado(totalHoyLocal);
 }
 var dashReqId = 0; // evita que una consulta vieja pise en pantalla los KPIs de una más nueva
 async function renderDash(){
@@ -5222,7 +5239,7 @@ async function renderDash(){
   // otra acción, p.ej. un segundo cobro), esta respuesta quedó vieja — no
   // pisamos los KPIs ya actualizados por la corrida más nueva.
   if(miReqId !== dashReqId) return;
-  set('kpi-cobrado','text',fmtM(totalHoy));
+  setKpiCobrado(totalHoy);
   set('kpi-alertas','text',String(alertas.length));
   set('kpi-facts','text',String(factsPend.length));
   set('kpi-gf','text',fmtM(gfPend.reduce(function(s,gf){return s+gf.monto;},0)));
@@ -5244,8 +5261,12 @@ async function renderDash(){
   // Movimientos recientes
   const dm=el('dash-movs');
   if(dm){
-    var movsOrdenados = movimientos.slice().sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
-    dm.innerHTML=movsOrdenados.length?movsOrdenados.slice(0,5).map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos</div></div>';
+    if(dashPlataOculta()){
+      dm.innerHTML='<div class="empty" style="cursor:pointer;" onclick="verDashConPin()"><div class="empty-ico">🔒</div><div class="empty-t">Protegido con PIN</div><div class="empty-s">Tocá para ver con tu PIN</div></div>';
+    } else {
+      var movsOrdenados = movimientos.slice().sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+      dm.innerHTML=movsOrdenados.length?movsOrdenados.slice(0,5).map(renderMovItem).join(''):'<div class="empty"><div class="empty-ico">↕</div><div class="empty-t">Sin movimientos</div></div>';
+    }
   }
 }
 
@@ -5338,6 +5359,25 @@ function buildCatFilters(activeCat){
   });
 }
 
+// Costo y margen son la rentabilidad del negocio — si hay PIN activado,
+// quedan atrás del mismo candado que Resumen/Dashboard (sección propia
+// 'costos', se desbloquea igual: tocando y cargando el PIN).
+function costosOcultos(){
+  return !!(config.pin && !pinSesionDesbloqueada['costos']);
+}
+function verCostosConPin(){
+  if(!costosOcultos()) return;
+  pinDestino = 'costos';
+  pinNavEl = null;
+  abrirPin();
+}
+function actualizarLockCostoProd(){
+  var wrap = el('p-precio-wrap'), lock = el('p-precio-lock');
+  if(!wrap || !lock) return;
+  var oculto = costosOcultos();
+  wrap.style.display = oculto ? 'none' : '';
+  lock.style.display = oculto ? '' : 'none';
+}
 function renderProds(){
   actualizarBtnCarniceria();
   var srch=(get('prod-srch')||'').toLowerCase();
@@ -5374,17 +5414,22 @@ function renderProds(){
     if(!rows.length){
       mc.innerHTML='<div class="empty"><div class="empty-ico">📦</div><div class="empty-t">Sin productos</div></div>';
     } else {
+      var _costosOcultos = costosOcultos();
       mc.innerHTML=rows.map(function(p){
         var e=estadoProd(p);
         var mg=p.pventa&&p.precio?Math.round((p.pventa-p.precio)/p.precio*100):null;
         var mgColor=mg!==null?(mg>30?'var(--grn)':mg>0?'var(--yel)':'var(--red)'):'var(--mut2)';
+        var costoTxt = _costosOcultos ? '🔒' : (p.precio?fmtM(p.precio):'—');
+        var margenCol = _costosOcultos
+          ? '<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:var(--mut2);">🔒</div></div>'
+          : (mg!==null?'<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:'+mgColor+';">'+mg+'%</div></div>':'');
         return '<div class="mci">'
           +'<div class="mci-top"><div class="mci-name">'+escapeHtml(p.nom)+'</div>'+bdg(e.cls,e.lbl)+'</div>'
-          +'<div class="mci-row">'
+          +'<div class="mci-row"'+(_costosOcultos?' style="cursor:pointer;" onclick="verCostosConPin()"':'')+'>'
           +'<div class="mci-col"><div class="mci-lbl">Stock</div><div class="mci-val">'+p.stock+' '+escapeHtml(p.um)+'</div></div>'
           +'<div class="mci-col"><div class="mci-lbl">Mín/Máx</div><div class="mci-val">'+p.min+'/'+p.max+'</div></div>'
-          +'<div class="mci-col"><div class="mci-lbl">Costo</div><div class="mci-val">'+(p.precio?fmtM(p.precio):'—')+'</div></div>'
-          +(mg!==null?'<div class="mci-col"><div class="mci-lbl">Margen</div><div class="mci-val" style="color:'+mgColor+';">'+mg+'%</div></div>':'')
+          +'<div class="mci-col"><div class="mci-lbl">Costo</div><div class="mci-val">'+costoTxt+'</div></div>'
+          +margenCol
           +'</div>'
           +'<div style="display:flex;gap:6px;margin-top:8px;">'
           +'<button class="btn btn-ghost btn-sm" onclick="abrirEditarProd('+p.id+')">📓 Editar</button>'
@@ -7877,12 +7922,15 @@ function renderItemCorte(p){
   var faltaCompletar = !p.stock && !p.pventa;
   var inputStyle = 'background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:5px 6px;color:var(--txt);font-family:DM Mono,monospace;font-size:11px;';
   var umOpts = UNIDADES_MEDIDA.map(function(u){ return '<option value="'+u+'"'+(u===p.um?' selected':'')+'>'+u+'</option>'; }).join('');
+  var costoHtml = costosOcultos()
+    ? '<button type="button" style="'+inputStyle+'width:64px;text-align:center;cursor:pointer;" onclick="verCostosConPin()" title="Precio costo — protegido con PIN">🔒</button>'
+    : '<input type="number" placeholder="Costo" value="'+(p.precio||'')+'" style="'+inputStyle+'width:64px;text-align:right;" oninput="updCostoCorte('+p.id+',this.value)" title="Precio costo">';
   return '<div style="padding:9px 0;border-bottom:1px solid var(--brd);'+(faltaCompletar?'border-left:3px solid var(--yel);padding-left:7px;':'')+'">'
     +'<div style="font-size:13px;">'+escapeHtml(p.nom)+(faltaCompletar?' <span style="color:var(--yel);font-size:10px;">⚠️ sin completar</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">'
     +'<input type="number" placeholder="Stock" value="'+(p.stock||'')+'" style="'+inputStyle+'width:58px;text-align:right;" oninput="updStockCorte('+p.id+',this.value)" title="Stock actual">'
     +'<select style="'+inputStyle+'width:56px;" onchange="updUmCorte('+p.id+',this.value)" title="Unidad de medida">'+umOpts+'</select>'
-    +'<input type="number" placeholder="Costo" value="'+(p.precio||'')+'" style="'+inputStyle+'width:64px;text-align:right;" oninput="updCostoCorte('+p.id+',this.value)" title="Precio costo">'
+    +costoHtml
     +'<input type="number" placeholder="Venta" value="'+(p.pventa||'')+'" style="'+inputStyle+'width:64px;text-align:right;" oninput="updPrecioCorne('+p.id+',this.value)" title="Precio de venta">'
     +'<button class="btn btn-red btn-sm" onclick="eliminarProd('+p.id+');renderCortesLista();">✕</button>'
     +'</div>'
@@ -10844,6 +10892,8 @@ async function verificarPin() {
     document.getElementById('pin-overlay').classList.remove('on');
     pinSesionDesbloqueada[pinDestino] = true;
     if(pinDestino === 'config') openModal('modal-config');
+    else if(pinDestino === 'dashboard') renderDash();
+    else if(pinDestino === 'costos'){ renderProds(); renderCortesLista(); actualizarLockCostoProd(); }
     else go(pinDestino, pinNavEl);
     pinActual = '';
     pinDestino = null;
