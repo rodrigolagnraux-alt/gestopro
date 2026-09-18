@@ -2115,9 +2115,10 @@ select.fi{appearance:none;cursor:pointer;}
           <div style="font-size:11px;color:var(--mut2);font-family:DM Mono,monospace;" id="emp-detalle-sueldo-lbl">VALOR POR HORA</div>
           <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--grn);" id="emp-detalle-sueldo"></div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" onclick="abrirModalEditarEmpleado()">✏️ Editar</button>
           <button class="btn btn-ghost btn-sm" id="emp-btn-mercaderia" onclick="abrirModalMercaderia()" style="color:var(--acc2);">🛒 Mercadería</button>
+          <button class="btn btn-ghost btn-sm" onclick="darDeBajaEmpleado()" style="color:var(--red);">🚫 Dar de baja</button>
         </div>
       </div>
     </div>
@@ -2684,6 +2685,15 @@ function toggleSB(){ el('sb').classList.toggle('on'); el('sbov').classList.toggl
 function closeSB(){ const s=el('sb'),o=el('sbov'); if(s)s.classList.remove('on'); if(o)o.classList.remove('on'); }
 var _modalZCounter = 200;
 function openModal(id){
+  // Configuración guarda el PIN que protege Resumen/Finanzas/Empleados, y ahí
+  // mismo se puede borrar ese PIN — si no se gatea con el propio PIN, cualquiera
+  // con el dispositivo en mano puede desactivar toda la protección.
+  if(id==='modal-config' && config.pin && !pinSesionDesbloqueada['config']){
+    pinDestino = 'config';
+    pinNavEl = null;
+    abrirPin();
+    return;
+  }
   const m=el(id);
   if(m){ m.classList.add('on'); _modalZCounter++; m.style.zIndex = String(_modalZCounter); }
   if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
@@ -2750,6 +2760,7 @@ async function guardarConfig(){
   var aliasDni=get('cfg-alias-dni');
   var cvuDni=get('cfg-cvu-dni');
   var pin=get('cfg-pin').trim();
+  if(pin && (pin.length !== 4 || isNaN(pin))){ toast('El PIN debe ser de 4 dígitos numéricos (dejalo vacío para desactivarlo)','err'); return; }
   var rd=parseFloat(get('cfg-recargo-domingo')); rd = isNaN(rd) ? 50 : rd;
   var mpToken=get('cfg-mp-token').trim();
   var fiadoPrecioEl = document.querySelector('input[name="cfg-fiado-precio"]:checked');
@@ -3329,11 +3340,12 @@ function restaurarSesionCajaLocal(){
 }
 function cerrarSesionCaja(){
   var nom = cajeroActual ? cajeroActual.nombre : 'Sesión';
+  if(!confirm('¿Salir de la sesión de '+nom+'? Esto NO hace el cierre de caja (arqueo) — para eso usá el botón "🏁 Cerrar caja". La caja va a seguir figurando como abierta hasta que la cierres desde ahí.')) return;
   cajeroActual = null;
   cajaActualId = null;
   guardarSesionCajaLocal();
   closeModal('modal-cobrar');
-  toast('🔒 Caja cerrada — '+nom);
+  toast('🔒 Sesión cerrada — '+nom+' (la caja sigue abierta)');
 }
 
 function abrirRetiro(){
@@ -10618,6 +10630,14 @@ async function guardarEmpleado() {
   }
 }
 
+async function darDeBajaEmpleado() {
+  if(!empActual) return;
+  if(!confirm('¿Dar de baja a '+empActual.nombre+'? Ya no va a poder abrir caja ni identificarse para entregas. Su historial de ventas, horas y comisiones se conserva.')) return;
+  await supabaseClient.from('empleados').update({activo:false}).eq('id',empActual.id);
+  toast('Empleado dado de baja ✓');
+  empVolverLista();
+}
+
 function abrirModalMercaderia() {
   if(!empActual) return;
   el('modal-merc-emp-nombre').textContent = empActual.nombre;
@@ -10812,7 +10832,8 @@ async function verificarPin() {
   if(data.valido) {
     document.getElementById('pin-overlay').classList.remove('on');
     pinSesionDesbloqueada[pinDestino] = true;
-    go(pinDestino, pinNavEl);
+    if(pinDestino === 'config') openModal('modal-config');
+    else go(pinDestino, pinNavEl);
     pinActual = '';
     pinDestino = null;
     pinFallosSeguidos = 0;
