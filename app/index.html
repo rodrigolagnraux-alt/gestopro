@@ -5666,7 +5666,8 @@ async function renderResumen(){
     +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">GASTADO</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:var(--red);">'+fmtM(totalEg)+'</div></div>'
     +'<div><div style="font-size:11px;color:var(--mut2);margin-bottom:6px;">BALANCE</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:'+balColor+';">'+(balance>=0?'+':'')+fmtM(balance)+'</div></div></div>'
     +'<div style="background:'+(balance>=0?'var(--grn-dim)':'var(--red-dim)')+';border:1px solid '+(balance>=0?'var(--grn)':'var(--red)')+';border-radius:8px;padding:12px;text-align:center;">'
-    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>';
+    +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:'+balColor+';">'+(balance>=0?'✓ Período positivo':'⚠️ Período negativo')+'</div></div>'
+    +'<div style="font-size:11px;color:var(--mut2);margin-top:8px;">Este Balance es la plata que entró y salió de la caja, incluye lo que hayas retirado vos como dueño. Para ver cuánto ganó el negocio sin contar tus retiros, mirá "Ganancia Real" en Flujo Financiero.</div>';
   renderResumenDiario(movsF, factsF, label, cajasF);
 }
 function setResPeriod(p,btn){ /* legacy - no-op */ }
@@ -6668,7 +6669,7 @@ async function iniciarPreparacionPedido(id){
 async function cancelarPedidoOnline(id){
   var p = pedidosOnlineData.find(function(x){return String(x.id)===String(id);});
   if(!p) return;
-  if(!confirm('¿Cancelar este pedido? No se descontará stock ni se generará ningún cobro.')) return;
+  if(!confirm('¿Cancelar este pedido? No se generará ningún cobro. Si había stock descontado, se repone solo.')) return;
   var res = await supabaseClient.from('pedidos').update({estado:'cancelado'}).eq('id',id);
   if(res.error){
     toast('No se pudo cancelar el pedido','err');
