@@ -8482,7 +8482,7 @@ function initSupabase(){
       supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
       supabaseClient.auth.onAuthStateChange(function(event, session){
         if(event === 'PASSWORD_RECOVERY'){ mostrarPantallaNuevaPassword(); return; }
-        if(event === 'SIGNED_OUT'){ gpSesionActivaId = null; return; }
+        if(event === 'SIGNED_OUT'){ gpSesionActivaId = null; detenerRevalidacionPeriodica(); return; }
         // INITIAL_SESSION cubre tanto la sesión ya guardada al cargar la página
         // como la sesión que el propio cliente de Supabase detecta y establece
         // de forma asíncrona desde el link de confirmación de email (tokens en
@@ -8647,6 +8647,7 @@ function resetSesionLocal(){
 function cerrarSesion(){
   if(!confirm('Cerrar sesion?')) return;
   detenerPollingPedidosOnline();
+  detenerRevalidacionPeriodica();
   resetSesionLocal();
   var ls=el('login-screen'); if(ls)ls.style.display='flex';
   mostrarLogin();
@@ -8873,6 +8874,7 @@ function cargarNegocio(){
         planActual=negocio.plan||'gratis';
         if(verificarAccesoNegocio(negocio)) return; // redirigió a paywall o pantalla de espera, no seguir cargando
         restaurarSesionCajaLocal();
+        iniciarRevalidacionPeriodica();
       } else if(!result.error){
         // Viaja en la metadata del usuario (seteada en signUp options.data), no
         // en localStorage — así está disponible sin importar en qué navegador o
@@ -8896,6 +8898,41 @@ function cargarNegocio(){
 }
 
 // ═══ PAYWALL / TRIAL ═══
+// El chequeo de acceso (verificarAccesoNegocio) corre una sola vez al cargar
+// la sesión — si el negocio vence con la pestaña ya abierta, nada lo vuelve a
+// evaluar. Esto revalida cada 5 minutos y también al volver el foco a la
+// pestaña, para que el aviso o el bloqueo aparezcan sin recargar.
+var gpRevalidacionIntervalId = null;
+var gpUltimaRevalidacion = 0;
+
+function iniciarRevalidacionPeriodica(){
+  detenerRevalidacionPeriodica();
+  gpUltimaRevalidacion = Date.now();
+  gpRevalidacionIntervalId = setInterval(revalidarAccesoNegocio, 300000);
+  document.addEventListener('visibilitychange', onVisibilityChangeRevalidar);
+}
+
+function detenerRevalidacionPeriodica(){
+  if(gpRevalidacionIntervalId){ clearInterval(gpRevalidacionIntervalId); gpRevalidacionIntervalId=null; }
+  document.removeEventListener('visibilitychange', onVisibilityChangeRevalidar);
+}
+
+function onVisibilityChangeRevalidar(){
+  if(document.visibilityState === 'visible') revalidarAccesoNegocio();
+}
+
+function revalidarAccesoNegocio(){
+  if(!supabaseClient || !currentNegocioId) return;
+  var ahora = Date.now();
+  if(ahora - gpUltimaRevalidacion < 60000) return;
+  gpUltimaRevalidacion = ahora;
+  supabaseClient.from('negocios').select('aprobado,plan,plan_vencimiento,exento').eq('id',currentNegocioId).single().then(function(r){
+    if(!r.data) return;
+    planActual = r.data.plan || planActual;
+    verificarAccesoNegocio(r.data);
+  }).catch(function(e){ console.log('Error revalidando acceso:', e); });
+}
+
 function verificarAccesoNegocio(negocio){
   if(negocio.aprobado===false){
     mostrarPantallaEspera();
@@ -8947,6 +8984,9 @@ function irAPaywall(){
 }
 
 function mostrarPantallaEspera(){
+  detenerRevalidacionPeriodica();
+  detenerPollingPedidosOnline();
+  if(typeof detenerCamara==='function') detenerCamara();
   document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:DM Sans,sans-serif;background:#0F1117;padding:2rem;text-align:center;">'
     +'<div style="font-size:40px;">⏳</div>'
     +'<h2 style="font-family:Syne,sans-serif;font-size:22px;color:#fff;">Tu cuenta está siendo revisada</h2>'
