@@ -1717,7 +1717,7 @@ select.fi{appearance:none;cursor:pointer;}
   <div style="height:14px;"></div>
 
   <div id="insumo-campos-standalone">
-    <div class="frow"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="insumo-stock" type="number" placeholder="0"></div><div class="fg"><label class="fl">Costo $</label><input class="fi" id="insumo-costo" type="number" placeholder="0"></div></div>
+    <div class="frow"><div class="fg"><label class="fl">Stock actual</label><input class="fi" id="insumo-stock" type="number" placeholder="0"></div><div class="fg" id="insumo-costo-wrap"><label class="fl">Costo $</label><input class="fi" id="insumo-costo" type="number" placeholder="0"></div><div class="fg" id="insumo-costo-lock" style="display:none;cursor:pointer;" onclick="verCostosConPin()"><label class="fl">Costo $</label><div class="fi" style="display:flex;align-items:center;color:var(--mut2);">🔒 Ver con PIN</div></div></div>
     <div class="fg"><label class="fl">Código de barras (opcional)</label><input class="fi" id="insumo-cod" placeholder="Ej: 7791234567890"></div>
   </div>
 
@@ -2698,6 +2698,7 @@ function openModal(id){
   if(m){ m.classList.add('on'); _modalZCounter++; m.style.zIndex = String(_modalZCounter); }
   if(id==='modal-prod' && !prodEditId){ cargarSelectProveedores(''); }
   if(id==='modal-prod'){ actualizarLockCostoProd(); }
+  if(id==='modal-insumo'){ actualizarLockCostoInsumo(); }
   if(id==='modal-config'){ abrirModalConfig(); }
 }
 
@@ -5007,9 +5008,10 @@ function renderFilaImportadorIA(p, idx){
   var estilo = flagged ? 'background:var(--yel-dim);border:1px solid var(--yel);' : 'border:1px solid var(--brd);';
   var badge = flagged ? '<span class="bdg by" style="margin-right:6px;">⚠️ Revisar</span>' : (p.confianzaBaja ? '<span class="bdg bg" style="margin-right:6px;">✓ Revisado</span>' : '');
 
+  var _costoOcultoIA = costosOcultos();
   var metaTxt = esInsumo
-    ? escapeHtml(p.um||'UN')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.costo!==undefined?fmtM(p.costo):'—')+(p.cod?' · Cód: '+escapeHtml(p.cod):'')
-    : escapeHtml(p.cat||'Otro')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(p.precio!==undefined?fmtM(p.precio):'—')+' · Venta: '+(p.pventa!==undefined?fmtM(p.pventa):'—');
+    ? escapeHtml(p.um||'UN')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(_costoOcultoIA?'🔒':(p.costo!==undefined?fmtM(p.costo):'—'))+(p.cod?' · Cód: '+escapeHtml(p.cod):'')
+    : escapeHtml(p.cat||'Otro')+' · Stock: '+(p.stock!==undefined?p.stock:'—')+' · Costo: '+(_costoOcultoIA?'🔒':(p.precio!==undefined?fmtM(p.precio):'—'))+' · Venta: '+(p.pventa!==undefined?fmtM(p.pventa):'—');
 
   var html = '<div style="'+estilo+'border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;" onclick="'+(editando?'':'toggleEditarFilaIA('+idx+')')+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
@@ -5023,15 +5025,18 @@ function renderFilaImportadorIA(p, idx){
   if(editando){
     html += '<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;" onclick="event.stopPropagation();">'
       +'<div class="fg" style="grid-column:1/-1;"><label class="fl">Nombre</label><input class="fi" id="imp-ia-edit-nom" value="'+escapeHtml(p.nom||'')+'"></div>';
+    var costoInputHtml = _costoOcultoIA
+      ? '<div class="fi" style="display:flex;align-items:center;color:var(--mut2);cursor:pointer;" onclick="verCostosConPin()">🔒 Ver con PIN</div>'
+      : '<input class="fi" id="imp-ia-edit-precio" type="number" value="'+(esInsumo?(p.costo!==undefined?p.costo:''):(p.precio!==undefined?p.precio:''))+'">';
     if(esInsumo){
       html += '<div class="fg"><label class="fl">Unidad</label><input class="fi" id="imp-ia-edit-um" value="'+escapeHtml(p.um||'UN')+'"></div>'
         +'<div class="fg"><label class="fl">Código de barras</label><input class="fi" id="imp-ia-edit-cod" value="'+escapeHtml(p.cod||'')+'"></div>'
         +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
-        +'<div class="fg"><label class="fl">Costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.costo!==undefined?p.costo:'')+'"></div>';
+        +'<div class="fg"><label class="fl">Costo</label>'+costoInputHtml+'</div>';
     } else {
       html += '<div class="fg"><label class="fl">Categoría</label><input class="fi" id="imp-ia-edit-cat" value="'+escapeHtml(p.cat||'')+'"></div>'
         +'<div class="fg"><label class="fl">Stock</label><input class="fi" id="imp-ia-edit-stock" type="number" value="'+(p.stock!==undefined?p.stock:'')+'"></div>'
-        +'<div class="fg"><label class="fl">Precio costo</label><input class="fi" id="imp-ia-edit-precio" type="number" value="'+(p.precio!==undefined?p.precio:'')+'"></div>'
+        +'<div class="fg"><label class="fl">Precio costo</label>'+costoInputHtml+'</div>'
         +'<div class="fg"><label class="fl">Precio venta</label><input class="fi" id="imp-ia-edit-pventa" type="number" value="'+(p.pventa!==undefined?p.pventa:'')+'"></div>';
     }
     html += '</div>'
@@ -5052,15 +5057,19 @@ function confirmarEdicionFilaIA(idx){
   if(!p) return;
   var nom = (get('imp-ia-edit-nom')||'').trim();
   var stockVal = parseFloat(get('imp-ia-edit-stock'));
-  var precioVal = parseFloat(get('imp-ia-edit-precio'));
+  // Con el costo oculto por PIN, ese input ni existe en el formulario — no lo
+  // tocamos (queda con el valor que ya tenía), en vez de leerlo como vacío y
+  // borrarlo sin querer.
+  var costoBloqueado = costosOcultos();
+  var precioVal = costoBloqueado ? null : parseFloat(get('imp-ia-edit-precio'));
   if(!nom){ toast('El nombre no puede quedar vacío','err'); return; }
-  if((!isNaN(stockVal)&&stockVal<0)||(!isNaN(precioVal)&&precioVal<0)){ toast('No se permiten valores negativos','err'); return; }
+  if((!isNaN(stockVal)&&stockVal<0)||(precioVal!==null&&!isNaN(precioVal)&&precioVal<0)){ toast('No se permiten valores negativos','err'); return; }
   if(p._tipo==='insumo'){
     var umVal = (get('imp-ia-edit-um')||'').trim();
     var codVal = (get('imp-ia-edit-cod')||'').trim();
     p.nom=nom; p.um=umVal||'UN'; p.cod=codVal;
     p.stock=isNaN(stockVal)?undefined:stockVal;
-    p.costo=isNaN(precioVal)?undefined:precioVal;
+    if(!costoBloqueado) p.costo=isNaN(precioVal)?undefined:precioVal;
     p.revisado=true;
     window._impIaEditando=null;
     renderPreviewImportadorIA();
@@ -5071,7 +5080,7 @@ function confirmarEdicionFilaIA(idx){
   if(!isNaN(pventaVal)&&pventaVal<0){ toast('No se permiten valores negativos','err'); return; }
   p.nom=nom; p.cat=cat||'Otro';
   p.stock=isNaN(stockVal)?undefined:stockVal;
-  p.precio=isNaN(precioVal)?undefined:precioVal;
+  if(!costoBloqueado) p.precio=isNaN(precioVal)?undefined:precioVal;
   p.pventa=isNaN(pventaVal)?undefined:pventaVal;
   p.revisado=true;
   window._impIaEditando=null;
@@ -5373,6 +5382,13 @@ function verCostosConPin(){
 }
 function actualizarLockCostoProd(){
   var wrap = el('p-precio-wrap'), lock = el('p-precio-lock');
+  if(!wrap || !lock) return;
+  var oculto = costosOcultos();
+  wrap.style.display = oculto ? 'none' : '';
+  lock.style.display = oculto ? '' : 'none';
+}
+function actualizarLockCostoInsumo(){
+  var wrap = el('insumo-costo-wrap'), lock = el('insumo-costo-lock');
   if(!wrap || !lock) return;
   var oculto = costosOcultos();
   wrap.style.display = oculto ? 'none' : '';
@@ -10893,7 +10909,7 @@ async function verificarPin() {
     pinSesionDesbloqueada[pinDestino] = true;
     if(pinDestino === 'config') openModal('modal-config');
     else if(pinDestino === 'dashboard') renderDash();
-    else if(pinDestino === 'costos'){ renderProds(); renderCortesLista(); actualizarLockCostoProd(); }
+    else if(pinDestino === 'costos'){ renderProds(); renderCortesLista(); actualizarLockCostoProd(); actualizarLockCostoInsumo(); }
     else go(pinDestino, pinNavEl);
     pinActual = '';
     pinDestino = null;
